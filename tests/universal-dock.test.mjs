@@ -61,6 +61,73 @@ assert.equal(hlsNorm.isValid, true);
 assert.equal(hlsNorm.platform, 'direct');
 console.log('  ✓ Direct MP4 and M3U8 detection passed');
 
+// 3b. Social & Universal Platform URL normalization
+console.log('[3b/5] Testing Social & Universal link normalization...');
+// WhatsApp E2EE handling
+const waTest1 = normalizeMediaUrl('https://wa.me/1234567890');
+assert.equal(waTest1.isValid, false);
+assert.equal(waTest1.platform, 'whatsapp');
+assert.match(waTest1.error || '', /end-to-end encrypted/i);
+
+const waTest2 = normalizeMediaUrl('https://chat.whatsapp.com/ABC123xyz');
+assert.equal(waTest2.isValid, false);
+assert.equal(waTest2.platform, 'whatsapp');
+assert.match(waTest2.error || '', /end-to-end encrypted/i);
+
+const waTest3 = normalizeMediaUrl('https://wa.link/abc123xyz');
+assert.equal(waTest3.isValid, false);
+assert.equal(waTest3.platform, 'whatsapp');
+assert.match(waTest3.error || '', /end-to-end encrypted/i);
+
+// Instagram (reels plural)
+const igNorm = normalizeMediaUrl('https://www.instagram.com/reels/C1234567890/');
+assert.equal(igNorm.isValid, true);
+assert.equal(igNorm.platform, 'instagram');
+assert.equal(igNorm.shareId, 'C1234567890');
+
+// TikTok
+const tiktokNorm = normalizeMediaUrl('https://www.tiktok.com/@creator/video/1234567890');
+assert.equal(tiktokNorm.isValid, true);
+assert.equal(tiktokNorm.platform, 'tiktok');
+
+// Bilibili
+const biliNorm = normalizeMediaUrl('https://www.bilibili.com/video/BV1xx411c7mD');
+assert.equal(biliNorm.isValid, true);
+assert.equal(biliNorm.platform, 'bilibili');
+
+// Dailymotion
+const dmNorm = normalizeMediaUrl('https://www.dailymotion.com/video/x8abcdef');
+assert.equal(dmNorm.isValid, true);
+assert.equal(dmNorm.platform, 'dailymotion');
+
+// Snapchat
+const snapNorm = normalizeMediaUrl('https://www.snapchat.com/spotlight/W7_EDHA1_somelink');
+assert.equal(snapNorm.isValid, true);
+assert.equal(snapNorm.platform, 'snapchat');
+
+// LinkedIn
+const liNorm = normalizeMediaUrl('https://www.linkedin.com/posts/activity-1234567890');
+assert.equal(liNorm.isValid, true);
+assert.equal(liNorm.platform, 'linkedin');
+
+// Twitter / X
+const xNorm = normalizeMediaUrl('https://x.com/user/status/1234567890');
+assert.equal(xNorm.isValid, true);
+assert.equal(xNorm.platform, 'twitter');
+
+// Vimeo
+const vimeoNorm = normalizeMediaUrl('https://vimeo.com/123456789');
+assert.equal(vimeoNorm.isValid, true);
+assert.equal(vimeoNorm.platform, 'vimeo');
+assert.equal(vimeoNorm.shareId, '123456789');
+
+// Universal link (any valid HTTP/HTTPS URL)
+const uniNorm = normalizeMediaUrl('https://news.ycombinator.com/item?id=123');
+assert.equal(uniNorm.isValid, true);
+assert.equal(uniNorm.platform, 'universal');
+
+console.log('  ✓ WhatsApp E2EE error, social platforms, and universal links verified');
+
 // 4. Subtitle Time & Format Logic
 console.log('[4/4] Testing Subtitle & SRT formatting...');
 

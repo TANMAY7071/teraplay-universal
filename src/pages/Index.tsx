@@ -28,7 +28,8 @@ import {
   ChevronDown,
   Music,
   Video,
-  Volume2
+  Volume2,
+  RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -71,18 +72,43 @@ export interface MediaFormatOption {
   is_audio_only?: boolean;
 }
 
+export interface ThumbnailItem {
+  url: string;
+  width?: number;
+  height?: number;
+  resolution?: string;
+  quality_label?: string;
+}
+
 export interface ResolvedMedia {
   title: string;
   thumbnail: string;
+  thumbnails?: ThumbnailItem[];
   m3u8_url: string;
   fast_download_url: string;
   size: string;
   duration?: number;
   shareId: string;
-  platform?: 'terabox' | 'youtube' | 'direct' | 'instagram' | 'facebook' | 'whatsapp';
+  platform?:
+    | 'terabox'
+    | 'youtube'
+    | 'direct'
+    | 'instagram'
+    | 'facebook'
+    | 'whatsapp'
+    | 'tiktok'
+    | 'bilibili'
+    | 'dailymotion'
+    | 'snapchat'
+    | 'linkedin'
+    | 'twitter'
+    | 'vimeo'
+    | 'universal';
   youtube_id?: string;
   transcript?: TranscriptData | null;
   formats?: MediaFormatOption[];
+  video_formats?: MediaFormatOption[];
+  audio_formats?: MediaFormatOption[];
   is_mock?: boolean;
 }
 
@@ -215,7 +241,8 @@ const HeroParticlesCanvas: React.FC = React.memo(() => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let animationFrameId: number;
+    let animationFrameId = 0;
+    let isVisible = true;
     let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
     let height = (canvas.height = canvas.parentElement?.clientHeight || 520);
 
@@ -226,14 +253,14 @@ const HeroParticlesCanvas: React.FC = React.memo(() => {
     };
     window.addEventListener('resize', onResize);
 
-    const particleCount = Math.floor(Math.min(width, 1400) / 42);
+    const particleCount = Math.min(22, Math.floor(Math.min(width, 1400) / 55));
     const particles = Array.from({ length: particleCount }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.45,
-      vy: (Math.random() - 0.5) * 0.45,
-      radius: Math.random() * 1.6 + 0.8,
-      alpha: Math.random() * 0.45 + 0.2,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      radius: Math.random() * 1.5 + 0.8,
+      alpha: Math.random() * 0.4 + 0.2,
     }));
 
     let mouseX = -1000;
@@ -250,10 +277,15 @@ const HeroParticlesCanvas: React.FC = React.memo(() => {
     };
 
     const parent = canvas.parentElement;
-    parent?.addEventListener('mousemove', onMouseMove);
+    parent?.addEventListener('mousemove', onMouseMove, { passive: true });
     parent?.addEventListener('mouseleave', onMouseLeave);
 
     const render = () => {
+      if (!isVisible) {
+        animationFrameId = 0;
+        return;
+      }
+
       ctx.clearRect(0, 0, width, height);
 
       for (let i = 0; i < particles.length; i++) {
@@ -269,10 +301,10 @@ const HeroParticlesCanvas: React.FC = React.memo(() => {
         const dxMouse = p1.x - mouseX;
         const dyMouse = p1.y - mouseY;
         const distMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
-        if (distMouse < 130) {
-          const force = (130 - distMouse) / 130;
-          p1.x += (dxMouse / distMouse) * force * 1.5;
-          p1.y += (dyMouse / distMouse) * force * 1.5;
+        if (distMouse < 110) {
+          const force = (110 - distMouse) / 110;
+          p1.x += (dxMouse / distMouse) * force * 1.2;
+          p1.y += (dyMouse / distMouse) * force * 1.2;
         }
 
         for (let j = i + 1; j < particles.length; j++) {
@@ -281,11 +313,11 @@ const HeroParticlesCanvas: React.FC = React.memo(() => {
           const dy = p1.y - p2.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist < 110) {
-            const alpha = (1 - dist / 110) * 0.2;
+          if (dist < 85) {
+            const alpha = (1 - dist / 85) * 0.2;
             ctx.beginPath();
-            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.16})`;
-            ctx.lineWidth = 0.75;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.15})`;
+            ctx.lineWidth = 0.65;
             ctx.moveTo(p1.x, p1.y);
             ctx.lineTo(p2.x, p2.y);
             ctx.stroke();
@@ -301,17 +333,30 @@ const HeroParticlesCanvas: React.FC = React.memo(() => {
       animationFrameId = requestAnimationFrame(render);
     };
 
-    render();
+    // IntersectionObserver halts animation loop completely when user scrolls away
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry?.isIntersecting ?? true;
+        if (isVisible && !animationFrameId) {
+          animationFrameId = requestAnimationFrame(render);
+        }
+      },
+      { threshold: 0 }
+    );
+    observer.observe(canvas);
+
+    animationFrameId = requestAnimationFrame(render);
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      observer.disconnect();
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', onResize);
       parent?.removeEventListener('mousemove', onMouseMove);
       parent?.removeEventListener('mouseleave', onMouseLeave);
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="tp-canvas" />;
+  return <canvas ref={canvasRef} className="tp-canvas pointer-events-none" />;
 });
 
 // ==========================================
@@ -358,6 +403,21 @@ const FaqAccordionSection = React.memo(({ faqs }: { faqs: FaqItemData[] }) => {
   );
 });
 
+export type PlatformChip =
+  | 'YouTube'
+  | 'TeraBox'
+  | 'Direct'
+  | 'Facebook'
+  | 'Instagram'
+  | 'TikTok'
+  | 'Bilibili'
+  | 'Dailymotion'
+  | 'Snapchat'
+  | 'LinkedIn'
+  | 'Vimeo'
+  | 'Universal'
+  | 'WhatsApp';
+
 // ==========================================
 // MAIN UNIVERSAL DOCK COMPONENT
 // ==========================================
@@ -376,9 +436,10 @@ export default function Index() {
   const [copiedEmbed, setCopiedEmbed] = useState(false);
   const [guestPlays, setGuestPlays] = useState<number>(0);
   const [showAuthGate, setShowAuthGate] = useState(false);
-  const [activeChip, setActiveChip] = useState<'YouTube' | 'TeraBox' | 'Direct' | 'Facebook' | 'Instagram' | 'WhatsApp'>('YouTube');
+  const [activeChip, setActiveChip] = useState<PlatformChip>('YouTube');
+  const [resolveError, setResolveError] = useState<{ title: string; message: string; platform?: string } | null>(null);
 
-  // YouTube Mode Tabs: 'downloads' | 'transcript' | 'thumbnails' | 'player'
+  // Studio Mode Tabs: 'downloads' | 'transcript' | 'thumbnails' | 'player'
   const [youtubeTab, setYoutubeTab] = useState<'downloads' | 'transcript' | 'thumbnails' | 'player'>('downloads');
   const [downloadFormatTab, setDownloadFormatTab] = useState<'video' | 'audio'>('video');
   const [isQuickDropdownOpen, setIsQuickDropdownOpen] = useState(false);
@@ -413,6 +474,22 @@ export default function Index() {
     });
   }, []);
 
+  // Synchronize documentElement theme class for Apple HIG system matching
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const root = document.documentElement;
+      if (theme === 'dark') {
+        root.classList.remove('light');
+        root.classList.add('dark');
+        root.style.colorScheme = 'dark';
+      } else {
+        root.classList.remove('dark');
+        root.classList.add('light');
+        root.style.colorScheme = 'light';
+      }
+    }
+  }, [theme]);
+
   // Sync guest plays from localStorage
   useEffect(() => {
     try {
@@ -441,23 +518,59 @@ export default function Index() {
       return;
     }
 
-    if (raw.toLowerCase().includes('instagram.com') || raw.toLowerCase().includes('instagr.am')) {
+    const lower = raw.toLowerCase();
+    if (lower.includes('instagram.com') || lower.includes('instagr.am')) {
       setActiveChip('Instagram');
       return;
     }
 
-    if (raw.toLowerCase().includes('facebook.com') || raw.toLowerCase().includes('fb.watch') || raw.toLowerCase().includes('fb.com')) {
+    if (lower.includes('tiktok.com')) {
+      setActiveChip('TikTok');
+      return;
+    }
+
+    if (lower.includes('bilibili.com') || lower.includes('b23.tv')) {
+      setActiveChip('Bilibili');
+      return;
+    }
+
+    if (lower.includes('dailymotion.com') || lower.includes('dai.ly')) {
+      setActiveChip('Dailymotion');
+      return;
+    }
+
+    if (lower.includes('snapchat.com')) {
+      setActiveChip('Snapchat');
+      return;
+    }
+
+    if (lower.includes('facebook.com') || lower.includes('fb.watch') || lower.includes('fb.com')) {
       setActiveChip('Facebook');
       return;
     }
 
-    if (raw.toLowerCase().includes('whatsapp.com') || raw.toLowerCase().includes('wa.me')) {
+    if (lower.includes('linkedin.com')) {
+      setActiveChip('LinkedIn');
+      return;
+    }
+
+    if (lower.includes('vimeo.com')) {
+      setActiveChip('Vimeo');
+      return;
+    }
+
+    if (lower.includes('whatsapp.com') || lower.includes('wa.me') || lower.includes('wa.link')) {
       setActiveChip('WhatsApp');
       return;
     }
 
     if (/\.(mp4|m3u8|webm)(\?.*)?$/i.test(raw)) {
       setActiveChip('Direct');
+      return;
+    }
+
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      setActiveChip('Universal');
     }
   }, [inputUrl]);
 
@@ -506,6 +619,7 @@ export default function Index() {
     }
 
     setIsLoading(true);
+    setResolveError(null);
 
     const isYt = normalized.platform === 'youtube' || !!extractYouTubeVideoId(raw);
     const ytId = extractYouTubeVideoId(raw) || undefined;
@@ -584,6 +698,7 @@ export default function Index() {
               fast_download_url: foundM3u8 || prev.fast_download_url,
               size: resolveData?.success ? (resolveData.size || '') : '',
               formats: resolveData?.success && Array.isArray(resolveData.formats) ? resolveData.formats : [],
+              thumbnails: resolveData?.success && Array.isArray(resolveData.thumbnails) ? resolveData.thumbnails : prev.thumbnails,
             };
           });
 
@@ -614,6 +729,7 @@ export default function Index() {
       setResolvedVideo({
         title: data.title || 'Shared Video File',
         thumbnail: data.thumbnail || '',
+        thumbnails: data.thumbnails || [],
         m3u8_url: data.m3u8_url || data.fast_download_url || '',
         fast_download_url: data.fast_download_url || data.m3u8_url,
         size: data.size || 'HD Quality',
@@ -623,6 +739,8 @@ export default function Index() {
         youtube_id: data.youtube_id,
         transcript: data.transcript || null,
         formats: data.formats || [],
+        video_formats: data.video_formats || [],
+        audio_formats: data.audio_formats || [],
         is_mock: data.is_mock,
       });
 
@@ -636,7 +754,17 @@ export default function Index() {
         }
       }, 150);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Could not resolve link. Please try again.');
+      const errMsg = err instanceof Error ? err.message : 'Could not resolve link. Please try again.';
+      setResolveError({
+        title: normalized.platform === 'instagram' ? 'Instagram Content Protected' : 'Media Unavailable',
+        message: errMsg,
+        platform: normalized.platform,
+      });
+      toast.error(errMsg);
+      setTimeout(() => {
+        const el = document.getElementById('error-viewport');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
     } finally {
       setIsLoading(false);
     }
@@ -655,9 +783,52 @@ export default function Index() {
     }
   };
 
+  // ==========================================
+  // UNIVERSAL DOCK ACTIONS (FORMATS, TRANSCRIPTS & THUMBNAILS)
+  // ==========================================
+  const videoFormats = useMemo(() => {
+    const list = resolvedVideo?.video_formats?.length
+      ? resolvedVideo.video_formats
+      : resolvedVideo?.formats?.filter((f) => !f.is_audio_only) || [];
+    if (list.length === 0 && (resolvedVideo?.m3u8_url || resolvedVideo?.fast_download_url)) {
+      return [
+        {
+          format_id: 'direct_stream',
+          quality: 'Direct Stream (Audio + Video)',
+          height: 720,
+          ext: 'mp4',
+          filesize: resolvedVideo.size || 'HD Quality',
+          url: resolvedVideo.fast_download_url || resolvedVideo.m3u8_url,
+          download_url: resolvedVideo.fast_download_url || resolvedVideo.m3u8_url,
+          has_audio: true,
+          has_video: true,
+          is_audio_only: false,
+          is_progressive: true,
+        },
+      ];
+    }
+    return [...list].sort((a, b) => (b.height || 0) - (a.height || 0));
+  }, [resolvedVideo]);
+
+  const audioFormats = useMemo(
+    () => (resolvedVideo?.audio_formats?.length
+      ? resolvedVideo.audio_formats
+      : resolvedVideo?.formats?.filter((f) => f.is_audio_only) || []),
+    [resolvedVideo]
+  );
+
+  // Pick progressive format with both audio and video so quick download is never silent!
+  const bestVideo = useMemo(() => {
+    const progressiveWithAudio = videoFormats.filter((f) => f.has_audio && f.has_video);
+    if (progressiveWithAudio.length > 0) {
+      return progressiveWithAudio[0];
+    }
+    return videoFormats[0] || null;
+  }, [videoFormats]);
+
   const handleDownloadMp4 = () => {
     if (!resolvedVideo) return;
-    const rawTarget = resolvedVideo.fast_download_url || resolvedVideo.m3u8_url;
+    const rawTarget = bestVideo?.download_url || bestVideo?.url || resolvedVideo.fast_download_url || resolvedVideo.m3u8_url;
     const proxyTarget = rawTarget.startsWith('/api/stream-download')
       ? rawTarget
       : `/api/stream-download?url=${encodeURIComponent(rawTarget)}&filename=${encodeURIComponent(resolvedVideo.title.replace(/[^a-zA-Z0-9_-]/g, '_'))}`;
@@ -671,18 +842,6 @@ export default function Index() {
     toast.success('Starting MP4 download...');
   };
 
-  // ==========================================
-  // YOUTUBE STUDIO ACTIONS (TRANSCRIPTS & THUMBNAILS)
-  // ==========================================
-  const videoFormats = useMemo(() => {
-    const list = resolvedVideo?.formats?.filter((f) => !f.is_audio_only) || [];
-    return [...list].sort((a, b) => (b.height || 0) - (a.height || 0));
-  }, [resolvedVideo?.formats]);
-  const audioFormats = useMemo(
-    () => resolvedVideo?.formats?.filter((f) => f.is_audio_only) || [],
-    [resolvedVideo?.formats]
-  );
-  const bestVideo = useMemo(() => videoFormats[0] || null, [videoFormats]);
   const bestAudio = useMemo(
     () => audioFormats.find((f) => f.format_id === 'mp3_320') || audioFormats[0] || null,
     [audioFormats]
@@ -691,6 +850,89 @@ export default function Index() {
     () => (downloadFormatTab === 'video' ? videoFormats : audioFormats),
     [downloadFormatTab, videoFormats, audioFormats]
   );
+
+  const thumbnailList = useMemo(() => {
+    if (!resolvedVideo) return [];
+    if (resolvedVideo.thumbnails && resolvedVideo.thumbnails.length > 0) {
+      return resolvedVideo.thumbnails.map((t, idx) => {
+        const tag = t.height ? `${t.height}p` : `thumb_${idx + 1}`;
+        const label = t.quality_label || (t.height ? `${t.height}p Quality` : `Cover Image ${idx + 1}`);
+        const res = t.resolution || (t.width && t.height ? `${t.width} × ${t.height}` : 'HD Quality');
+        const badge =
+          (t.width && t.width >= 1920) || (t.height && t.height >= 1080)
+            ? 'Highest Quality'
+            : (t.width && t.width >= 1280) || (t.height && t.height >= 720)
+            ? 'High Definition'
+            : 'Standard';
+        const badgeColor =
+          badge === 'Highest Quality'
+            ? 'text-[#e4f222] bg-[#e4f222]/15 border-[#e4f222]/30'
+            : badge === 'High Definition'
+            ? 'text-sky-400 bg-sky-400/15 border-sky-400/30'
+            : 'text-amber-400 bg-amber-400/15 border-amber-400/30';
+        return {
+          label,
+          res,
+          badge,
+          badgeColor,
+          url: t.url,
+          tag,
+        };
+      });
+    }
+
+    if (resolvedVideo.youtube_id) {
+      return [
+        {
+          label: 'MaxRes Quality (1080p)',
+          res: '1920 × 1080',
+          badge: 'Highest Quality',
+          badgeColor: 'text-[#e4f222] bg-[#e4f222]/15 border-[#e4f222]/30',
+          url: `https://img.youtube.com/vi/${resolvedVideo.youtube_id}/maxresdefault.jpg`,
+          tag: '1080p',
+        },
+        {
+          label: 'High Quality (HQ 720p)',
+          res: '1280 × 720 / 480 × 360',
+          badge: 'High Definition',
+          badgeColor: 'text-sky-400 bg-sky-400/15 border-sky-400/30',
+          url: `https://img.youtube.com/vi/${resolvedVideo.youtube_id}/hqdefault.jpg`,
+          tag: '720p',
+        },
+        {
+          label: 'Standard Quality (SD)',
+          res: '640 × 480',
+          badge: 'Standard Res',
+          badgeColor: 'text-amber-400 bg-amber-400/15 border-amber-400/30',
+          url: `https://img.youtube.com/vi/${resolvedVideo.youtube_id}/sddefault.jpg`,
+          tag: '480p',
+        },
+        {
+          label: 'Medium Quality (MQ)',
+          res: '320 × 180',
+          badge: 'Compact Size',
+          badgeColor: 'text-slate-400 bg-slate-400/15 border-slate-400/30',
+          url: `https://img.youtube.com/vi/${resolvedVideo.youtube_id}/mqdefault.jpg`,
+          tag: '180p',
+        },
+      ];
+    }
+
+    if (resolvedVideo.thumbnail) {
+      return [
+        {
+          label: 'Primary Cover Thumbnail',
+          res: 'Original Resolution',
+          badge: 'HD Quality',
+          badgeColor: 'text-[#e4f222] bg-[#e4f222]/15 border-[#e4f222]/30',
+          url: resolvedVideo.thumbnail,
+          tag: 'original',
+        },
+      ];
+    }
+
+    return [];
+  }, [resolvedVideo]);
 
   const transcriptItems = useMemo(() => {
     if (!resolvedVideo?.transcript?.items) return [];
@@ -958,7 +1200,21 @@ export default function Index() {
                     ? 'Paste Instagram Reel or video URL...'
                     : activeChip === 'Facebook'
                     ? 'Paste Facebook video or watch link...'
-                    : 'Paste any YouTube, TeraBox, MP4, Facebook, or Instagram link...'
+                    : activeChip === 'TikTok'
+                    ? 'Paste TikTok video or creator link...'
+                    : activeChip === 'Bilibili'
+                    ? 'Paste Bilibili video (BV/av) link...'
+                    : activeChip === 'Dailymotion'
+                    ? 'Paste Dailymotion video link...'
+                    : activeChip === 'Snapchat'
+                    ? 'Paste Snapchat Spotlight video link...'
+                    : activeChip === 'LinkedIn'
+                    ? 'Paste LinkedIn video post link...'
+                    : activeChip === 'Vimeo'
+                    ? 'Paste Vimeo video link...'
+                    : activeChip === 'WhatsApp'
+                    ? 'Paste original video link (YouTube, TikTok, etc.) shared in WhatsApp...'
+                    : 'Paste any video link (YouTube, TeraBox, TikTok, Instagram, Bilibili, Dailymotion...)'
                 }
                 value={inputUrl}
                 onChange={(e) => setInputUrl(e.target.value)}
@@ -1020,9 +1276,13 @@ export default function Index() {
                 ),
               },
               {
-                id: 'Direct',
-                label: 'Direct MP4 / M3U8',
-                icon: <Film className="w-4 h-4 text-emerald-400 shrink-0" />,
+                id: 'TikTok',
+                label: 'TikTok',
+                icon: (
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.85.12V9.32a6.34 6.34 0 0 0-.85-.06A6.33 6.33 0 0 0 3.15 15.6a6.33 6.33 0 0 0 6.33 6.33c3.5 0 6.34-2.84 6.34-6.33V8.89a8.17 8.17 0 0 0 4.77 1.52V6.96c-.34-.04-.68-.13-1-.27z" />
+                  </svg>
+                ),
               },
               {
                 id: 'Instagram',
@@ -1055,6 +1315,71 @@ export default function Index() {
                   </svg>
                 ),
               },
+              {
+                id: 'Bilibili',
+                label: 'Bilibili',
+                icon: (
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#00A1D6" aria-hidden="true">
+                    <path d="M17.813 4.653h.854c1.51 0 2.769 1.233 2.769 2.758v10.446c0 1.525-1.259 2.758-2.769 2.758H5.333C3.823 20.615 2.564 19.382 2.564 17.857V7.411c0-1.525 1.259-2.758 2.769-2.758h.854l-1.92-2.112a.8.8 0 0 1 .059-1.127.8.8 0 0 1 1.127.059l2.76 3.036h7.627l2.76-3.036a.8.8 0 0 1 1.127-.059.8.8 0 0 1 .059 1.127l-1.92 2.112zM7.2 10.4a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4zm9.6 0a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4z" />
+                  </svg>
+                ),
+              },
+              {
+                id: 'Dailymotion',
+                label: 'Dailymotion',
+                icon: (
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                    <text x="8" y="16" fontSize="12" fontWeight="bold" fill="currentColor">d</text>
+                  </svg>
+                ),
+              },
+              {
+                id: 'Snapchat',
+                label: 'Snapchat',
+                icon: (
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#FFFC00" aria-hidden="true">
+                    <path d="M12.016 2.016c-3.867 0-6.023 2.836-6.023 5.484 0 .961.328 2.086.727 2.883.187.375.14.539-.14.773-.422.352-1.079.82-1.618 1.453-.445.516-.258 1.055.352 1.078.656.023 1.336-.21 1.945-.445.328-.117.516.023.633.258.469.961 1.43 2.156 3.094 2.367.21.023.351.188.351.422 0 .445-.469.727-1.125.961-.75.281-1.805.656-2.062 1.734-.14.586.234 1.055.937 1.031.984-.047 1.945-.422 2.906-.726.258-.07.492-.024.68.14.773.68 1.851.68 2.625 0 .188-.164.422-.21.68-.14.96.304 1.922.68 2.906.726.703.024 1.078-.445.937-1.031-.258-1.078-1.312-1.453-2.062-1.734-.656-.234-1.125-.516-1.125-.961 0-.234.141-.399.351-.422 1.664-.211 2.625-1.406 3.094-2.367.117-.235.305-.375.633-.258.609.235 1.289.468 1.945.445.61-.023.797-.562.352-1.078-.539-.633-1.196-1.101-1.618-1.453-.281-.234-.328-.398-.14-.773.398-.797.727-1.922.727-2.883 0-2.648-2.157-5.484-6.024-5.484z" />
+                  </svg>
+                ),
+              },
+              {
+                id: 'LinkedIn',
+                label: 'LinkedIn',
+                icon: (
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#0A66C2" aria-hidden="true">
+                    <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.67 1.67 0 1 0 0-3.34 1.67 1.67 0 0 0 0 3.34m1.39 10.24v-8.37H5.07v8.37h2.78z" />
+                  </svg>
+                ),
+              },
+              {
+                id: 'Vimeo',
+                label: 'Vimeo',
+                icon: (
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#1AB7EA" aria-hidden="true">
+                    <path d="M22.396 7.164c-.093 2.026-1.507 4.8-4.245 8.32C15.323 19.161 12.935 21 10.985 21c-1.214 0-2.24-1.119-3.08-3.356-.56-2.052-1.12-4.105-1.68-6.158-.622-2.24-1.29-3.36-2.004-3.36-.156 0-.7.328-1.634.98L1.4 7.633c1.152-1.01 2.286-2.02 3.403-3.03 1.554-1.336 2.72-2.037 3.498-2.1 1.9-.155 3.072.95 3.518 3.315.528 2.8.887 4.542 1.076 5.228.56 2.395 1.182 3.593 1.867 3.593.53 0 1.23-.746 2.1-2.24.87-1.493 1.34-2.426 1.41-2.799.155-.84-.25-1.26-1.213-1.26-.467 0-.965.093-1.494.28 1.027-3.36 3.018-4.976 5.972-4.85 2.178.094 3.204 1.23 3.078 3.404z" />
+                  </svg>
+                ),
+              },
+              {
+                id: 'WhatsApp',
+                label: 'WhatsApp (E2EE)',
+                icon: (
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#25D366" aria-hidden="true">
+                    <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 14.99 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.67 12.05 3.67Z" />
+                  </svg>
+                ),
+              },
+              {
+                id: 'Direct',
+                label: 'Direct MP4 / M3U8',
+                icon: <Film className="w-4 h-4 text-emerald-400 shrink-0" />,
+              },
+              {
+                id: 'Universal',
+                label: 'Universal (1000+ Sites)',
+                icon: <Globe className="w-4 h-4 text-cyan-400 shrink-0" />,
+              },
             ].map((chip) => (
               <button
                 key={chip.id}
@@ -1064,8 +1389,7 @@ export default function Index() {
                 className="tp-chip"
                 data-active={activeChip === chip.id ? 'true' : 'false'}
                 onClick={() => {
-                  const chipId = chip.id as 'YouTube' | 'TeraBox' | 'Direct' | 'Facebook' | 'Instagram' | 'WhatsApp';
-                  setActiveChip(chipId);
+                  setActiveChip(chip.id as PlatformChip);
                   urlInputRef.current?.focus();
                 }}
               >
@@ -1074,6 +1398,18 @@ export default function Index() {
               </button>
             ))}
           </div>
+
+          {activeChip === 'WhatsApp' && (
+            <div className="mt-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-xs flex items-start gap-3 animate-in fade-in duration-150">
+              <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-semibold text-white">How WhatsApp media downloads work:</span>
+                <p className="text-slate-300 leading-relaxed">
+                  WhatsApp chat messages and media files are end-to-end encrypted (E2EE) on your device. To download a video shared in WhatsApp, simply copy the original link (such as YouTube, Instagram Reel, TikTok, Facebook, or Twitter) directly from the WhatsApp chat message and paste it into the dock above!
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Trust badge line */}
           <div className="tp-trust-sub" aria-label="Service Features">
@@ -1095,7 +1431,9 @@ export default function Index() {
                   localStorage.removeItem('teraplay_guest_plays');
                   setGuestPlays(0);
                   toast.success('Guest session limit reset to 0/5!');
-                } catch {}
+                } catch {
+                  // Ignore localStorage error
+                }
               }}
               title="Click to reset guest plays counter (Testing Mode)"
             >
@@ -1129,6 +1467,49 @@ export default function Index() {
           RESULTS DOCK: YOUTUBE STUDIO / TERABOX PLAYER VIEWPORT
           ========================================================================= */}
       <div className="tp-wrap">
+        {resolveError && !resolvedVideo && (
+          <section id="error-viewport" className="w-full my-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="rounded-2xl border border-amber-500/30 bg-[var(--tp-paper-elevated)] backdrop-blur-xl p-6 sm:p-8 space-y-4 shadow-xl">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-6 h-6 text-amber-400" />
+                </div>
+                <div className="space-y-2 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-bold text-[var(--tp-ink)]">
+                      {resolveError.title}
+                    </h3>
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                      Notice
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-[var(--tp-text-dim)] leading-relaxed">
+                    {resolveError.message}
+                  </p>
+                  <div className="pt-2 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResolveError(null);
+                        setInputUrl('');
+                        urlInputRef.current?.focus();
+                      }}
+                      className="tp-btn tp-btn-primary active:scale-[0.98] transition-transform"
+                      style={{ height: '36px', fontSize: '12px' }}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Try Another Link</span>
+                    </button>
+                    <span className="text-xs text-[var(--tp-muted)] font-mono">
+                      Tip: Public Instagram Reels, YouTube videos, and TeraBox files can be streamed directly.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {resolvedVideo && (
           <section id="player-viewport" className="tp-player-card">
             {/* Header info */}
@@ -1165,10 +1546,12 @@ export default function Index() {
                       </>
                     ) : (
                       <>
-                        <span>Size: {resolvedVideo.size}</span>
+                        <span className="text-cyan-400 font-medium capitalize">{resolvedVideo.platform || 'Universal'} Stream</span>
+                        <span>•</span>
+                        <span>Size: {resolvedVideo.size || 'HD Quality'}</span>
                         <span>•</span>
                         <span className="text-emerald-400 flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3" /> Edge CDN Active
+                          <ShieldCheck className="w-3 h-3" /> Universal Dock Active
                         </span>
                       </>
                     )}
@@ -1177,7 +1560,7 @@ export default function Index() {
               </div>
 
               <div className="flex items-center gap-2">
-                {isYouTubeMode ? (
+                {isYouTubeMode && resolvedVideo.youtube_id ? (
                   <a
                     href={`https://www.youtube.com/watch?v=${resolvedVideo.youtube_id}`}
                     target="_blank"
@@ -1202,119 +1585,137 @@ export default function Index() {
               </div>
             </div>
 
-            {/* YOUTUBE STUDIO TAB NAVIGATION */}
-            {isYouTubeMode && (
-              <div className="flex items-center border-b border-white/10 px-4 sm:px-6 bg-[#080e22]/70 backdrop-blur-md overflow-x-auto">
-                <button
-                  type="button"
-                  onClick={() => setYoutubeTab('downloads')}
-                  className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                    youtubeTab === 'downloads'
-                      ? 'border-[#e4f222] text-[#e4f222]'
-                      : 'border-transparent text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Downloads (MP4 & Audio)</span>
-                  {resolvedVideo.formats && resolvedVideo.formats.length > 0 && (
-                    <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 font-mono">
-                      {resolvedVideo.formats.length} formats
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setYoutubeTab('transcript')}
-                  className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                    youtubeTab === 'transcript'
-                      ? 'border-[#e4f222] text-[#e4f222]'
-                      : 'border-transparent text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Subtitles className="w-4 h-4" />
-                  <span>Transcript & Subtitles</span>
-                  {resolvedVideo.transcript?.items && (
-                    <span className="text-[10px] bg-[#e4f222]/15 text-[#e4f222] px-2 py-0.5 rounded-full border border-[#e4f222]/30 font-mono">
-                      {resolvedVideo.transcript.items.length} cues
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setYoutubeTab('thumbnails')}
-                  className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                    youtubeTab === 'thumbnails'
-                      ? 'border-[#e4f222] text-[#e4f222]'
-                      : 'border-transparent text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <ImageIcon className="w-4 h-4" />
-                  <span>Thumbnails (1080p HD)</span>
-                  <span className="text-[10px] bg-sky-500/15 text-sky-400 px-2 py-0.5 rounded-full border border-sky-500/30 font-mono">
-                    4 Sizes
+            {/* UNIVERSAL DOCK TAB NAVIGATION */}
+            <div className="flex items-center border-b border-[var(--tp-border-subtle)] px-4 sm:px-6 bg-[var(--tp-paper-input)]/60 backdrop-blur-md overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setYoutubeTab('downloads')}
+                className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                  youtubeTab === 'downloads'
+                    ? 'border-[var(--tp-mid)] text-[var(--tp-mid)] dark:border-[#e4f222] dark:text-[#e4f222]'
+                    : 'border-transparent text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
+                }`}
+              >
+                <Download className="w-4 h-4" />
+                <span>Downloads (MP4 & Audio)</span>
+                {videoFormats.length + audioFormats.length > 0 && (
+                  <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 font-mono">
+                    {videoFormats.length + audioFormats.length} formats
                   </span>
-                </button>
+                )}
+              </button>
 
-                <button
-                  type="button"
-                  onClick={() => setYoutubeTab('player')}
-                  className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                    youtubeTab === 'player'
-                      ? 'border-[#e4f222] text-[#e4f222]'
-                      : 'border-transparent text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Play className="w-4 h-4" />
-                  <span>Player</span>
-                </button>
-              </div>
-            )}
+              <button
+                type="button"
+                onClick={() => setYoutubeTab('transcript')}
+                className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                  youtubeTab === 'transcript'
+                    ? 'border-[var(--tp-mid)] text-[var(--tp-mid)] dark:border-[#e4f222] dark:text-[#e4f222]'
+                    : 'border-transparent text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
+                }`}
+              >
+                <Subtitles className="w-4 h-4" />
+                <span>Transcript & Subtitles</span>
+                {resolvedVideo.transcript?.items && (
+                  <span className="text-[10px] bg-amber-500/15 text-amber-500 dark:text-[#e4f222] px-2 py-0.5 rounded-full border border-amber-500/30 dark:border-[#e4f222]/30 font-mono">
+                    {resolvedVideo.transcript.items.length} cues
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setYoutubeTab('thumbnails')}
+                className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                  youtubeTab === 'thumbnails'
+                    ? 'border-[var(--tp-mid)] text-[var(--tp-mid)] dark:border-[#e4f222] dark:text-[#e4f222]'
+                    : 'border-transparent text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
+                }`}
+              >
+                <ImageIcon className="w-4 h-4" />
+                <span>Thumbnails & Covers</span>
+                {thumbnailList.length > 0 && (
+                  <span className="text-[10px] bg-sky-500/15 text-sky-400 px-2 py-0.5 rounded-full border border-sky-500/30 font-mono">
+                    {thumbnailList.length} {thumbnailList.length === 1 ? 'Size' : 'Sizes'}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setYoutubeTab('player')}
+                className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                  youtubeTab === 'player'
+                    ? 'border-[var(--tp-mid)] text-[var(--tp-mid)] dark:border-[#e4f222] dark:text-[#e4f222]'
+                    : 'border-transparent text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
+                }`}
+              >
+                <Play className="w-4 h-4" />
+                <span>Player</span>
+              </button>
+            </div>
 
             {/* TAB 0: VIDEO & AUDIO DOWNLOADS STUDIO */}
-            {isYouTubeMode && youtubeTab === 'downloads' && (
+            {youtubeTab === 'downloads' && (
               <div className="p-4 sm:p-6 space-y-8">
                 {/* TOP SECTION: SIDE-BY-SIDE VIDEO PLAYER & QUICK ACTIONS CARD (IMAGE 3) */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   {/* LEFT: EMBEDDED LIVE PLAYER */}
                   <div className="lg:col-span-7 space-y-2">
-                    <div id="studio-player-frame" className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-white/10 shadow-2xl group">
-                      <iframe
-                        className="w-full h-full"
-                        src={`https://www.youtube-nocookie.com/embed/${resolvedVideo.youtube_id}?autoplay=0&rel=0`}
-                        title={resolvedVideo.title}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                      />
+                    <div id="studio-player-frame" className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-[var(--tp-border-card)] shadow-2xl group">
+                      {isYouTubeMode && resolvedVideo.youtube_id ? (
+                        <iframe
+                          className="w-full h-full"
+                          src={`https://www.youtube-nocookie.com/embed/${resolvedVideo.youtube_id}?autoplay=0&rel=0`}
+                          title={resolvedVideo.title}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        />
+                      ) : resolvedVideo.platform === 'vimeo' && resolvedVideo.shareId ? (
+                        <iframe
+                          className="w-full h-full"
+                          src={`https://player.vimeo.com/video/${resolvedVideo.shareId}?autoplay=0`}
+                          title={resolvedVideo.title}
+                          allow="accelerometer; autoplay; fullscreen; picture-in-picture"
+                          allowFullScreen
+                        />
+                      ) : (
+                        <CustomVideoPlayer
+                          videoUrl={resolvedVideo.m3u8_url || resolvedVideo.fast_download_url}
+                          poster={resolvedVideo.thumbnail}
+                          fallbackUrls={[resolvedVideo.fast_download_url]}
+                          animeTitle={resolvedVideo.title}
+                          episodeNumber={1}
+                        />
+                      )}
                     </div>
-                    <div className="flex items-center justify-between px-1 text-[11px] text-slate-400 font-mono">
+                    <div className="flex items-center justify-between px-1 text-[11px] text-[var(--tp-muted)] font-mono">
                       <span className="flex items-center gap-1.5 text-emerald-400">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        Live YouTube Player (Adaptive)
+                        {isYouTubeMode ? 'Live YouTube Player (Adaptive)' : `${(resolvedVideo.platform || 'Universal').toUpperCase()} Video Player`}
                       </span>
                       <span>Max {getShortResTag(bestVideo?.height)} Ready for Download</span>
                     </div>
                   </div>
 
                   {/* RIGHT: QUICK DOWNLOAD CARD & ACTIONS (IMAGE 3 REFERENCE) */}
-                  <div className="lg:col-span-5 rounded-2xl border border-white/10 bg-[#070b1a]/90 backdrop-blur-xl p-5 space-y-4 shadow-xl">
+                  <div className="lg:col-span-5 rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] backdrop-blur-xl p-5 space-y-4 shadow-xl">
                     <div className="flex items-center justify-between">
                       <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-cyan-400 bg-cyan-400/10 border border-cyan-400/25 px-2.5 py-1 rounded-full">
                         <Zap className="w-3.5 h-3.5 fill-current" />
                         Max {getShortResTag(bestVideo?.height)} Available
                       </span>
-                      <span className="text-[11px] font-mono text-slate-400">
-                        ID: {resolvedVideo.youtube_id}
+                      <span className="text-[11px] font-mono text-[var(--tp-muted)]">
+                        Source: {resolvedVideo.youtube_id ? `YouTube [${resolvedVideo.youtube_id}]` : (resolvedVideo.platform || 'Universal')}
                       </span>
                     </div>
 
                     <div>
-                      <h3 className="text-base font-bold text-white leading-snug line-clamp-2">
+                      <h3 className="text-base font-bold text-[var(--tp-ink)] leading-snug line-clamp-2">
                         {resolvedVideo.title}
                       </h3>
-                      <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
-                        <span>YouTube Creator Studio</span>
+                      <p className="text-xs text-[var(--tp-muted)] mt-1 flex items-center gap-2">
+                        <span className="capitalize">{resolvedVideo.platform || 'Universal'} Media Dock</span>
                         <span>•</span>
                         <span className="text-[#e4f222] font-mono">Fast CDN Downloads</span>
                       </p>
@@ -1330,7 +1731,7 @@ export default function Index() {
                             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                           }
                         }}
-                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 font-bold text-xs sm:text-sm hover:bg-cyan-500/25 transition-all shadow-lg shadow-cyan-500/10"
+                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 dark:text-cyan-300 font-bold text-xs sm:text-sm hover:bg-cyan-500/25 transition-all shadow-lg shadow-cyan-500/10"
                       >
                         <Play className="w-4 h-4 fill-current" />
                         <span>Watch Online in Player</span>
@@ -1342,7 +1743,7 @@ export default function Index() {
                           <a
                             href={bestVideo?.download_url || bestVideo?.url}
                             download
-                            className="tp-btn tp-btn-download flex-1 justify-center rounded-r-none border-r border-black/20"
+                            className="tp-btn tp-btn-download flex-1 justify-center rounded-r-none border-r border-black/20 active:scale-[0.99] transition-transform"
                             style={{ height: '44px', fontSize: '13px' }}
                           >
                             <Download className="w-4 h-4" />
@@ -1352,7 +1753,7 @@ export default function Index() {
                           <button
                             type="button"
                             onClick={() => setIsQuickDropdownOpen(!isQuickDropdownOpen)}
-                            className="tp-btn tp-btn-download rounded-l-none px-3.5"
+                            className="tp-btn tp-btn-download rounded-l-none px-3.5 active:scale-[0.99] transition-transform"
                             style={{ height: '44px' }}
                             title="Select quick download quality"
                             aria-expanded={isQuickDropdownOpen}
@@ -1371,8 +1772,8 @@ export default function Index() {
 
                         {/* Dropdown Menu Popover */}
                         {isQuickDropdownOpen && (
-                          <div className="absolute right-0 top-full mt-2 w-full sm:w-[320px] max-h-[360px] overflow-y-auto bg-[#070b1a]/98 border border-white/20 backdrop-blur-2xl rounded-2xl p-2.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
-                            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 px-3 py-1 flex items-center justify-between">
+                          <div className="absolute right-0 top-full mt-2 w-full sm:w-[320px] max-h-[360px] overflow-y-auto bg-[var(--tp-paper-elevated)] border border-[var(--tp-border-card)] backdrop-blur-2xl rounded-2xl p-2.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--tp-muted)] px-3 py-1 flex items-center justify-between">
                               <span>Video Qualities (MP4)</span>
                               <span className="text-[9px] text-[#e4f222]">Standard Res</span>
                             </div>
@@ -1386,20 +1787,25 @@ export default function Index() {
                                     href={vf.download_url || vf.url}
                                     download
                                     onClick={() => setIsQuickDropdownOpen(false)}
-                                    className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-white/10 text-white font-medium transition-colors"
+                                    className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-[var(--tp-paper-input)] active:scale-[0.98] text-[var(--tp-ink)] font-medium transition-all"
                                   >
                                     <span className="flex items-center gap-2">
                                       <Film className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                                       <span className="font-semibold">
                                         {tier}
+                                        {vf.has_audio && (
+                                          <span className="ml-1.5 text-[10px] text-emerald-400 font-normal">
+                                            (Audio+Video)
+                                          </span>
+                                        )}
                                         {isCinema && (
-                                          <span className="ml-1.5 text-[10px] text-slate-400 font-mono font-normal">
+                                          <span className="ml-1.5 text-[10px] text-[var(--tp-muted)] font-mono font-normal">
                                             ({vf.height}p)
                                           </span>
                                         )}
                                       </span>
                                     </span>
-                                    <span className="text-[10px] font-mono text-[#e4f222] bg-[#e4f222]/10 border border-[#e4f222]/20 px-1.5 py-0.5 rounded shrink-0">
+                                    <span className="text-[10px] font-mono tabular-nums text-[var(--tp-accent-ink)] bg-[var(--tp-accent)]/15 border border-[var(--tp-accent)]/30 px-1.5 py-0.5 rounded shrink-0">
                                       {vf.filesize}
                                     </span>
                                   </a>
@@ -1409,8 +1815,8 @@ export default function Index() {
 
                             {audioFormats.length > 0 && (
                               <>
-                                <div className="border-t border-white/10 my-2" />
-                                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 px-3 py-1 flex items-center justify-between">
+                                <div className="border-t border-[var(--tp-border-subtle)] my-2" />
+                                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--tp-muted)] px-3 py-1 flex items-center justify-between">
                                   <span>Audio Tracks (MP3 / AAC)</span>
                                   <span className="text-[9px] text-emerald-400">Audio Only</span>
                                 </div>
@@ -1421,13 +1827,13 @@ export default function Index() {
                                       href={af.download_url || af.url}
                                       download
                                       onClick={() => setIsQuickDropdownOpen(false)}
-                                      className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-white/10 text-white font-medium transition-colors"
+                                      className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-[var(--tp-paper-input)] active:scale-[0.98] text-[var(--tp-ink)] font-medium transition-all"
                                     >
                                       <span className="flex items-center gap-2">
                                         <Music className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                                         <span className="truncate">{af.quality}</span>
                                       </span>
-                                      <span className="text-[10px] font-mono text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-1.5 py-0.5 rounded shrink-0">
+                                      <span className="text-[10px] font-mono tabular-nums text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-1.5 py-0.5 rounded shrink-0">
                                         {af.filesize}
                                       </span>
                                     </a>
@@ -1438,10 +1844,22 @@ export default function Index() {
                           </div>
                         )}
                       </div>
+
+                      {/* Action 3: Quick 1-Click MP3 Download */}
+                      {bestAudio && (
+                        <a
+                          href={bestAudio.download_url || bestAudio.url}
+                          download
+                          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-500 dark:text-amber-300 font-bold text-xs sm:text-sm hover:bg-amber-500/20 active:scale-[0.98] transition-all shadow-md"
+                        >
+                          <Music className="w-4 h-4 fill-current/20" />
+                          <span>Download Audio (MP3 320 kbps)</span>
+                        </a>
+                      )}
                     </div>
 
-                    <div className="pt-2 border-t border-white/5">
-                      <p className="text-[11px] text-slate-400 text-center font-mono">
+                    <div className="pt-2 border-t border-[var(--tp-border-subtle)]">
+                      <p className="text-[11px] text-[var(--tp-muted)] text-center font-mono">
                         No registration required • High speed streaming & downloads
                       </p>
                     </div>
@@ -1449,29 +1867,29 @@ export default function Index() {
                 </div>
 
                 {/* BOTTOM SECTION: SEGMENTED SWITCHER & QUALITY TABLE (IMAGE 4 & 5) */}
-                <div className="space-y-4 pt-4 border-t border-white/10">
+                <div className="space-y-4 pt-4 border-t border-[var(--tp-border-subtle)]">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <h4 className="text-base font-bold text-white">Full Quality Downloads</h4>
-                      <p className="text-xs text-slate-400">Select MP4 video resolution or MP3 audio bitrate for 1-click download.</p>
+                      <h4 className="text-base font-bold text-[var(--tp-ink)]">Full Quality Downloads</h4>
+                      <p className="text-xs text-[var(--tp-muted)]">Select MP4 video resolution or MP3 audio bitrate for 1-click download.</p>
                     </div>
 
                     {/* Segmented Control Pill Switcher */}
-                    <div className="inline-flex p-1 bg-[#050917] border border-white/10 rounded-2xl self-start sm:self-auto">
+                    <div className="inline-flex p-1 bg-[var(--tp-paper-input)] border border-[var(--tp-border-card)] rounded-2xl self-start sm:self-auto">
                       <button
                         type="button"
                         onClick={() => setDownloadFormatTab('video')}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                           downloadFormatTab === 'video'
-                            ? 'bg-[#e4f222] text-black shadow-lg shadow-[#e4f222]/20 font-bold'
-                            : 'text-slate-400 hover:text-white'
+                            ? 'bg-[var(--tp-accent)] text-[var(--tp-accent-ink)] shadow-md font-bold'
+                            : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
                         }`}
                       >
                         <Video className="w-4 h-4" />
                         <span>MP4 (Video)</span>
                         {videoFormats.length > 0 && (
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                            downloadFormatTab === 'video' ? 'bg-black/20 text-black font-bold' : 'bg-white/10 text-slate-300'
+                            downloadFormatTab === 'video' ? 'bg-black/20 text-black font-bold' : 'bg-[var(--tp-paper-elevated)] text-[var(--tp-muted)] border border-[var(--tp-border-subtle)]'
                           }`}>
                             {videoFormats.length}
                           </span>
@@ -1483,15 +1901,15 @@ export default function Index() {
                         onClick={() => setDownloadFormatTab('audio')}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                           downloadFormatTab === 'audio'
-                            ? 'bg-[#e4f222] text-black shadow-lg shadow-[#e4f222]/20 font-bold'
-                            : 'text-slate-400 hover:text-white'
+                            ? 'bg-[var(--tp-accent)] text-[var(--tp-accent-ink)] shadow-md font-bold'
+                            : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
                         }`}
                       >
                         <Music className="w-4 h-4" />
                         <span>MP3 (Audio)</span>
                         {audioFormats.length > 0 && (
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                            downloadFormatTab === 'audio' ? 'bg-black/20 text-black font-bold' : 'bg-white/10 text-slate-300'
+                            downloadFormatTab === 'audio' ? 'bg-black/20 text-black font-bold' : 'bg-[var(--tp-paper-elevated)] text-[var(--tp-muted)] border border-[var(--tp-border-subtle)]'
                           }`}>
                             {audioFormats.length}
                           </span>
@@ -1502,43 +1920,52 @@ export default function Index() {
 
                   {/* Quality Table */}
                   {isLoading && activeFormats.length === 0 ? (
-                    <div className="rounded-2xl border border-white/10 bg-[#070b1a] p-8 space-y-4 text-center">
+                    <div className="rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] p-8 space-y-4 text-center">
                       <div className="flex items-center justify-center gap-3">
-                        <div className="w-5 h-5 border-2 border-[#e4f222] border-t-transparent rounded-full animate-spin" />
-                        <span className="text-sm font-semibold text-white">Analyzing YouTube Streams...</span>
+                        <div className="w-5 h-5 border-2 border-[var(--tp-accent)] border-t-transparent rounded-full animate-spin" />
+                        <span className="text-sm font-semibold text-[var(--tp-ink)]">
+                          Analyzing {isYouTubeMode ? 'YouTube' : (resolvedVideo?.platform ? resolvedVideo.platform.toUpperCase() : 'Media')} Streams...
+                        </span>
                       </div>
-                      <p className="text-xs text-slate-400 max-w-md mx-auto font-mono">
-                        Extracting real 1080p Full HD, 720p HD, and master MP3 tracks directly from YouTube CDN nodes.
+                      <p className="text-xs text-[var(--tp-muted)] max-w-md mx-auto font-mono">
+                        Extracting real 1080p Full HD, 720p HD, and master MP3 tracks directly from edge CDN nodes.
                       </p>
                     </div>
                   ) : activeFormats.length > 0 ? (
-                    <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#070b1a]/90 backdrop-blur-md">
+                    <div className="overflow-x-auto rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] backdrop-blur-md">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="border-b border-white/10 text-[11px] font-mono text-slate-400 uppercase tracking-wider bg-white/[0.02]">
+                          <tr className="border-b border-[var(--tp-border-subtle)] text-[11px] font-mono text-[var(--tp-muted)] uppercase tracking-wider bg-[var(--tp-paper-input)]/50">
                             <th className="py-3 px-4 sm:px-6">Quality / Bitrate</th>
                             <th className="py-3 px-4">Format</th>
                             <th className="py-3 px-4">File Size</th>
                             <th className="py-3 px-4 sm:px-6 text-right">Action</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5 text-xs">
+                        <tbody className="divide-y divide-[var(--tp-border-subtle)] text-xs">
                           {activeFormats.map((fmt, idx) => (
-                            <tr key={fmt.format_id || idx} className="hover:bg-white/[0.03] transition-colors group">
-                              <td className="py-3.5 px-4 sm:px-6 font-semibold text-white">
+                            <tr key={fmt.format_id || idx} className="hover:bg-[var(--tp-paper-input)]/60 transition-colors group">
+                              <td className="py-3.5 px-4 sm:px-6 font-semibold text-[var(--tp-ink)]">
                                 <div className="flex items-center gap-2.5">
                                   {fmt.is_audio_only ? (
-                                    <Music className="w-4 h-4 text-amber-400 shrink-0" />
+                                    <Music className="w-4 h-4 text-amber-500 shrink-0" />
                                   ) : (
                                     <Film className="w-4 h-4 text-sky-400 shrink-0" />
                                   )}
                                   <div>
-                                    <div className="font-bold text-white text-xs sm:text-sm">
-                                      {fmt.is_audio_only
-                                        ? fmt.quality
-                                        : getStandardResTier(fmt.height, fmt.quality)}
+                                    <div className="font-bold text-[var(--tp-ink)] text-xs sm:text-sm flex items-center gap-1.5">
+                                      <span>
+                                        {fmt.is_audio_only
+                                          ? fmt.quality
+                                          : getStandardResTier(fmt.height, fmt.quality)}
+                                      </span>
+                                      {!fmt.is_audio_only && fmt.has_audio && (
+                                        <span className="text-[10px] text-emerald-500 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded font-normal">
+                                          Audio+Video
+                                        </span>
+                                      )}
                                     </div>
-                                    <div className="text-[10px] text-slate-400 font-mono">
+                                    <div className="text-[10px] text-[var(--tp-muted)] font-mono">
                                       {fmt.is_audio_only
                                         ? (fmt.format_id.startsWith('mp3') ? 'LAME High-Fi MP3 Track' : 'Original Master AAC Track')
                                         : isCinemaWidescreen(fmt.height)
@@ -1551,12 +1978,12 @@ export default function Index() {
                                 </div>
                               </td>
                               <td className="py-3.5 px-4 font-mono">
-                                <span className="text-[10px] px-2 py-0.5 rounded-md bg-white/10 text-slate-300 border border-white/10 uppercase font-bold">
+                                <span className="text-[10px] px-2 py-0.5 rounded-md bg-[var(--tp-paper-input)] text-[var(--tp-ink)] border border-[var(--tp-border-subtle)] uppercase font-bold">
                                   {fmt.ext}
                                 </span>
                               </td>
-                              <td className="py-3.5 px-4 font-mono">
-                                <span className="text-[11px] text-[#e4f222] bg-[#e4f222]/10 border border-[#e4f222]/20 px-2 py-0.5 rounded-md">
+                              <td className="py-3.5 px-4 font-mono tabular-nums">
+                                <span className="text-[11px] font-mono tabular-nums text-[var(--tp-accent-ink)] bg-[var(--tp-accent)]/15 border border-[var(--tp-accent)]/30 px-2 py-0.5 rounded-md">
                                   {fmt.filesize || 'Direct Stream'}
                                 </span>
                               </td>
@@ -1565,7 +1992,7 @@ export default function Index() {
                                   <a
                                     href={fmt.download_url || fmt.url}
                                     download
-                                    className="tp-btn tp-btn-download"
+                                    className="tp-btn tp-btn-download active:scale-[0.97] transition-transform"
                                     style={{ height: '34px', fontSize: '11px', padding: '0 14px' }}
                                   >
                                     <Download className="w-3.5 h-3.5" />
@@ -1581,7 +2008,7 @@ export default function Index() {
                                         toast.error('Could not copy link');
                                       }
                                     }}
-                                    className="tp-btn tp-btn-secondary"
+                                    className="tp-btn tp-btn-secondary active:scale-[0.97] transition-transform"
                                     style={{ height: '34px', fontSize: '11px', padding: '0 10px' }}
                                     title="Copy direct stream link"
                                   >
@@ -1601,7 +2028,7 @@ export default function Index() {
                         <span className="text-sm font-bold">No Downloadable Streams Available</span>
                       </div>
                       <p className="text-xs text-slate-400 max-w-lg mx-auto leading-relaxed">
-                        This video could not be resolved from YouTube. It may be restricted, private, region-blocked, or removed by the creator.
+                        This video could not be resolved from {isYouTubeMode ? 'YouTube' : (resolvedVideo?.platform ? resolvedVideo.platform.toUpperCase() : 'the host platform')}. It may be restricted, private, region-blocked, or removed by the creator.
                       </p>
                     </div>
                   )}
@@ -1610,16 +2037,16 @@ export default function Index() {
             )}
 
             {/* TAB 1: TRANSCRIPT & SUBTITLES STUDIO */}
-            {isYouTubeMode && youtubeTab === 'transcript' && (
+            {youtubeTab === 'transcript' && (
               <div className="p-4 sm:p-6 space-y-4">
                 {/* Action Bar */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#0a122e]/80 p-3.5 rounded-2xl border border-white/10">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[var(--tp-paper-input)] p-3.5 rounded-2xl border border-[var(--tp-border-card)]">
                   {/* Search box */}
                   <div className="relative flex-1 min-w-[220px]">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <Search className="w-4 h-4 text-[var(--tp-muted)] absolute left-3 top-3" />
                     <input
                       type="text"
-                      className="w-full bg-[#050917] border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#e4f222]"
+                      className="w-full bg-[var(--tp-paper-elevated)] border border-[var(--tp-border-card)] rounded-xl pl-9 pr-3 py-2 text-xs text-[var(--tp-ink)] placeholder-[var(--tp-muted)] focus:outline-none focus:border-[var(--tp-mid)] dark:focus:border-[#e4f222]"
                       placeholder="Search within transcript..."
                       value={transcriptSearch}
                       onChange={(e) => setTranscriptSearch(e.target.value)}
@@ -1628,7 +2055,7 @@ export default function Index() {
                       <button
                         type="button"
                         onClick={() => setTranscriptSearch('')}
-                        className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-white"
+                        className="absolute right-3 top-2.5 text-xs text-[var(--tp-muted)] hover:text-[var(--tp-ink)]"
                       >
                         ✕
                       </button>
@@ -1642,8 +2069,8 @@ export default function Index() {
                       onClick={() => setShowTimestamps(!showTimestamps)}
                       className={`h-9 px-3 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
                         showTimestamps
-                          ? 'border-[#e4f222]/40 bg-[#e4f222]/10 text-[#e4f222]'
-                          : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
+                          ? 'border-[var(--tp-accent)] bg-[var(--tp-accent)]/15 text-[var(--tp-accent-ink)] dark:text-[#e4f222]'
+                          : 'border-[var(--tp-border-card)] bg-[var(--tp-paper-elevated)] text-[var(--tp-muted)] hover:text-[var(--tp-ink)] hover:bg-[var(--tp-paper-input)]'
                       }`}
                       title="Toggle timestamp markers"
                     >
@@ -1667,7 +2094,7 @@ export default function Index() {
                       className="tp-btn tp-btn-secondary"
                       style={{ height: '36px', fontSize: '12px' }}
                     >
-                      <FileText className="w-3.5 h-3.5 text-amber-300" />
+                      <FileText className="w-3.5 h-3.5 text-amber-500 dark:text-amber-300" />
                       <span>Download .TXT</span>
                     </button>
 
@@ -1684,34 +2111,34 @@ export default function Index() {
                 </div>
 
                 {/* Subtitle list container */}
-                <div className="border border-white/10 rounded-2xl bg-[#060a19] overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-white/[0.02] border-b border-white/5 text-xs text-slate-400">
+                <div className="border border-[var(--tp-border-card)] rounded-2xl bg-[var(--tp-paper-card)] overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-[var(--tp-paper-input)] border-b border-[var(--tp-border-subtle)] text-xs text-[var(--tp-muted)]">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-white">Transcript Cues</span>
+                      <span className="font-semibold text-[var(--tp-ink)]">Transcript Cues</span>
                       <span>•</span>
                       <span>Showing {transcriptItems.length} lines</span>
                       {resolvedVideo.transcript?.language && (
-                        <span className="bg-white/10 px-2 py-0.5 rounded text-[10px] text-slate-300 uppercase font-mono">
+                        <span className="bg-[var(--tp-paper-elevated)] px-2 py-0.5 rounded text-[10px] text-[var(--tp-ink)] border border-[var(--tp-border-subtle)] uppercase font-mono">
                           {resolvedVideo.transcript.language}
                         </span>
                       )}
                     </div>
-                    <span className="text-[11px] text-slate-500">1-click subtitle export</span>
+                    <span className="text-[11px] text-[var(--tp-muted)]">1-click subtitle export</span>
                   </div>
 
-                  <div className="max-h-[500px] overflow-y-auto p-3 sm:p-4 space-y-2 divide-y divide-white/5">
+                  <div className="max-h-[500px] overflow-y-auto p-3 sm:p-4 space-y-2 divide-y divide-[var(--tp-border-subtle)]">
                     {transcriptItems.length > 0 ? (
                       transcriptItems.map((item, idx) => (
                         <div
                           key={idx}
-                          className="pt-2 first:pt-0 flex items-start gap-3 group hover:bg-white/[0.02] p-2 rounded-xl transition-colors"
+                          className="pt-2 first:pt-0 flex items-start gap-3 group hover:bg-[var(--tp-paper-input)]/50 p-2 rounded-xl transition-colors"
                         >
                           {showTimestamps && (
-                            <span className="shrink-0 text-xs font-mono font-bold text-[#e4f222] bg-[#e4f222]/10 border border-[#e4f222]/20 px-2 py-0.5 rounded-lg">
+                            <span className="shrink-0 text-xs font-mono font-bold text-[var(--tp-accent-ink)] bg-[var(--tp-accent)]/15 border border-[var(--tp-accent)]/30 px-2 py-0.5 rounded-lg">
                               {formatTime(item.start)}
                             </span>
                           )}
-                          <p className="text-sm leading-relaxed text-slate-200 select-text flex-1">
+                          <p className="text-sm leading-relaxed text-[var(--tp-ink)] select-text flex-1">
                             {item.text}
                           </p>
                           <button
@@ -1720,7 +2147,7 @@ export default function Index() {
                               await navigator.clipboard.writeText(item.text);
                               toast.success('Line copied');
                             }}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-white transition-opacity"
+                            className="opacity-0 group-hover:opacity-100 p-1 text-[var(--tp-muted)] hover:text-[var(--tp-ink)] transition-opacity"
                             title="Copy this line"
                           >
                             <Copy className="w-3.5 h-3.5" />
@@ -1729,8 +2156,8 @@ export default function Index() {
                       ))
                     ) : (
                       <div className="py-12 text-center space-y-3">
-                        <Info className="w-8 h-8 text-slate-500 mx-auto" />
-                        <p className="text-sm text-slate-400">
+                        <Info className="w-8 h-8 text-[var(--tp-muted)] mx-auto" />
+                        <p className="text-sm text-[var(--tp-muted)]">
                           {transcriptSearch ? `No matching cues found for "${transcriptSearch}".` : 'No closed captions or transcript tracks found for this video.'}
                         </p>
                         <div className="flex items-center justify-center gap-2">
@@ -1739,7 +2166,7 @@ export default function Index() {
                               variant="outline"
                               size="sm"
                               onClick={() => setTranscriptSearch('')}
-                              className="border-white/15 text-xs text-slate-300"
+                              className="border-[var(--tp-border-card)] text-xs text-[var(--tp-ink)] bg-[var(--tp-paper-input)]"
                             >
                               Clear Search
                             </Button>
@@ -1760,7 +2187,7 @@ export default function Index() {
                                 toast.success('Sample transcript loaded!');
                               }
                             }}
-                            className="border-white/15 text-xs text-white"
+                            className="border-[var(--tp-border-card)] text-xs text-[var(--tp-ink)] bg-[var(--tp-paper-input)]"
                           >
                             Load Demo Transcripts
                           </Button>
@@ -1773,120 +2200,94 @@ export default function Index() {
             )}
 
             {/* TAB 2: THUMBNAIL STUDIO */}
-            {isYouTubeMode && youtubeTab === 'thumbnails' && (
+            {youtubeTab === 'thumbnails' && (
               <div className="p-4 sm:p-6 space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-base font-bold text-white">Full-Resolution YouTube Thumbnails</h3>
-                    <p className="text-xs text-slate-400">Download high-definition video cover images in original quality.</p>
+                    <h3 className="text-base font-bold text-[var(--tp-ink)]">Full-Resolution Video Thumbnails & Covers</h3>
+                    <p className="text-xs text-[var(--tp-muted)]">Download high-definition video cover images and posters in original quality.</p>
                   </div>
-                  <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded-lg">
-                    1080p MaxRes Ready
+                  <span className="text-xs font-mono text-emerald-500 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+                    {thumbnailList.length} {thumbnailList.length === 1 ? 'Size' : 'Sizes'} Available
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    {
-                      label: 'MaxRes Quality (1080p)',
-                      res: '1920 × 1080',
-                      badge: 'Highest Quality',
-                      badgeColor: 'text-[#e4f222] bg-[#e4f222]/15 border-[#e4f222]/30',
-                      url: `https://img.youtube.com/vi/${resolvedVideo.youtube_id}/maxresdefault.jpg`,
-                      tag: '1080p',
-                    },
-                    {
-                      label: 'High Quality (HQ 720p)',
-                      res: '1280 × 720 / 480 × 360',
-                      badge: 'High Definition',
-                      badgeColor: 'text-sky-400 bg-sky-400/15 border-sky-400/30',
-                      url: `https://img.youtube.com/vi/${resolvedVideo.youtube_id}/hqdefault.jpg`,
-                      tag: '720p',
-                    },
-                    {
-                      label: 'Standard Quality (SD)',
-                      res: '640 × 480',
-                      badge: 'Standard Res',
-                      badgeColor: 'text-amber-400 bg-amber-400/15 border-amber-400/30',
-                      url: `https://img.youtube.com/vi/${resolvedVideo.youtube_id}/sddefault.jpg`,
-                      tag: '480p',
-                    },
-                    {
-                      label: 'Medium Quality (MQ)',
-                      res: '320 × 180',
-                      badge: 'Compact Size',
-                      badgeColor: 'text-slate-400 bg-slate-400/15 border-slate-400/30',
-                      url: `https://img.youtube.com/vi/${resolvedVideo.youtube_id}/mqdefault.jpg`,
-                      tag: '180p',
-                    },
-                  ].map((thumb) => (
-                    <div
-                      key={thumb.tag}
-                      className="group rounded-2xl border border-white/10 bg-[#070b1a] overflow-hidden p-3.5 space-y-3 transition-all hover:border-white/20 hover:shadow-xl"
-                    >
-                      {/* Image Preview Container */}
-                      <div className="relative aspect-video rounded-xl overflow-hidden bg-black/60 border border-white/5">
-                        <img
-                          src={thumb.url}
-                          alt={`${thumb.label} preview`}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          loading="lazy"
-                          onError={(e) => {
-                            // Fallback to hqdefault if maxresdefault is not uploaded for this video
-                            (e.currentTarget as HTMLImageElement).src = `https://img.youtube.com/vi/${resolvedVideo.youtube_id}/hqdefault.jpg`;
-                          }}
-                        />
-                        <div className="absolute top-2 left-2 flex items-center gap-1.5">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${thumb.badgeColor}`}>
-                            {thumb.badge}
-                          </span>
+                {thumbnailList.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {thumbnailList.map((thumb) => (
+                      <div
+                        key={thumb.url + thumb.tag}
+                        className="group rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] overflow-hidden p-3.5 space-y-3 transition-all hover:border-[var(--tp-mid)]/40 hover:shadow-xl"
+                      >
+                        {/* Image Preview Container */}
+                        <div className="relative aspect-video rounded-xl overflow-hidden bg-black/60 border border-[var(--tp-border-subtle)]">
+                          <img
+                            src={thumb.url}
+                            alt={`${thumb.label} preview`}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            loading="lazy"
+                            onError={(e) => {
+                              if (resolvedVideo.youtube_id && !thumb.url.includes('hqdefault.jpg')) {
+                                (e.currentTarget as HTMLImageElement).src = `https://img.youtube.com/vi/${resolvedVideo.youtube_id}/hqdefault.jpg`;
+                              }
+                            }}
+                          />
+                          <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${thumb.badgeColor}`}>
+                              {thumb.badge}
+                            </span>
+                          </div>
+                          <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-sm text-[10px] font-mono text-white px-2 py-0.5 rounded-md border border-white/10">
+                            {thumb.res}
+                          </div>
                         </div>
-                        <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-sm text-[10px] font-mono text-white px-2 py-0.5 rounded-md border border-white/10">
-                          {thumb.res}
+
+                        {/* Info & Download Action */}
+                        <div className="flex items-center justify-between pt-1">
+                          <div>
+                            <h4 className="text-xs font-bold text-[var(--tp-ink)]">{thumb.label}</h4>
+                            <span className="text-[11px] text-[var(--tp-muted)] font-mono">{thumb.res}</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <a
+                              href={thumb.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="tp-btn tp-btn-secondary"
+                              style={{ height: '34px', fontSize: '11px', padding: '0 10px' }}
+                              title="Open full resolution in new tab"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>Preview</span>
+                            </a>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadThumbnail(thumb.url, thumb.tag)}
+                              className="tp-btn tp-btn-download"
+                              style={{ height: '34px', fontSize: '11px', padding: '0 12px' }}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Download JPG</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
-
-                      {/* Info & Download Action */}
-                      <div className="flex items-center justify-between pt-1">
-                        <div>
-                          <h4 className="text-xs font-bold text-white">{thumb.label}</h4>
-                          <span className="text-[11px] text-slate-400 font-mono">{thumb.res}</span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          <a
-                            href={thumb.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="tp-btn tp-btn-secondary"
-                            style={{ height: '34px', fontSize: '11px', padding: '0 10px' }}
-                            title="Open full resolution in new tab"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            <span>Preview</span>
-                          </a>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadThumbnail(thumb.url, thumb.tag)}
-                            className="tp-btn tp-btn-download"
-                            style={{ height: '34px', fontSize: '11px', padding: '0 12px' }}
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>Download JPG</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 border border-[var(--tp-border-card)] rounded-2xl bg-[var(--tp-paper-card)] p-6">
+                    <p className="text-sm text-[var(--tp-muted)]">No cover thumbnails available for this video stream.</p>
+                  </div>
+                )}
               </div>
             )}
 
             {/* TAB 3: VIDEO PLAYER (YOUTUBE EMBED OR CUSTOM VIDEO PLAYER) */}
-            {(!isYouTubeMode || youtubeTab === 'player') && (
+            {youtubeTab === 'player' && (
               <div className="w-full aspect-video bg-black relative">
-                {isYouTubeMode ? (
+                {isYouTubeMode && resolvedVideo.youtube_id ? (
                   <iframe
                     className="w-full h-full"
                     src={`https://www.youtube-nocookie.com/embed/${resolvedVideo.youtube_id}?autoplay=1&rel=0`}
@@ -1894,9 +2295,17 @@ export default function Index() {
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                   />
+                ) : resolvedVideo.platform === 'vimeo' && resolvedVideo.shareId ? (
+                  <iframe
+                    className="w-full h-full"
+                    src={`https://player.vimeo.com/video/${resolvedVideo.shareId}?autoplay=1`}
+                    title={resolvedVideo.title}
+                    allow="accelerometer; autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                  />
                 ) : (
                   <CustomVideoPlayer
-                    videoUrl={resolvedVideo.m3u8_url}
+                    videoUrl={resolvedVideo.m3u8_url || resolvedVideo.fast_download_url}
                     poster={resolvedVideo.thumbnail}
                     fallbackUrls={[resolvedVideo.fast_download_url]}
                     animeTitle={resolvedVideo.title}
@@ -1909,56 +2318,73 @@ export default function Index() {
             {/* Footer action bar */}
             <div className="tp-player-actions">
               <div className="flex flex-wrap items-center gap-3">
-                {isYouTubeMode ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setYoutubeTab('transcript')}
-                      className="tp-btn tp-btn-primary"
-                    >
-                      <Subtitles className="w-4 h-4" />
-                      <span>View Transcripts</span>
-                    </button>
+                <button
+                  type="button"
+                  onClick={() => setYoutubeTab('downloads')}
+                  className={`tp-btn ${youtubeTab === 'downloads' ? 'tp-btn-primary' : 'tp-btn-secondary'}`}
+                  style={{ height: '36px', fontSize: '12px' }}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Downloads</span>
+                </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setYoutubeTab('thumbnails')}
-                      className="tp-btn tp-btn-secondary"
-                    >
-                      <ImageIcon className="w-4 h-4 text-sky-400" />
-                      <span>Get 1080p Thumbnails</span>
-                    </button>
+                <button
+                  type="button"
+                  onClick={() => setYoutubeTab('transcript')}
+                  className={`tp-btn ${youtubeTab === 'transcript' ? 'tp-btn-primary' : 'tp-btn-secondary'}`}
+                  style={{ height: '36px', fontSize: '12px' }}
+                >
+                  <Subtitles className="w-3.5 h-3.5" />
+                  <span>Transcripts</span>
+                </button>
 
-                    <button
-                      type="button"
-                      onClick={handleCopyEmbed}
-                      className="tp-btn tp-btn-secondary"
-                    >
-                      {copiedEmbed ? <Check className="w-4 h-4 text-emerald-400" /> : <Code className="w-4 h-4 text-amber-300" />}
-                      <span>{copiedEmbed ? 'Embed Copied' : 'Embed Code'}</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button type="button" onClick={handleDownloadMp4} className="tp-btn tp-btn-download">
-                      <Download className="w-4 h-4" />
-                      <span>Fast Download MP4</span>
-                    </button>
+                <button
+                  type="button"
+                  onClick={() => setYoutubeTab('thumbnails')}
+                  className={`tp-btn ${youtubeTab === 'thumbnails' ? 'tp-btn-primary' : 'tp-btn-secondary'}`}
+                  style={{ height: '36px', fontSize: '12px' }}
+                >
+                  <ImageIcon className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Thumbnails</span>
+                </button>
 
-                    <button type="button" onClick={handleCopyDirectLink} className="tp-btn tp-btn-secondary">
-                      <Share2 className="w-4 h-4 text-[#e4f222]" />
-                      <span>Share Stream Link</span>
-                    </button>
-                  </>
+                <button
+                  type="button"
+                  onClick={() => setYoutubeTab('player')}
+                  className={`tp-btn ${youtubeTab === 'player' ? 'tp-btn-primary' : 'tp-btn-secondary'}`}
+                  style={{ height: '36px', fontSize: '12px' }}
+                >
+                  <Play className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Player</span>
+                </button>
+
+                {resolvedVideo.youtube_id && (
+                  <button
+                    type="button"
+                    onClick={handleCopyEmbed}
+                    className="tp-btn tp-btn-secondary"
+                    style={{ height: '36px', fontSize: '12px' }}
+                  >
+                    {copiedEmbed ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Code className="w-3.5 h-3.5 text-amber-300" />}
+                    <span>{copiedEmbed ? 'Embed Copied' : 'Embed Code'}</span>
+                  </button>
                 )}
+
+                <button
+                  type="button"
+                  onClick={handleCopyDirectLink}
+                  className="tp-btn tp-btn-secondary"
+                  style={{ height: '36px', fontSize: '12px' }}
+                >
+                  <Share2 className="w-3.5 h-3.5 text-[#e4f222]" />
+                  <span>Share Stream Link</span>
+                </button>
               </div>
 
               <div className="text-xs text-[rgba(169,195,243,0.7)] flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-amber-300" />
                 <span>
-                  {isYouTubeMode
-                    ? 'Official YouTube studio engine. Direct subtitle & thumbnail extraction.'
-                    : 'Streams directly from edge CDN servers. Zero app overhead.'}
+                  Universal Media Dock engine. Multi-tier video, audio MP3, subtitles & high-resolution cover extraction.
                 </span>
               </div>
             </div>
@@ -2205,15 +2631,15 @@ export default function Index() {
           AUTH GATE MODAL
           ========================================================================= */}
       <Dialog open={showAuthGate} onOpenChange={setShowAuthGate}>
-        <DialogContent className="sm:max-w-md bg-[#0a1128] border border-[rgba(169,195,243,0.25)] text-white">
+        <DialogContent className="sm:max-w-md bg-[var(--tp-paper-elevated)] border border-[var(--tp-border-card)] text-[var(--tp-ink)] shadow-2xl">
           <DialogHeader className="text-center flex flex-col items-center gap-2">
-            <div className="w-12 h-12 rounded-2xl bg-[rgba(38,89,217,0.2)] border border-[rgba(169,195,243,0.3)] flex items-center justify-center text-[#e4f222]">
+            <div className="w-12 h-12 rounded-2xl bg-[rgba(38,89,217,0.15)] border border-[rgba(169,195,243,0.3)] flex items-center justify-center text-[var(--tp-mid)] dark:text-[#e4f222]">
               <Lock className="w-6 h-6" />
             </div>
-            <DialogTitle className="text-lg font-bold">
+            <DialogTitle className="text-lg font-bold text-[var(--tp-ink)]">
               Unlock Unlimited Free Media Processing
             </DialogTitle>
-            <DialogDescription className="text-xs text-slate-300">
+            <DialogDescription className="text-xs text-[var(--tp-muted)]">
               You've enjoyed your {GUEST_MAX_PLAYS} free guest sessions! Sign in with Google to unlock unlimited daily video plays, full-res YouTube transcripts, and fast MP4 downloads.
             </DialogDescription>
           </DialogHeader>
@@ -2227,7 +2653,9 @@ export default function Index() {
                   try {
                     localStorage.removeItem('teraplay_guest_plays');
                     setGuestPlays(0);
-                  } catch {}
+                  } catch {
+                    // Ignore localStorage error
+                  }
                   if (inputUrl.trim()) {
                     setTimeout(() => {
                       handleResolveAndPlay();
@@ -2250,7 +2678,9 @@ export default function Index() {
                 try {
                   localStorage.removeItem('teraplay_guest_plays');
                   setGuestPlays(0);
-                } catch {}
+                } catch {
+                  // Ignore localStorage error
+                }
                 toast.success('Guest plays reset! Processing media...');
                 if (inputUrl.trim()) {
                   setTimeout(() => {

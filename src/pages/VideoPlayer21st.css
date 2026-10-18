@@ -7,6 +7,11 @@
 
 html:has(.tp-root) {
   background-color: #06174a !important;
+  transition: background-color 0.3s ease;
+}
+
+html:has(.tp-root[data-theme="light"]) {
+  background-color: #f4f6fb !important;
 }
 
 @supports (scrollbar-gutter: auto) {
@@ -24,7 +29,7 @@ html:has(.tp-root) {
 
 body:has(.tp-root) {
   background-color: transparent !important;
-  color: #0c0e13 !important;
+  color: inherit !important;
   overflow-x: hidden;
 }
 
@@ -61,9 +66,9 @@ body:has(.tp-root)::-webkit-scrollbar-thumb:hover {
   --tp-mid: #2659d9;
   --tp-light: #a9c3f3;
   --tp-paper: #060b18;
-  --tp-paper-elevated: rgba(14, 25, 56, 0.7);
-  --tp-paper-card: rgba(16, 29, 68, 0.55);
-  --tp-paper-input: rgba(10, 18, 44, 0.85);
+  --tp-paper-elevated: rgba(18, 32, 70, 0.85);
+  --tp-paper-card: rgba(14, 25, 56, 0.65);
+  --tp-paper-input: rgba(8, 14, 34, 0.85);
   --tp-ink: #f1f5fd;
   --tp-muted: #8e9bb5;
   --tp-text-dim: #bac5dc;
@@ -76,7 +81,7 @@ body:has(.tp-root)::-webkit-scrollbar-thumb:hover {
   --tp-icon-b: #2a5de0;
   --tp-border-subtle: rgba(169, 195, 243, 0.12);
   --tp-border-card: rgba(169, 195, 243, 0.18);
-  --tp-card-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.45);
+  --tp-card-shadow: 0 24px 60px -15px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .tp-root[data-theme="light"] {
@@ -86,7 +91,7 @@ body:has(.tp-root)::-webkit-scrollbar-thumb:hover {
   --tp-paper: #f4f6fb;
   --tp-paper-elevated: #ffffff;
   --tp-paper-card: #ffffff;
-  --tp-paper-input: #f0f3fa;
+  --tp-paper-input: #e9eff9;
   --tp-ink: #0c101c;
   --tp-muted: #576075;
   --tp-text-dim: #384052;
@@ -97,9 +102,9 @@ body:has(.tp-root)::-webkit-scrollbar-thumb:hover {
   --tp-glyph-dark: #3a6be0;
   --tp-icon-a: #204bb6;
   --tp-icon-b: #2a5de0;
-  --tp-border-subtle: rgba(12, 14, 19, 0.08);
-  --tp-border-card: rgba(12, 14, 19, 0.12);
-  --tp-card-shadow: 0 16px 36px -12px rgba(38, 89, 217, 0.1);
+  --tp-border-subtle: rgba(12, 16, 28, 0.08);
+  --tp-border-card: rgba(12, 16, 28, 0.12);
+  --tp-card-shadow: 0 16px 40px -12px rgba(6, 23, 74, 0.1), 0 1px 3px rgba(12, 14, 19, 0.04);
 }
 
 .tp-root {
@@ -636,19 +641,21 @@ body:has(.tp-root)::-webkit-scrollbar-thumb:hover {
    ========================================================================= */
 .tp-player-card {
   margin: 20px 0 60px;
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
-  background: #ffffff;
-  border: 1px solid rgba(12, 14, 19, 0.12);
-  box-shadow: 0 24px 60px -15px rgba(6, 23, 74, 0.12),
-              0 0 0 1px rgba(12, 14, 19, 0.04);
+  background: var(--tp-paper-card);
+  border: 1px solid var(--tp-border-card);
+  box-shadow: var(--tp-card-shadow);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   animation: tp-rise-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .tp-player-header {
   padding: 16px 20px;
-  background: #fbfcfe;
-  border-bottom: 1px solid rgba(12, 14, 19, 0.08);
+  background: var(--tp-paper-elevated);
+  border-bottom: 1px solid var(--tp-border-subtle);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -678,8 +685,8 @@ body:has(.tp-root)::-webkit-scrollbar-thumb:hover {
 
 .tp-player-actions {
   padding: 14px 20px;
-  background: #fbfcfe;
-  border-top: 1px solid rgba(12, 14, 19, 0.08);
+  background: var(--tp-paper-elevated);
+  border-top: 1px solid var(--tp-border-subtle);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -699,15 +706,15 @@ body:has(.tp-root)::-webkit-scrollbar-thumb:hover {
 }
 
 .tp-btn-secondary {
-  background: #ffffff;
-  border: 1px solid rgba(12, 14, 19, 0.12);
+  background: var(--tp-paper-input);
+  border: 1px solid var(--tp-border-card);
   color: var(--tp-ink);
   font-weight: 500;
 }
 
 .tp-btn-secondary:hover {
-  background: #f3f5fc;
-  border-color: rgba(38, 89, 217, 0.35);
+  background: var(--tp-paper-elevated);
+  border-color: rgba(38, 89, 217, 0.4);
 }
 
 /* =========================================================================

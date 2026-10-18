@@ -88,9 +88,16 @@ import html
 def fetch_and_parse_subtitles(target_sub):
     if not target_sub:
         return []
-    # Try srv1, then vtt, then json3, or first
+    # Prioritize WebVTT, srv1, JSON3, JSON, or any valid URL
     formats = {item.get('ext'): item.get('url') for item in target_sub if item.get('url')}
-    sub_url = formats.get('srv1') or formats.get('vtt') or formats.get('json3') or target_sub[0].get('url')
+    sub_url = (
+        formats.get('vtt')
+        or formats.get('srv1')
+        or formats.get('json3')
+        or formats.get('json')
+        or formats.get('ttml')
+        or target_sub[0].get('url')
+    )
     if not sub_url:
         return []
 
@@ -104,7 +111,70 @@ def fetch_and_parse_subtitles(target_sub):
         return []
 
     items = []
-    # If XML / timedtext
+
+    # 1. WebVTT format (Dailymotion, Vimeo, TikTok, etc.)
+    if 'WEBVTT' in content or '-->' in content:
+        cue_pattern = re.compile(
+            r'(?:(\d{1,2}):)?(\d{2}):(\d{2})[\.,](\d{3})\s*-->\s*(?:(\d{1,2}):)?(\d{2}):(\d{2})[\.,](\d{3})'
+        )
+
+        def parse_ts(h, m, s, ms):
+            hours = int(h) if h else 0
+            mins = int(m)
+            secs = int(s)
+            millis = int(ms)
+            return round(hours * 3600 + mins * 60 + secs + millis / 1000.0, 2)
+
+        blocks = re.split(r'\r?\n\r?\n+', content)
+        for block in blocks:
+            lines = [l.strip() for l in block.strip().splitlines() if l.strip()]
+            if not lines:
+                continue
+            time_match = None
+            text_lines = []
+            for line in lines:
+                m = cue_pattern.search(line)
+                if m:
+                    time_match = m
+                elif time_match:
+                    clean_l = re.sub(r'<[^>]+>', '', line).strip()
+                    if clean_l and not clean_l.startswith('NOTE') and not clean_l.startswith('STYLE'):
+                        text_lines.append(clean_l)
+            if time_match and text_lines:
+                start_sec = parse_ts(time_match.group(1), time_match.group(2), time_match.group(3), time_match.group(4))
+                end_sec = parse_ts(time_match.group(5), time_match.group(6), time_match.group(7), time_match.group(8))
+                dur = round(max(0.5, end_sec - start_sec), 2)
+                cue_text = html.unescape(' '.join(text_lines))
+                items.append({
+                    'start': start_sec,
+                    'duration': dur,
+                    'text': cue_text
+                })
+        if items:
+            return items
+
+    # 2. Bilibili JSON CC body format: {"body": [{"from": 1.2, "to": 3.4, "content": "..."}]}
+    if content.strip().startswith('{') and '"body"' in content:
+        try:
+            data = json.loads(content)
+            body_list = data.get('body') or (data.get('data', {}).get('body') if isinstance(data.get('data'), dict) else None)
+            if isinstance(body_list, list):
+                for cue in body_list:
+                    c_from = float(cue.get('from', 0))
+                    c_to = float(cue.get('to', 0))
+                    c_text = str(cue.get('content', '')).strip()
+                    if c_text:
+                        items.append({
+                            'start': round(c_from, 2),
+                            'duration': round(max(0.5, c_to - c_from), 2),
+                            'text': html.unescape(c_text)
+                        })
+                if items:
+                    return items
+        except Exception:
+            pass
+
+    # 3. XML / timedtext (YouTube / standard TTML)
     if '<transcript>' in content or '<timedtext' in content or '<text' in content:
         try:
             root = ET.fromstring(content)
@@ -123,7 +193,7 @@ def fetch_and_parse_subtitles(target_sub):
         except Exception:
             pass
 
-    # If JSON3
+    # 4. JSON3 (YouTube events format)
     if content.strip().startswith('{') and '"events"' in content:
         try:
             data = json.loads(content)
@@ -184,6 +254,29 @@ def extract_transcript_from_info(info):
     return None
 
 import shutil
+import re
+
+def format_friendly_error(err_str):
+    if not err_str:
+        return "Video stream could not be extracted. Please check the link and try again."
+    err_lower = err_str.lower()
+    if 'instagram' in err_lower:
+        if any(w in err_lower for w in ['registered users', 'follow this account', 'login', 'cookies', 'private']):
+            return "This Instagram post is from a private account or requires an Instagram login. Only public reels and posts can be analyzed without login."
+        if 'not found' in err_lower or '404' in err_lower:
+            return "This Instagram post was deleted or is no longer available."
+        return "Instagram restricted or rate-limited access to this post. Please try a public Reel."
+    if 'youtube' in err_lower or 'youtu' in err_lower:
+        if 'bot' in err_lower or 'sign in' in err_lower:
+            return "YouTube temporary anti-bot verification active. Please try again in a moment."
+        if 'unavailable' in err_lower or 'private' in err_lower:
+            return "This YouTube video is private or unavailable."
+    if 'terabox' in err_lower:
+        return "TeraBox share link expired or file has been deleted by owner."
+    clean = re.sub(r'^ERROR:\s*(\[[^\]]+\]\s*)?', '', err_str)
+    clean = re.sub(r'Use --cookies[^\.]*\.', '', clean)
+    clean = re.sub(r'See https?:\/\/[^\s]+ for [^\.]*\.', '', clean)
+    return clean.strip() or "Video stream could not be extracted. Please check the link and try again."
 
 def resolve_ytdlp(url):
     if not yt_dlp:
@@ -211,25 +304,111 @@ def resolve_ytdlp(url):
         }
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        if not info:
-            return {"success": False, "error": "Could not extract video metadata"}
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+    except Exception as e:
+        return {"success": False, "error": format_friendly_error(str(e))}
 
+    if not info:
+        return {"success": False, "error": "Could not extract video metadata"}
+
+    try:
         title = info.get('title') or 'Universal Video Stream'
         thumbnail = info.get('thumbnail') or ''
         duration = info.get('duration') or 0
         size_bytes = info.get('filesize') or info.get('filesize_approx') or 0
-        extractor_key = info.get('extractor_key', '').lower()
-        is_youtube = 'youtube' in extractor_key or 'youtu' in url.lower()
+        extractor_key = (info.get('extractor_key') or info.get('extractor') or '').lower()
+
+        url_lower = url.lower()
+        if 'youtube' in extractor_key or 'youtu' in url_lower:
+            platform = 'youtube'
+        elif 'tiktok' in extractor_key or 'tiktok' in url_lower:
+            platform = 'tiktok'
+        elif 'bilibili' in extractor_key or 'bilibili' in url_lower or 'b23.tv' in url_lower:
+            platform = 'bilibili'
+        elif 'dailymotion' in extractor_key or 'dailymotion' in url_lower or 'dai.ly' in url_lower:
+            platform = 'dailymotion'
+        elif 'snapchat' in extractor_key or 'snapchat' in url_lower:
+            platform = 'snapchat'
+        elif 'instagram' in extractor_key or 'instagram' in url_lower:
+            platform = 'instagram'
+        elif 'facebook' in extractor_key or 'fb' in extractor_key or any(k in url_lower for k in ['facebook', 'fb.watch', 'fb.com']):
+            platform = 'facebook'
+        elif 'twitter' in extractor_key or any(k in url_lower for k in ['twitter', 'x.com', 't.co']):
+            platform = 'twitter'
+        elif 'vimeo' in extractor_key or 'vimeo' in url_lower:
+            platform = 'vimeo'
+        elif 'linkedin' in extractor_key or 'linkedin' in url_lower:
+            platform = 'linkedin'
+        elif 'terabox' in extractor_key or any(d in url_lower for d in ['terabox', '1024tera', 'nephobox', '4funbox', 'mirrobox']):
+            platform = 'terabox'
+        elif any(url_lower.endswith(ext) or ext in url_lower for ext in ['.mp4', '.m3u8', '.webm', '.ogg']):
+            platform = 'direct'
+        else:
+            platform = 'universal'
+
+        is_youtube = platform == 'youtube'
         youtube_id = info.get('id') if is_youtube else None
 
-        # Extract transcript if YouTube
-        transcript = None
-        if is_youtube:
-            transcript = extract_transcript_from_info(info)
+        # Universal transcript extraction across all platforms
+        transcript = extract_transcript_from_info(info)
 
-        available_formats = []
+        # Dynamic thumbnails collection
+        raw_thumbs = info.get('thumbnails') or []
+        dynamic_thumbs = []
+        seen_thumb_urls = set()
+
+        for t in raw_thumbs:
+            t_url = t.get('url')
+            if not t_url or t_url in seen_thumb_urls:
+                continue
+            seen_thumb_urls.add(t_url)
+            w = t.get('width') or 0
+            h = t.get('height') or 0
+            res = f"{w} × {h}" if (w and h) else (t.get('resolution') or "Standard")
+            if (w and w >= 1920) or (h and h >= 1080):
+                q_label = "1080p Full HD"
+            elif (w and w >= 1280) or (h and h >= 720):
+                q_label = "720p HD"
+            elif (w and w >= 640) or (h and h >= 480):
+                q_label = "480p SD"
+            elif w or h:
+                q_label = f"{h or w}p"
+            else:
+                q_label = "Standard Quality"
+
+            dynamic_thumbs.append({
+                "url": t_url,
+                "width": w,
+                "height": h,
+                "resolution": res,
+                "quality_label": q_label
+            })
+
+        # Sort thumbnails descending by resolution
+        dynamic_thumbs.sort(key=lambda x: (x.get('width') or 0) * (x.get('height') or 0), reverse=True)
+
+        # For YouTube, guarantee standard cover tiers
+        if is_youtube and youtube_id:
+            yt_defaults = [
+                {"url": f"https://img.youtube.com/vi/{youtube_id}/maxresdefault.jpg", "width": 1920, "height": 1080, "resolution": "1920 × 1080", "quality_label": "MaxRes Quality (1080p)"},
+                {"url": f"https://img.youtube.com/vi/{youtube_id}/hqdefault.jpg", "width": 1280, "height": 720, "resolution": "1280 × 720", "quality_label": "High Quality (HQ 720p)"},
+                {"url": f"https://img.youtube.com/vi/{youtube_id}/sddefault.jpg", "width": 640, "height": 480, "resolution": "640 × 480", "quality_label": "Standard Quality (SD)"},
+                {"url": f"https://img.youtube.com/vi/{youtube_id}/mqdefault.jpg", "width": 320, "height": 180, "resolution": "320 × 180", "quality_label": "Medium Quality (MQ)"},
+            ]
+            yt_to_add = [yd for yd in yt_defaults if yd["url"] not in seen_thumb_urls]
+            dynamic_thumbs = yt_to_add + dynamic_thumbs
+
+        if not dynamic_thumbs and thumbnail:
+            dynamic_thumbs.append({
+                "url": thumbnail,
+                "width": 1280,
+                "height": 720,
+                "resolution": "HD",
+                "quality_label": "Cover Thumbnail"
+            })
+
         raw_formats = info.get('formats') or []
 
         def get_eff_h(f):
@@ -324,12 +503,11 @@ def resolve_ytdlp(url):
                 "is_progressive": False
             })
 
-        # Combine video formats with highest resolution first
+        # Combine video formats: sort by resolution descending, progressive audio+video preferred
         all_videos = prog_formats + video_formats
         all_videos.sort(key=lambda x: (x.get('height') or 0, 1 if x.get('has_audio') else 0), reverse=True)
-        available_formats.extend(all_videos)
 
-        # 3. Extract High Quality Audio Tracks (MP3 Tiers + Original M4A Master)
+        # 3. Extract Audio Tracks
         audio_streams = [
             f for f in raw_formats
             if f.get('url')
@@ -338,12 +516,12 @@ def resolve_ytdlp(url):
         ]
         m4a_audio = [f for f in audio_streams if f.get('ext') == 'm4a']
         best_audio = m4a_audio[-1] if m4a_audio else (audio_streams[-1] if audio_streams else None)
-        
-        # Fallback to progressive stream if no dedicated audio-only streams exist (e.g. mobile Shorts)
+
         if not best_audio and progressive:
             best_audio = progressive[-1]
+
+        audio_formats_list = []
         if best_audio:
-            # Add Standard MP3 Quality tiers (320k, 256k, 192k, 128k)
             mp3_tiers = [
                 (320, "320 kbps (High Quality)"),
                 (256, "256 kbps (Standard)"),
@@ -352,7 +530,7 @@ def resolve_ytdlp(url):
             ]
             for abr, q_label in mp3_tiers:
                 est_bytes = int((abr * 1000 / 8) * duration) if duration else 0
-                available_formats.append({
+                audio_formats_list.append({
                     "format_id": f"mp3_{abr}",
                     "quality": q_label,
                     "height": 0,
@@ -361,13 +539,13 @@ def resolve_ytdlp(url):
                     "url": best_audio.get('url'),
                     "has_audio": True,
                     "has_video": False,
-                    "is_audio_only": True
+                    "is_audio_only": True,
+                    "is_progressive": False
                 })
 
-            # Original Master Audio track
             a_size = best_audio.get('filesize') or best_audio.get('filesize_approx') or (int(best_audio.get('tbr', 0) * 1024 / 8 * duration) if best_audio.get('tbr') and duration else 0)
             orig_abr = int(best_audio.get('abr') or 128)
-            available_formats.append({
+            audio_formats_list.append({
                 "format_id": str(best_audio.get('format_id')),
                 "quality": f"Master Audio Track ({orig_abr} kbps {best_audio.get('ext', 'm4a').upper()})",
                 "height": 0,
@@ -376,7 +554,8 @@ def resolve_ytdlp(url):
                 "url": best_audio.get('url'),
                 "has_audio": True,
                 "has_video": False,
-                "is_audio_only": True
+                "is_audio_only": True,
+                "is_progressive": False
             })
 
         # Best playable stream for immediate video player
@@ -393,20 +572,41 @@ def resolve_ytdlp(url):
         if not stream_url:
             return {"success": False, "error": "No direct media stream found for this link"}
 
+        if not all_videos and stream_url:
+            all_videos.append({
+                "format_id": "default",
+                "quality": f"{info.get('height') or 720}p Standard (Audio + Video)",
+                "height": info.get('height') or 720,
+                "ext": info.get('ext') or 'mp4',
+                "filesize": format_size(size_bytes),
+                "url": stream_url,
+                "has_audio": True,
+                "has_video": True,
+                "is_audio_only": False,
+                "is_progressive": True
+            })
+
+        available_formats = all_videos + audio_formats_list
+
         return {
             "success": True,
             "title": title,
             "thumbnail": thumbnail,
+            "thumbnails": dynamic_thumbs,
             "stream_url": stream_url,
             "download_url": stream_url,
             "size": format_size(size_bytes),
             "duration": duration,
             "source": f"ytdlp_{extractor_key or 'universal'}",
-            "platform": "youtube" if is_youtube else "direct",
+            "platform": platform,
             "youtube_id": youtube_id,
             "transcript": transcript,
-            "formats": available_formats
+            "formats": available_formats,
+            "video_formats": all_videos,
+            "audio_formats": audio_formats_list
         }
+    except Exception as e:
+        return {"success": False, "error": format_friendly_error(str(e))}
 
 def main():
     if len(sys.argv) < 2:
@@ -464,7 +664,7 @@ def main():
 
         print(json.dumps(ytdlp_result))
     except Exception as e:
-        print(json.dumps({"success": False, "error": str(e)}))
+        print(json.dumps({"success": False, "error": format_friendly_error(str(e))}))
 
 if __name__ == '__main__':
     main()

@@ -414,27 +414,18 @@ All colors MUST be HSL.
 }
 
 /* ==========================================================================
-   LENIS OFFICIAL SMOOTH SCROLL STYLES
+   NATIVE HARDWARE-ACCELERATED SMOOTH SCROLL STYLES
+   Compositor-driven, 0ms input latency, zero main-thread lag.
    ========================================================================== */
-html.lenis,
-html.lenis body {
+html {
+  scroll-behavior: smooth;
   height: auto;
 }
 
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-
-.lenis.lenis-smooth [data-lenis-prevent] {
-  overscroll-behavior: contain;
-}
-
-.lenis.lenis-stopped {
-  overflow: hidden;
-}
-
-.lenis.lenis-smooth iframe {
-  pointer-events: none;
+body {
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 /* ==========================================================================
    PREMIUM CINEMATIC SURFACES

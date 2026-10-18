@@ -3,7 +3,22 @@
  * Detects 17+ TeraBox mirrors and extracts standard share IDs and direct URLs.
  */
 
-export type SupportedPlatform = 'terabox' | 'youtube' | 'facebook' | 'whatsapp' | 'instagram' | 'direct' | 'unknown';
+export type SupportedPlatform =
+  | 'youtube'
+  | 'terabox'
+  | 'instagram'
+  | 'facebook'
+  | 'tiktok'
+  | 'bilibili'
+  | 'dailymotion'
+  | 'snapchat'
+  | 'linkedin'
+  | 'twitter'
+  | 'vimeo'
+  | 'direct'
+  | 'universal'
+  | 'whatsapp'
+  | 'unknown';
 
 export interface NormalizedLinkResult {
   isValid: boolean;
@@ -77,11 +92,12 @@ export interface InstagramMediaInfo {
 
 export function extractInstagramShortcode(url: string): InstagramMediaInfo | null {
   if (!url) return null;
-  const regex = /(?:https?:\/\/)?(?:www\.)?instagram\.com\/(reel|p|tv|stories)\/([A-Za-z0-9_-]+)/i;
+  const regex = /(?:https?:\/\/)?(?:www\.)?instagram\.com\/(reels?|p|tv|stories)\/([A-Za-z0-9_-]+)/i;
   const match = url.trim().match(regex);
   if (!match) return null;
+  const rawType = match[1].toLowerCase();
   return {
-    type: match[1].toLowerCase() as 'reel' | 'p' | 'tv' | 'stories',
+    type: (rawType.startsWith('reel') ? 'reel' : rawType) as 'reel' | 'p' | 'tv' | 'stories',
     shortcode: match[2],
   };
 }
@@ -186,21 +202,111 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
     };
   }
 
-  // WhatsApp Link
-  if (trimmed.includes('whatsapp.com') || trimmed.includes('wa.me')) {
+  // WhatsApp Link (Chat media is E2EE and cannot be extracted from web)
+  if (trimmed.includes('whatsapp.com') || trimmed.includes('wa.me') || trimmed.includes('wa.link')) {
+    return {
+      isValid: false,
+      platform: 'whatsapp',
+      normalizedUrl: trimmed,
+      originalUrl: trimmed,
+      error: 'WhatsApp chat media is end-to-end encrypted. Copy and paste the original video link (YouTube, Instagram, TikTok) shared in your chat.',
+    };
+  }
+
+  // TikTok Link
+  if (trimmed.includes('tiktok.com')) {
     return {
       isValid: true,
-      platform: 'whatsapp',
+      platform: 'tiktok',
       normalizedUrl: trimmed,
       originalUrl: trimmed,
     };
   }
 
-  // Assume universal web link
+  // Bilibili Link
+  if (trimmed.includes('bilibili.com') || trimmed.includes('b23.tv')) {
+    return {
+      isValid: true,
+      platform: 'bilibili',
+      normalizedUrl: trimmed,
+      originalUrl: trimmed,
+    };
+  }
+
+  // Dailymotion Link
+  if (trimmed.includes('dailymotion.com') || trimmed.includes('dai.ly')) {
+    return {
+      isValid: true,
+      platform: 'dailymotion',
+      normalizedUrl: trimmed,
+      originalUrl: trimmed,
+    };
+  }
+
+  // Snapchat Link
+  if (trimmed.includes('snapchat.com')) {
+    return {
+      isValid: true,
+      platform: 'snapchat',
+      normalizedUrl: trimmed,
+      originalUrl: trimmed,
+    };
+  }
+
+  // LinkedIn Link
+  if (trimmed.includes('linkedin.com')) {
+    return {
+      isValid: true,
+      platform: 'linkedin',
+      normalizedUrl: trimmed,
+      originalUrl: trimmed,
+    };
+  }
+
+  // Twitter / X Link
+  if (trimmed.includes('twitter.com') || trimmed.includes('x.com')) {
+    return {
+      isValid: true,
+      platform: 'twitter',
+      normalizedUrl: trimmed,
+      originalUrl: trimmed,
+    };
+  }
+
+  // Vimeo Link
+  if (trimmed.includes('vimeo.com')) {
+    const vimeoMatch = trimmed.match(/vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/[^/]*\/videos\/|album\/(?:\d+\/)?video\/|video\/|)(\d+)/i);
+    const vimeoId = vimeoMatch ? vimeoMatch[1] : undefined;
+    return {
+      isValid: true,
+      platform: 'vimeo',
+      shareId: vimeoId,
+      normalizedUrl: vimeoId ? `https://vimeo.com/${vimeoId}` : trimmed,
+      originalUrl: trimmed,
+    };
+  }
+
+  // Universal HTTP/HTTPS Link validation
+  try {
+    const rawUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://') ? trimmed : `https://${trimmed}`;
+    const parsed = new URL(rawUrl);
+    if ((parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.hostname.includes('.')) {
+      return {
+        isValid: true,
+        platform: 'universal',
+        normalizedUrl: parsed.href,
+        originalUrl: trimmed,
+      };
+    }
+  } catch {
+    // Fall-through if not a parsable web URL
+  }
+
   return {
-    isValid: true,
-    platform: 'unknown',
+    isValid: false,
+    platform: 'universal',
     normalizedUrl: trimmed,
     originalUrl: trimmed,
+    error: 'Please enter a valid video link or streaming URL.',
   };
 }
