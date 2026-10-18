@@ -1,3 +1,7 @@
+---
+last_mapped_commit: d8e50716fb3344f8157e4437310d57acc836258c
+last_mapped_at: 2026-10-18
+---
 # Testing Patterns & Frameworks
 
 **Analysis Date:** 2026-10-18
@@ -37,13 +41,17 @@ The primary test suite in `tests/universal-dock.test.mjs` exercises 4 critical s
 ## How to Run Tests
 
 ```bash
+
 # Run unit & integration suite
+
 node tests/universal-dock.test.mjs
 
 # Run production build & typecheck
+
 npm run build
 
 # Run linting
+
 npx eslint src/pages/Index.tsx src/App.tsx src/lib/urlNormalizer.ts src/components/ads/AdBannerSlot.tsx
 ```
 

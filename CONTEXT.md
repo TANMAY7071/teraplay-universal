@@ -1,47 +1,32 @@
-# DonghuaStream
+# TeraPlay Universal Media & Creator Dock
 
-A streaming site for donghua (Chinese animation) with series detail pages, episode watching, watchlists, and per-series universe/lore pages.
+A lightweight, high-performance web application engineered for content creators and everyday video streamers. Built with React 18, TypeScript, Vite, Tailwind CSS, Lucide icons, and serverless edge functions.
 
-## Language
+## Core Capabilities
 
-### Hero
+### 1. YouTube Creator Studio
+- **Transcript & Subtitle Studio**: Extracts timestamped cues from YouTube caption tracks via `api/transcript.ts` and `scripts/extractor.py`. Provides full search filtering, timestamp toggle, 1-click clipboard copy, `.txt` transcript download, and standardized SubRip `.srt` subtitle export with boundary clipping.
+- **Full-Resolution Thumbnail Grabber**: Instant client-side blob download across 4 resolution tiers:
+  - MaxRes Quality (1080p): `1920 × 1080` (`maxresdefault.jpg`) with automatic fallback to HQ on older video uploads.
+  - High Quality (720p): `1280 × 720` (`hqdefault.jpg`).
+  - Standard Quality (SD): `640 × 480` (`sddefault.jpg`).
+  - Medium Quality (MQ): `320 × 180` (`mqdefault.jpg`).
+- **Responsive Embed Player**: Privacy-enhanced player preview (`youtube-nocookie.com`) with 1-click HTML embed snippet copy.
 
-**Hero**:
-The full-width banner at the top of the home page; a carousel of featured series.
-_Avoid_: banner, slider, showcase
+### 2. TeraBox Web Streaming & MP4 Downloader
+- **In-Browser Player**: Plays videos from 12+ TeraBox mirror domains (`1024tera.com`, `nephobox.com`, `freeterabox.com`, etc.) directly in the browser via bundled `hls.js` in `CustomVideoPlayer.tsx`, bypassing client app installs.
+- **Fast MP4 Download**: Trigger direct MP4 downloads through edge streaming endpoints.
 
-**Hero variant**:
-Exactly one of two mutually exclusive hero implementations — desktop or mobile — mounted per viewport. Both must never be in the DOM at once.
-_Avoid_: responsive hero (ambiguous about which is rendered)
+### 3. Monetization & Ad Network Integration
+- **Placement**: Discrete ad slots (`AdBannerSlot.tsx`) mounted at top leaderboard, mid-content, and bottom positions.
+- **Dynamic Execution**: Supports contextual HTML and script injection (`createContextualFragment`) for Monetag, Adsterra, and Google AdSense networks.
 
-**Background trailer**:
-Muted video that autoplays behind the active hero slide after a deliberate deferral. See ADR-0001.
-_Avoid_: hero video, loop
+### 4. Legal Compliance & SEO Architecture
+- **Compliance**: Dedicated legal pages (`/dmca`, `/privacy`, `/terms`, `/disclaimer`, `/contact`) to ensure instant ad network approval.
+- **SEO Landing Routes**: Targeted canonical entry routes in `src/App.tsx` and `src/data/seoRoutes.ts` with structured Schema.org JSON-LD metadata.
 
-**Trailer**:
-A series' promotional video, opened on demand (modal/player), not embedded in the page flow.
-_Avoid_: background trailer when meaning the on-demand one — say which you mean
+## Architectural Invariants
 
-### Series identity
-
-**Slug**:
-The canonical URL identifier for a series (e.g. `battle-through-the-heavens`). Used in routes and lore file names.
-_Avoid_: id, key
-
-**Fandom subdomain**:
-The wiki community's subdomain for a series, resolved from a title by `resolveFandomSubdomain`. Usually equals the Slug but is a separate concept — never assume they match.
-_Avoid_: wiki slug (collides with Slug)
-
-### Lore
-
-**Lore**:
-Canonical series content — characters, locations, clans, realms, artifacts — shipped as read-only static data.
-_Avoid_: wiki data (that's the external source, not our copy)
-
-**Lore file**:
-The per-series JSON at `public/data/lore/{slug}.json`. One series per file; never a combined dump. See ADR-0002.
-_Avoid_: cached-lore.json (the retired monolith), lore cache
-
-**Lore registry**:
-The merged view of curated local lore + the lore file, served through `loreRegistryService`.
-_Avoid_: lore service (too generic)
+- **Zero-Cost Operation**: Prioritize client-side computation (browser blob conversion, SubRip formatting, oEmbed metadata) to eliminate expensive server proxy bandwidth.
+- **Honest States**: No mock or false data injection. Videos without captions display an explicit empty state with an opt-in demo cues loader.
+- **Bundle Chunking**: Heavy libraries (e.g. `hls.js`) are isolated into dedicated vendor chunks (`hls-vendor`) via `vite.config.ts`, keeping the main index bundle under 150 kB.
