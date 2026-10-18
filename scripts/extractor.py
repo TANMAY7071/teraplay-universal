@@ -608,6 +608,48 @@ def resolve_ytdlp(url):
     except Exception as e:
         return {"success": False, "error": format_friendly_error(str(e))}
 
+def extract_media_info(url: str, is_transcript_only: bool = False) -> dict:
+    url = (url or "").strip()
+    if not url:
+        return {"success": False, "error": "Empty URL"}
+
+    if not url.startswith('http') and len(url) == 11:
+        url = f"https://www.youtube.com/watch?v={url}"
+
+    # Check TeraBox unless transcript only
+    if not is_transcript_only:
+        share_id = extract_terabox_share_id(url)
+        lower = url.lower()
+        is_terabox = any(domain in lower for domain in ['terabox', '1024tera', 'nephobox', 'terashare']) or (share_id and len(share_id) >= 15)
+
+        if is_terabox and share_id:
+            tb_result = resolve_terabox(url, share_id)
+            if tb_result:
+                return tb_result
+
+    # Universal / Social Media / YouTube resolution via yt-dlp
+    try:
+        ytdlp_result = resolve_ytdlp(url)
+        if is_transcript_only:
+            if ytdlp_result.get('success') and ytdlp_result.get('transcript'):
+                return {
+                    "success": True,
+                    "title": ytdlp_result.get('title'),
+                    "youtube_id": ytdlp_result.get('youtube_id'),
+                    "transcript": ytdlp_result.get('transcript')
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": "No transcript available for this video",
+                    "title": ytdlp_result.get('title'),
+                    "youtube_id": ytdlp_result.get('youtube_id')
+                }
+
+        return ytdlp_result
+    except Exception as e:
+        return {"success": False, "error": format_friendly_error(str(e))}
+
 def main():
     if len(sys.argv) < 2:
         print(json.dumps({"success": False, "error": "Missing URL argument"}))
@@ -622,49 +664,10 @@ def main():
             sys.exit(1)
         url_arg_idx = 2
 
-    url = sys.argv[url_arg_idx].strip()
-    if not url:
-        print(json.dumps({"success": False, "error": "Empty URL"}))
-        sys.exit(1)
-
-    if not url.startswith('http') and len(url) == 11:
-        url = f"https://www.youtube.com/watch?v={url}"
-
-    # Check TeraBox unless transcript only
-    if not is_transcript_only:
-        share_id = extract_terabox_share_id(url)
-        lower = url.lower()
-        is_terabox = any(domain in lower for domain in ['terabox', '1024tera', 'nephobox', 'terashare']) or (share_id and len(share_id) >= 15)
-
-        if is_terabox and share_id:
-            tb_result = resolve_terabox(url, share_id)
-            if tb_result:
-                print(json.dumps(tb_result))
-                return
-
-    # Universal / Social Media / YouTube resolution via yt-dlp
-    try:
-        ytdlp_result = resolve_ytdlp(url)
-        if is_transcript_only:
-            if ytdlp_result.get('success') and ytdlp_result.get('transcript'):
-                print(json.dumps({
-                    "success": True,
-                    "title": ytdlp_result.get('title'),
-                    "youtube_id": ytdlp_result.get('youtube_id'),
-                    "transcript": ytdlp_result.get('transcript')
-                }))
-            else:
-                print(json.dumps({
-                    "success": False,
-                    "error": "No transcript available for this video",
-                    "title": ytdlp_result.get('title'),
-                    "youtube_id": ytdlp_result.get('youtube_id')
-                }))
-            return
-
-        print(json.dumps(ytdlp_result))
-    except Exception as e:
-        print(json.dumps({"success": False, "error": format_friendly_error(str(e))}))
+    raw_url = sys.argv[url_arg_idx]
+    result = extract_media_info(raw_url, is_transcript_only=is_transcript_only)
+    print(json.dumps(result))
 
 if __name__ == '__main__':
     main()
+

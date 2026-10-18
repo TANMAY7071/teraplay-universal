@@ -1,29 +1,79 @@
-**Project Overview**
+# TeraPlay Universal Media & Creator Dock
 
-This project is a modern **Donghua streaming platform** developed using **React**, **TypeScript**, **Vite**, **Tailwind CSS**, and **shadcn/ui**. The platform is designed to provide users with a seamless and engaging experience for discovering, browsing, and streaming Donghua content through a fast, responsive, and visually appealing interface.
+A high-performance, $0-budget universal media resolver and creator toolkit supporting **1,751+ platforms** enabled by `yt-dlp` (YouTube, TeraBox, TikTok, Instagram, Facebook, Bilibili, Dailymotion, Snapchat, LinkedIn, Vimeo, Twitter/X, and more).
 
-Built with a component-based architecture, the application emphasizes scalability, maintainability, and performance. The use of TypeScript ensures robust and reliable code, while Vite enables rapid development and optimized production builds. Tailwind CSS and shadcn/ui provide a modern design system that delivers a consistent experience across desktop, tablet, and mobile devices.
+Provides in-browser video streaming, multi-tier thumbnail downloads, progressive MP4 downloads with audio, high-bitrate MP3/M4A audio extraction, SubRip `.srt` and `.txt` transcript exports, and monetization slots.
 
-### Key Features
+---
 
-* Modern and responsive streaming interface
-* Donghua discovery and content browsing
-* Detailed series and episode pages
-* Search and filtering functionality
-* Fast-loading and optimized user experience
-* Clean, scalable, and maintainable codebase
-* Mobile-friendly design with cross-device compatibility
-* Reusable UI components built with shadcn/ui
-* High-performance frontend architecture powered by React and Vite
-* Simple deployment through platforms such as Vercel and Lovable
+## ⚡ Key Capabilities
 
-### Technology Stack
+- **Zero-Click Auto-Detection**: Paste any URL directly into the dock. The engine automatically detects the platform without requiring chip selection.
+- **Universal Downloads**:
+  - **Video MP4**: 1080p, 720p, 480p, 360p (automatically selects progressive audio+video tracks so downloads are never silent).
+  - **Audio MP3 & M4A**: 320 kbps (High Quality), 256 kbps, 192 kbps, 128 kbps, and original master audio streams.
+  - **Multi-Resolution Thumbnails**: High-resolution cover images dynamically extracted for any platform.
+  - **Transcripts & Subtitles**: Searchable timestamped cues, 1-click clipboard copy, and SubRip `.srt` or `.txt` downloads.
+- **Embedded & Custom Streaming**: In-browser inline player supporting YouTube/Vimeo embeds and HLS/direct MP4 streams.
+- **Honest WhatsApp Handling**: Explicitly surfaces guidance explaining WhatsApp's end-to-end encryption (E2EE) and instructs users to paste the original video links shared inside chats.
+- **$0 Production Ready**: Split edge architecture (Vercel CDN frontend + Render.com free-tier Python microservice) with zero operating cost.
 
-* **Frontend:** React, TypeScript
-* **Build Tool:** Vite
-* **Styling:** Tailwind CSS
-* **UI Components:** shadcn/ui
+---
 
-### Vision
+## 📂 Project Structure
 
-The goal of this platform is to create a centralized destination for Donghua enthusiasts, offering an intuitive streaming experience, efficient content discovery, and a modern user interface capable of supporting future features such as user accounts, watchlists, recommendations, ratings, community features, and advanced content management.
+```
+teraplay-universal/
+├── api/                        # Vercel serverless edge endpoints
+│   ├── resolve.ts              # Universal media resolver gateway
+│   ├── transcript.ts           # Transcript & subtitle parser
+│   └── stream-download.ts      # Progressive stream proxy & bypass
+├── backend/                    # Standalone Python microservice ($0 Render/Railway)
+│   ├── main.py                 # FastAPI microservice
+│   ├── requirements.txt        # fastapi, uvicorn, yt-dlp
+│   ├── Dockerfile              # Container definition with ffmpeg
+│   └── render.yaml             # Render.com 1-click blueprint
+├── scripts/
+│   └── extractor.py            # Local yt-dlp extraction engine
+├── src/
+│   ├── components/             # Reusable UI components & Ad banner slots
+│   ├── lib/
+│   │   ├── urlNormalizer.ts    # Regex normalizer for 13+ platform families
+│   │   └── subtitleFormatter.ts# Millisecond SubRip SRT formatter
+│   └── pages/
+│       └── Index.tsx           # Universal Media Dock UI
+├── tests/
+│   └── universal-dock.test.mjs # Automated regression test suite
+└── DEPLOYMENT.md               # $0 step-by-step production deployment guide
+```
+
+---
+
+## 🛠️ Quickstart
+
+### Prerequisites
+- Node.js 18+ (tested on Node.js v22)
+- Python 3.10+ with `yt-dlp` installed in `.venv`
+
+### Local Development
+```bash
+# 1. Install frontend dependencies
+npm install
+
+# 2. Run automated test suite
+node tests/universal-dock.test.mjs
+
+# 3. Start development server
+npm run dev
+```
+
+Visit `http://localhost:5173` to test the universal dock with any video link.
+
+---
+
+## 🚀 $0 Production Deployment
+
+See [DEPLOYMENT.md](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universal/DEPLOYMENT.md) for full instructions:
+1. **Backend**: Deploy `backend/` to Render.com ($0 free tier).
+2. **Frontend**: Deploy repo to Vercel and add `PYTHON_RESOLVER_URL=https://<your-render-url>`.
+3. **Keep Awake**: Ping `https://<your-render-url>/health` via free UptimeRobot every 5 minutes.

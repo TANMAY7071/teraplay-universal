@@ -173,6 +173,75 @@ function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
   });
 }
 
+async function runRemoteResolver(targetUrl: string): Promise<ResolveResponse | null> {
+  const remoteEndpoint = process.env.PYTHON_RESOLVER_URL || process.env.RESOLVER_SERVICE_URL;
+  if (!remoteEndpoint) return null;
+
+  try {
+    const base = remoteEndpoint.replace(/\/$/, '');
+    const res = await fetch(`${base}/resolve?url=${encodeURIComponent(targetUrl)}`, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!res.ok) {
+      console.warn(`[RemoteResolver] Service returned HTTP ${res.status}`);
+      return null;
+    }
+
+    const parsed = (await res.json()) as any;
+    if (!parsed) return null;
+
+    if (parsed.success === false) {
+      return {
+        success: false,
+        error: parsed.error || 'Video is unavailable or restricted on host platform',
+      };
+    }
+
+    if (parsed.success && (parsed.stream_url || parsed.download_url)) {
+      const directMedia = parsed.stream_url || parsed.download_url;
+      const cleanTitle = (parsed.title || 'video').replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const downloadProxy = `/api/stream-download?url=${encodeURIComponent(directMedia)}&filename=${encodeURIComponent(cleanTitle)}&source=${encodeURIComponent(parsed.source || '')}`;
+
+      const mapFormat = (f: any) => ({
+        ...f,
+        download_url: f.url
+          ? `/api/stream-download?url=${encodeURIComponent(f.url)}&filename=${encodeURIComponent(`${cleanTitle}_${f.format_id}`)}&ext=${encodeURIComponent(f.ext || (f.is_audio_only ? 'mp3' : 'mp4'))}&source=${encodeURIComponent(parsed.source || '')}`
+          : f.download_url || '',
+      });
+
+      const mappedFormats = Array.isArray(parsed.formats) ? parsed.formats.map(mapFormat) : [];
+      const mappedVideoFormats = Array.isArray(parsed.video_formats) ? parsed.video_formats.map(mapFormat) : [];
+      const mappedAudioFormats = Array.isArray(parsed.audio_formats) ? parsed.audio_formats.map(mapFormat) : [];
+
+      return {
+        success: true,
+        title: parsed.title,
+        thumbnail: parsed.thumbnail || '',
+        thumbnails: Array.isArray(parsed.thumbnails) ? parsed.thumbnails : [],
+        m3u8_url: directMedia,
+        fast_download_url: downloadProxy,
+        size: parsed.size || 'HD Quality',
+        duration: parsed.duration || 0,
+        shareId: parsed.shareId || 'stream',
+        serverTime: new Date().toISOString(),
+        source: parsed.source || 'remote_microservice',
+        platform: parsed.platform || (parsed.youtube_id ? 'youtube' : 'universal'),
+        youtube_id: parsed.youtube_id,
+        transcript: parsed.transcript || null,
+        formats: mappedFormats,
+        video_formats: mappedVideoFormats,
+        audio_formats: mappedAudioFormats,
+        is_mock: false,
+      };
+    }
+  } catch (err: any) {
+    console.warn('[RemoteResolver] Fetch failed:', err?.message || err);
+  }
+  return null;
+}
+
 function extractInstagramShortcode(input: string): string | null {
   const match = input.match(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/(reel|p|tv|stories)\/([A-Za-z0-9_-]+)/i);
   return match ? match[2] : null;
@@ -258,7 +327,19 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  // 1. Primary: Run local high-performance Python extractor (.venv yt-dlp + TeraBox gateway)
+  // 1. Remote Microservice: Check Render/Railway Python service if configured in production
+  const remoteExtracted = await runRemoteResolver(queryTarget);
+  if (remoteExtracted && remoteExtracted.success) {
+    MEDIA_CACHE.set(cacheKey, { data: remoteExtracted, expiresAt: Date.now() + CACHE_TTL_MS });
+    res.status(200).json(remoteExtracted);
+    return;
+  }
+  if (remoteExtracted && !remoteExtracted.success) {
+    res.status(200).json(remoteExtracted);
+    return;
+  }
+
+  // 2. Local Fallback: Run local high-performance Python extractor (.venv yt-dlp + TeraBox gateway)
   const localExtracted = await runLocalExtractor(queryTarget);
   if (localExtracted && localExtracted.success) {
     MEDIA_CACHE.set(cacheKey, { data: localExtracted, expiresAt: Date.now() + CACHE_TTL_MS });

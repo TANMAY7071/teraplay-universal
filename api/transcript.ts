@@ -56,6 +56,26 @@ function runLocalTranscriptExtractor(targetUrl: string): Promise<TranscriptRespo
   });
 }
 
+async function runRemoteTranscriptExtractor(targetUrl: string): Promise<TranscriptResponse | null> {
+  const remoteEndpoint = process.env.PYTHON_RESOLVER_URL || process.env.RESOLVER_SERVICE_URL;
+  if (!remoteEndpoint) return null;
+
+  try {
+    const base = remoteEndpoint.replace(/\/$/, '');
+    const res = await fetch(`${base}/transcript?url=${encodeURIComponent(targetUrl)}`, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (res.ok) {
+      return (await res.json()) as TranscriptResponse;
+    }
+  } catch (err) {
+    console.warn('[RemoteTranscript] Fetch failed:', err);
+  }
+  return null;
+}
+
 // Built-in sample transcript for demo & offline mode
 const SAMPLE_TRANSCRIPT: TranscriptItem[] = [
   { start: 0.0, duration: 2.5, text: "Welcome to TeraPlay Universal Media & Creator Dock." },
@@ -88,7 +108,14 @@ export default async function handler(req: any, res: any) {
 
   const ytId = extractYouTubeId(queryTarget) || queryTarget;
 
-  // Try local python extractor
+  // 1. Check remote microservice if configured
+  const remoteResult = await runRemoteTranscriptExtractor(ytId);
+  if (remoteResult && remoteResult.success && remoteResult.transcript?.items?.length) {
+    res.status(200).json(remoteResult);
+    return;
+  }
+
+  // 2. Try local python extractor
   const result = await runLocalTranscriptExtractor(ytId);
   if (result && result.success && result.transcript?.items?.length) {
     res.status(200).json(result);
