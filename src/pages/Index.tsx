@@ -1010,7 +1010,13 @@ export default function Index() {
     }
 
     try {
-      let directUrl = resolvedVideo.audio_formats?.[0]?.url || resolvedVideo.fast_download_url;
+      let directUrl =
+        resolvedVideo.audio_formats?.[0]?.url ||
+        resolvedVideo.fast_download_url ||
+        resolvedVideo.video_formats?.[0]?.url ||
+        resolvedVideo.formats?.[0]?.url ||
+        resolvedVideo.m3u8_url;
+
       if (directUrl?.startsWith('/api/stream-download')) {
         try {
           const parsed = new URL(directUrl, window.location.origin);
@@ -1021,13 +1027,20 @@ export default function Index() {
         }
       }
 
-      const targetMediaUrl = directUrl || resolvedVideo.m3u8_url || inputUrl.trim();
+      const targetMediaUrl = directUrl || inputUrl.trim();
 
       const queryParams = new URLSearchParams();
       if (targetMediaUrl) queryParams.set('url', targetMediaUrl);
       if (inputUrl.trim() && inputUrl.trim() !== targetMediaUrl) queryParams.set('platformUrl', inputUrl.trim());
       if (resolvedVideo.platform) queryParams.set('platform', resolvedVideo.platform);
-      if (resolvedVideo.shareId) queryParams.set('id', resolvedVideo.shareId);
+      if (resolvedVideo.youtube_id) {
+        queryParams.set('id', resolvedVideo.youtube_id);
+        if (!queryParams.has('platformUrl')) {
+          queryParams.set('platformUrl', `https://www.youtube.com/watch?v=${resolvedVideo.youtube_id}`);
+        }
+      } else if (resolvedVideo.shareId) {
+        queryParams.set('id', resolvedVideo.shareId);
+      }
 
       const res = await fetch(`/api/transcribe?${queryParams.toString()}`);
       const data = await res.json();
@@ -1256,58 +1269,66 @@ export default function Index() {
         <div id="resolver-dock" className="tp-resolver-dock">
           <form onSubmit={handleResolveAndPlay} className="tp-input-card">
             <div className="tp-input-row">
-              <input
-                ref={urlInputRef}
-                type="text"
-                className="tp-url-input"
-                placeholder={
-                  activeChip === 'YouTube'
-                    ? 'Paste YouTube video link, shorts, or video ID...'
-                    : activeChip === 'TeraBox'
-                    ? 'Paste TeraBox, 1024tera, or NephoBox share link...'
-                    : activeChip === 'Direct'
-                    ? 'Paste direct .mp4 or .m3u8 video URL...'
-                    : activeChip === 'Instagram'
-                    ? 'Paste Instagram Reel or video URL...'
-                    : activeChip === 'Facebook'
-                    ? 'Paste Facebook video or watch link...'
-                    : activeChip === 'TikTok'
-                    ? 'Paste TikTok video or creator link...'
-                    : activeChip === 'Bilibili'
-                    ? 'Paste Bilibili video (BV/av) link...'
-                    : activeChip === 'Dailymotion'
-                    ? 'Paste Dailymotion video link...'
-                    : activeChip === 'Snapchat'
-                    ? 'Paste Snapchat Spotlight video link...'
-                    : activeChip === 'LinkedIn'
-                    ? 'Paste LinkedIn video post link...'
-                    : activeChip === 'Vimeo'
-                    ? 'Paste Vimeo video link...'
-                    : activeChip === 'WhatsApp'
-                    ? 'Paste original video link (YouTube, TikTok, etc.) shared in WhatsApp...'
-                    : 'Paste any video link (YouTube, TeraBox, TikTok, Instagram, Bilibili, Dailymotion...)'
-                }
-                value={inputUrl}
-                onChange={(e) => setInputUrl(e.target.value)}
-              />
+              <div className="tp-input-field-wrap">
+                <Search className="w-4 h-4 text-white/70 shrink-0 ml-1.5" aria-hidden="true" />
+                <input
+                  ref={urlInputRef}
+                  type="text"
+                  className="tp-url-input"
+                  placeholder={
+                    activeChip === 'YouTube'
+                      ? 'Paste YouTube video link, shorts, or video ID...'
+                      : activeChip === 'TeraBox'
+                      ? 'Paste TeraBox, 1024tera, or NephoBox share link...'
+                      : activeChip === 'Direct'
+                      ? 'Paste direct .mp4 or .m3u8 video URL...'
+                      : activeChip === 'Instagram'
+                      ? 'Paste Instagram Reel or video URL...'
+                      : activeChip === 'Facebook'
+                      ? 'Paste Facebook video or watch link...'
+                      : activeChip === 'TikTok'
+                      ? 'Paste TikTok video or creator link...'
+                      : activeChip === 'Bilibili'
+                      ? 'Paste Bilibili video (BV/av) link...'
+                      : activeChip === 'Dailymotion'
+                      ? 'Paste Dailymotion video link...'
+                      : activeChip === 'Snapchat'
+                      ? 'Paste Snapchat Spotlight video link...'
+                      : activeChip === 'LinkedIn'
+                      ? 'Paste LinkedIn video post link...'
+                      : activeChip === 'Vimeo'
+                      ? 'Paste Vimeo video link...'
+                      : activeChip === 'WhatsApp'
+                      ? 'Paste original video link (YouTube, TikTok, etc.) shared in WhatsApp...'
+                      : 'Paste any video link (YouTube, TeraBox, TikTok, Instagram, Bilibili...)'
+                  }
+                  value={inputUrl}
+                  onChange={(e) => setInputUrl(e.target.value)}
+                />
 
-              {inputUrl && (
+                {inputUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setInputUrl('')}
+                    className="tp-clear-btn"
+                    title="Clear input"
+                  >
+                    ✕
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => setInputUrl('')}
-                  className="px-2 text-slate-400 hover:text-white transition-colors"
-                  title="Clear input"
+                  onClick={handlePasteClipboard}
+                  className="tp-btn-paste-inline"
+                  title="Paste from clipboard"
                 >
-                  ✕
+                  <Clipboard className="w-3.5 h-3.5 text-[#e4f222]" />
+                  <span>Paste</span>
                 </button>
-              )}
+              </div>
 
-              <button type="button" onClick={handlePasteClipboard} className="tp-btn tp-btn-paste">
-                <Clipboard className="w-4 h-4 text-[#e4f222]" />
-                <span>Paste</span>
-              </button>
-
-              <button type="submit" disabled={isLoading} className="tp-btn tp-btn-primary">
+              <button type="submit" disabled={isLoading} className="tp-btn tp-btn-primary tp-btn-launch">
                 {isLoading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -1315,7 +1336,7 @@ export default function Index() {
                   </>
                 ) : (
                   <>
-                    <Play className="w-4 h-4 fill-current" />
+                    <Play className="w-4 h-4 fill-current shrink-0" />
                     <span>Launch & Analyze</span>
                   </>
                 )}
@@ -1657,7 +1678,7 @@ export default function Index() {
             </div>
 
             {/* UNIVERSAL DOCK TAB NAVIGATION */}
-            <div className="flex items-center border-b border-[var(--tp-border-subtle)] px-4 sm:px-6 bg-[var(--tp-paper-input)]/60 backdrop-blur-md overflow-x-auto">
+            <div id="studio-tabs-nav" className="flex items-center border-b border-[var(--tp-border-subtle)] px-4 sm:px-6 bg-[var(--tp-paper-input)]/60 backdrop-blur-md overflow-x-auto">
               <button
                 type="button"
                 onClick={() => setYoutubeTab('downloads')}
@@ -2011,6 +2032,35 @@ export default function Index() {
                           <Music className="w-4 h-4 fill-current/20" />
                           <span>Download Audio (MP3 320 kbps)</span>
                         </a>
+                      )}
+
+                      {/* Action 4: 1-Click AI Transcription Shortcut */}
+                      {!isImageMedia && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setYoutubeTab('transcript');
+                            const el = document.getElementById('studio-tabs-nav');
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }}
+                          className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border font-bold text-xs sm:text-sm active:scale-[0.98] transition-all shadow-md ${
+                            resolvedVideo.transcript?.items?.length
+                              ? 'bg-amber-500/10 border-amber-500/25 text-amber-500 dark:text-amber-300 hover:bg-amber-500/20'
+                              : 'bg-purple-500/10 border-purple-500/25 text-purple-400 dark:text-purple-300 hover:bg-purple-500/20'
+                          }`}
+                        >
+                          {resolvedVideo.transcript?.items?.length ? (
+                            <>
+                              <Subtitles className="w-4 h-4 fill-current/20" />
+                              <span>View Transcript & Subtitles ({resolvedVideo.transcript.items.length} cues)</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 text-purple-400" />
+                              <span>Transcribe Audio with Groq Whisper AI</span>
+                            </>
+                          )}
+                        </button>
                       )}
                     </div>
 

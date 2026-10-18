@@ -483,25 +483,125 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+}
+
+.tp-input-field-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 10px;
+  padding: 3px 6px 3px 10px;
+  min-width: 0;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tp-input-field-wrap:focus-within {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 0 0 2px rgba(228, 242, 34, 0.25);
+}
+
+.tp-root[data-theme="light"] .tp-input-field-wrap {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.tp-root[data-theme="light"] .tp-input-field-wrap:focus-within {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: var(--tp-accent);
 }
 
 .tp-url-input {
   flex: 1;
-  min-width: 240px;
-  height: 48px;
+  min-width: 0;
+  height: 44px;
   background: transparent;
   border: 0;
   color: #ffffff;
-  font-size: 15.5px;
+  font-size: 15px;
   font-weight: 500;
-  padding: 0 14px;
+  padding: 0 8px;
   outline: none;
   font-family: inherit;
 }
 
+.tp-root[data-theme="light"] .tp-url-input {
+  color: #0c101c;
+}
+
 .tp-url-input::placeholder {
   color: rgba(255, 255, 255, 0.72);
+}
+
+.tp-root[data-theme="light"] .tp-url-input::placeholder {
+  color: rgba(12, 16, 28, 0.5);
+}
+
+.tp-btn-paste-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  backdrop-filter: blur(8px);
+}
+
+.tp-btn-paste-inline:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.tp-btn-paste-inline:active {
+  transform: scale(0.96);
+}
+
+.tp-root[data-theme="light"] .tp-btn-paste-inline {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.14);
+  color: #0c101c;
+}
+
+.tp-clear-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-right: 4px;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.tp-clear-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.tp-root[data-theme="light"] .tp-clear-btn {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.tp-root[data-theme="light"] .tp-clear-btn:hover {
+  color: #0c101c;
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .tp-btn {
@@ -561,14 +661,27 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   cursor: not-allowed;
 }
 
-/* Universal Platform selector pills under input (Image 1 style) */
+/* Universal Platform selector pills under input (Smooth horizontal touch carousel) */
 .tp-format-chips {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 18px;
+  gap: 8px;
+  margin-top: 16px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 4px 4px 8px;
+  max-width: 100%;
+}
+
+.tp-format-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.tp-chip {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .tp-chip {
@@ -1252,12 +1365,48 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
 }
 
 @media (max-width: 640px) {
+  .tp-nav {
+    padding: 10px 14px;
+  }
+  .tp-btn-nav-accent {
+    display: none;
+  }
+  .tp-title-hero {
+    font-size: clamp(34px, 9vw, 44px);
+    letter-spacing: -0.03em;
+  }
+  .tp-subtitle-hero {
+    font-size: 13.5px;
+    line-height: 1.45;
+    padding: 0 4px;
+    margin-bottom: 22px;
+  }
+  .tp-input-card {
+    padding: 8px;
+    border-radius: 14px;
+  }
   .tp-input-row {
     flex-direction: column;
     align-items: stretch;
+    gap: 8px;
   }
-  .tp-btn {
+  .tp-input-field-wrap {
     width: 100%;
+    height: 48px;
+    padding: 2px 6px 2px 10px;
+  }
+  .tp-url-input {
+    font-size: 14px;
+  }
+  .tp-btn-primary.tp-btn-launch {
+    width: 100%;
+    height: 46px;
+    border-radius: 10px;
+    font-size: 14.5px;
+  }
+  .tp-format-chips {
+    margin-top: 14px;
+    padding: 2px 2px 8px;
   }
   .tp-foot-grid {
     grid-template-columns: 1fr;
