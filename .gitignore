@@ -59,3 +59,7 @@ verify_*.png
 /.agents/skills/superpowers/
 /.agents/skills/ui-ux-pro-max-skill/
 .venv/
+
+resources/
+*.exe
+
