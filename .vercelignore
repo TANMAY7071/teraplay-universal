@@ -1,0 +1,5 @@
+backend/
+scripts/
+tests/
+resources/
+.venv/
