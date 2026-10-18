@@ -1,0 +1,383 @@
+import { execFile } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+
+interface TranscriptItem {
+  start: number;
+  duration: number;
+  text: string;
+}
+
+interface TranscriptData {
+  language: string;
+  items: TranscriptItem[];
+  count: number;
+}
+
+interface ResolveResponse {
+  success: boolean;
+  title?: string;
+  thumbnail?: string;
+  m3u8_url?: string;
+  fast_download_url?: string;
+  size?: string;
+  duration?: number;
+  shareId?: string;
+  serverTime?: string;
+  source?: string;
+  platform?: 'terabox' | 'youtube' | 'direct' | 'instagram' | 'facebook' | 'whatsapp';
+  youtube_id?: string;
+  formats?: Array<{
+    format_id: string;
+    quality: string;
+    height?: number;
+    ext: string;
+    filesize?: string;
+    url: string;
+    download_url?: string;
+    has_audio: boolean;
+    has_video: boolean;
+    is_audio_only?: boolean;
+  }>;
+  is_mock?: boolean;
+  error?: string;
+}
+
+function extractShareId(input: string): string | null {
+  if (!input) return null;
+  const clean = input.trim();
+
+  // Pattern 1: /s/1[a-zA-Z0-9_-]+
+  const slashMatch = clean.match(/\/s\/(?:1)?([a-zA-Z0-9_-]+)/i);
+  if (slashMatch && slashMatch[1]) return slashMatch[1];
+
+  // Pattern 2: ?surl=[a-zA-Z0-9_-]+
+  const surlMatch = clean.match(/[?&]surl=([a-zA-Z0-9_-]+)/i);
+  if (surlMatch && surlMatch[1]) return surlMatch[1];
+
+  // Pattern 3: direct ID
+  if (/^[a-zA-Z0-9_-]{10,40}$/.test(clean)) return clean;
+
+  return null;
+}
+
+// In-memory cache for resolved media links (TTL 1 hour)
+interface CacheItem {
+  data: ResolveResponse;
+  expiresAt: number;
+}
+const MEDIA_CACHE = new Map<string, CacheItem>();
+const CACHE_TTL_MS = 60 * 60 * 1000;
+
+function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
+  return new Promise((resolve) => {
+    const isWin = process.platform === 'win32';
+    const venvPython = isWin
+      ? path.resolve(process.cwd(), '.venv', 'Scripts', 'python.exe')
+      : path.resolve(process.cwd(), '.venv', 'bin', 'python');
+    const fallbackPython = isWin ? 'python' : 'python3';
+    const scriptPath = path.resolve(process.cwd(), 'scripts', 'extractor.py');
+
+    const pythonBin = fs.existsSync(venvPython) ? venvPython : fallbackPython;
+
+    execFile(pythonBin, [scriptPath, targetUrl], { timeout: 20000 }, (error, stdout, stderr) => {
+      if (error || !stdout) {
+        console.warn('[LocalExtractor] Exec notice:', error?.message || stderr);
+        resolve(null);
+        return;
+      }
+      try {
+        const parsed = JSON.parse(stdout.trim());
+        if (parsed.success === false) {
+          resolve({
+            success: false,
+            error: parsed.error || 'Video is unavailable or restricted on host platform',
+          });
+          return;
+        }
+
+        if (parsed.success && (parsed.stream_url || parsed.download_url)) {
+          const directMedia = parsed.stream_url || parsed.download_url;
+          const cleanTitle = (parsed.title || 'video').replace(/[^a-zA-Z0-9_\-]/g, '_');
+          const downloadProxy = `/api/stream-download?url=${encodeURIComponent(directMedia)}&filename=${encodeURIComponent(cleanTitle)}&source=${encodeURIComponent(parsed.source || '')}`;
+          
+          const mappedFormats = Array.isArray(parsed.formats)
+            ? parsed.formats.map((f: any) => ({
+                ...f,
+                download_url: `/api/stream-download?url=${encodeURIComponent(f.url)}&filename=${encodeURIComponent(`${cleanTitle}_${f.format_id}`)}&ext=${encodeURIComponent(f.ext || (f.is_audio_only ? 'mp3' : 'mp4'))}&source=${encodeURIComponent(parsed.source || '')}`
+              }))
+            : [];
+
+          resolve({
+            success: true,
+            title: parsed.title,
+            thumbnail: parsed.thumbnail || '',
+            m3u8_url: directMedia,
+            fast_download_url: downloadProxy,
+            size: parsed.size || 'HD Quality',
+            duration: parsed.duration || 0,
+            shareId: parsed.shareId || 'stream',
+            serverTime: new Date().toISOString(),
+            source: parsed.source || 'local_extractor',
+            platform: parsed.platform || (parsed.youtube_id ? 'youtube' : 'terabox'),
+            youtube_id: parsed.youtube_id,
+            transcript: parsed.transcript || null,
+            formats: mappedFormats,
+            is_mock: false,
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('[LocalExtractor] JSON parse notice:', err);
+      }
+      resolve(null);
+    });
+  });
+}
+
+function extractInstagramShortcode(input: string): string | null {
+  const match = input.match(/(?:https?:\/\/)?(?:www\.)?instagram\.com\/(reel|p|tv|stories)\/([A-Za-z0-9_-]+)/i);
+  return match ? match[2] : null;
+}
+
+async function extractInstagramEmbed(shortcode: string): Promise<Partial<ResolveResponse> | null> {
+  try {
+    const embedUrl = `https://www.instagram.com/p/${shortcode}/embed/captioned/`;
+    const response = await fetch(embedUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
+
+    if (response.ok) {
+      const html = await response.text();
+      const videoMatch = html.match(/"video_url"\s*:\s*"([^"]+)"/) || html.match(/video_url\s*:\s*'([^']+)'/);
+      const thumbMatch = html.match(/"display_url"\s*:\s*"([^"]+)"/) || html.match(/"thumbnail_src"\s*:\s*"([^"]+)"/);
+      const titleMatch = html.match(/<div class="Caption">([\s\S]*?)<\/div>/i) || html.match(/<title>([\s\S]*?)<\/title>/i);
+
+      if (videoMatch && videoMatch[1]) {
+        const cleanVideoUrl = videoMatch[1].replace(/\\u0026/g, '&').replace(/\\/g, '');
+        const cleanThumb = thumbMatch && thumbMatch[1] ? thumbMatch[1].replace(/\\u0026/g, '&').replace(/\\/g, '') : '';
+        const rawTitle = titleMatch && titleMatch[1] ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+        const title = rawTitle.slice(0, 90) || `Instagram Reel [${shortcode}]`;
+
+        return {
+          title,
+          thumbnail: cleanThumb,
+          m3u8_url: cleanVideoUrl,
+          fast_download_url: `/api/stream-download?url=${encodeURIComponent(cleanVideoUrl)}&filename=${encodeURIComponent(`instagram_reel_${shortcode}`)}&source=instagram`,
+          size: 'HD 1080p',
+          duration: 30,
+          source: 'instagram_embed_engine',
+          is_mock: false,
+        };
+      }
+    }
+  } catch (err: any) {
+    console.warn('[InstagramEmbedExtractor] Upstream query error:', err?.message);
+  }
+  return null;
+}
+
+export default async function handler(req: any, res: any) {
+  // CORS configuration
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  if (req.method !== 'GET') {
+    res.status(405).json({ success: false, error: 'Method not allowed. Use GET.' });
+    return;
+  }
+
+  // Edge Caching: 1 hour edge cache, 10 minutes stale-while-revalidate
+  res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
+  res.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
+
+  const { url, id } = req.query || {};
+  const queryTarget = (url || id || '') as string;
+
+  if (!queryTarget) {
+    res.status(400).json({
+      success: false,
+      error: 'Missing URL or Share ID parameter. Usage: /api/resolve?url=https://terabox.com/s/1xxxx',
+    });
+    return;
+  }
+
+  const cacheKey = queryTarget.trim().toLowerCase();
+  const cached = MEDIA_CACHE.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    res.status(200).json(cached.data);
+    return;
+  }
+
+  // 1. Primary: Run local high-performance Python extractor (.venv yt-dlp + TeraBox gateway)
+  const localExtracted = await runLocalExtractor(queryTarget);
+  if (localExtracted) {
+    if (localExtracted.success) {
+      MEDIA_CACHE.set(cacheKey, { data: localExtracted, expiresAt: Date.now() + CACHE_TTL_MS });
+    }
+    res.status(200).json(localExtracted);
+    return;
+  }
+
+  const shareId = extractShareId(queryTarget) || queryTarget;
+  const igShortcode = extractInstagramShortcode(queryTarget);
+
+  // If Instagram link, attempt direct embed extractor
+  if (igShortcode) {
+    const igExtracted = await extractInstagramEmbed(igShortcode);
+    if (igExtracted && igExtracted.m3u8_url) {
+      const resolved: ResolveResponse = {
+        success: true,
+        title: igExtracted.title || `Instagram Reel [${igShortcode}]`,
+        thumbnail: igExtracted.thumbnail || '',
+        m3u8_url: igExtracted.m3u8_url,
+        fast_download_url: igExtracted.fast_download_url,
+        size: igExtracted.size || 'HD Quality',
+        duration: igExtracted.duration || 30,
+        shareId: igShortcode,
+        serverTime: new Date().toISOString(),
+        source: 'instagram_embed_engine',
+        is_mock: false,
+      };
+
+      MEDIA_CACHE.set(cacheKey, { data: resolved, expiresAt: Date.now() + CACHE_TTL_MS });
+      res.status(200).json(resolved);
+      return;
+    }
+  }
+
+  // Upstream third-party API integration
+  const upstreamUrl = process.env.TERABOX_API_URL || process.env.EXTRACTOR_API_URL;
+  const upstreamKey = process.env.TERABOX_API_KEY || process.env.EXTRACTOR_API_KEY;
+
+  if (upstreamUrl && upstreamKey) {
+    try {
+      const targetEndpoint = `${upstreamUrl}?url=${encodeURIComponent(queryTarget)}&id=${encodeURIComponent(shareId)}`;
+      const response = await fetch(targetEndpoint, {
+        method: 'GET',
+        headers: {
+          'x-rapidapi-key': upstreamKey,
+          'x-rapidapi-host': new URL(upstreamUrl).hostname,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const rawDownload = data.fast_download_url || data.download_url || data.dlink || data.stream_url;
+        const resolved: ResolveResponse = {
+          success: true,
+          title: data.title || data.file_name || `Media Stream [${shareId.substring(0, 8)}]`,
+          thumbnail: data.thumbnail || data.thumb || '',
+          m3u8_url: data.m3u8_url || data.stream_url || data.dlink,
+          fast_download_url: rawDownload?.startsWith('http')
+            ? `/api/stream-download?url=${encodeURIComponent(rawDownload)}&filename=${encodeURIComponent(data.title || 'media')}`
+            : rawDownload,
+          size: data.size || data.file_size || 'Direct Stream',
+          duration: data.duration || 0,
+          shareId,
+          serverTime: new Date().toISOString(),
+          source: 'upstream_api',
+          is_mock: false,
+        };
+
+        MEDIA_CACHE.set(cacheKey, { data: resolved, expiresAt: Date.now() + CACHE_TTL_MS });
+        res.status(200).json(resolved);
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Upstream API request failed, falling back to mock stream:', err?.message);
+    }
+  }
+
+  // High-fidelity fallback mock response for local testing and zero-config launch
+  let title = `TeraBox Fast Stream - File [${shareId.substring(0, 8)}]`;
+  let thumbnail = 'https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=1200&q=80';
+  let source = 'terabox_edge_cdn';
+  let detectedPlatform: 'terabox' | 'youtube' | 'direct' | 'instagram' | 'facebook' | 'whatsapp' = 'terabox';
+  let detectedYtId: string | undefined = undefined;
+  let detectedTranscript: TranscriptData | null = null;
+
+  const lower = queryTarget.toLowerCase();
+  const ytMatch = queryTarget.match(/(?:youtu\.be\/|(?:youtube\.com|youtube-nocookie\.com)\/(?:embed\/|v\/|watch\?(?:.*&)?v=|shorts\/|live\/))([\w-]{11})/i);
+  if (lower.includes('youtube.com') || lower.includes('youtu.be') || ytMatch) {
+    detectedYtId = ytMatch ? ytMatch[1] : undefined;
+    detectedPlatform = 'youtube';
+    title = detectedYtId === 'dQw4w9WgXcQ'
+      ? 'Rick Astley - Never Gonna Give You Up (Official Video)'
+      : (detectedYtId ? `YouTube Video [${detectedYtId}]` : 'YouTube Media Stream');
+    thumbnail = detectedYtId ? `https://img.youtube.com/vi/${detectedYtId}/maxresdefault.jpg` : 'https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=1200&q=80';
+    source = 'youtube_fast_cdn';
+    detectedTranscript = detectedYtId === 'dQw4w9WgXcQ' ? {
+      language: 'en',
+      items: [
+        { start: 1.36, duration: 1.68, text: "[Music]" },
+        { start: 18.64, duration: 3.24, text: "We're no strangers to love" },
+        { start: 22.64, duration: 4.32, text: "You know the rules and so do I" },
+        { start: 27.04, duration: 4.0, text: "A full commitment's what I'm thinking of" },
+        { start: 31.12, duration: 3.96, text: "You wouldn't get this from any other guy" },
+        { start: 35.16, duration: 4.36, text: "I just wanna tell you how I'm feeling" },
+        { start: 40.52, duration: 2.4, text: "Gotta make you understand" },
+        { start: 43.0, duration: 2.12, text: "Never gonna give you up" },
+        { start: 45.2, duration: 1.88, text: "Never gonna let you down" },
+        { start: 47.32, duration: 3.8, text: "Never gonna run around and desert you" },
+        { start: 51.48, duration: 2.0, text: "Never gonna make you cry" },
+        { start: 53.6, duration: 1.92, text: "Never gonna say goodbye" },
+        { start: 55.72, duration: 3.64, text: "Never gonna tell a lie and hurt you" }
+      ],
+      count: 13
+    } : null;
+  } else if (lower.includes('instagram.com') || lower.includes('instagr.am')) {
+    detectedPlatform = 'instagram';
+    title = `Instagram Reel - ${igShortcode || 'Video'} [Ultra HD]`;
+    thumbnail = 'https://images.unsplash.com/photo-1611262588024-d12430b98920?auto=format&fit=crop&w=1200&q=80';
+    source = 'instagram_fast_cdn';
+  } else if (lower.includes('facebook.com') || lower.includes('fb.watch') || lower.includes('fb.com')) {
+    detectedPlatform = 'facebook';
+    title = 'Facebook Watch Video [High Definition]';
+    thumbnail = 'https://images.unsplash.com/photo-1562577309-4932fdd64cd1?auto=format&fit=crop&w=1200&q=80';
+    source = 'facebook_fast_cdn';
+  } else if (lower.includes('whatsapp.com') || lower.includes('wa.me')) {
+    detectedPlatform = 'whatsapp';
+    title = 'WhatsApp Shared Video Stream';
+    thumbnail = 'https://images.unsplash.com/photo-1614680376593-902f749f7ffc?auto=format&fit=crop&w=1200&q=80';
+    source = 'whatsapp_direct_cdn';
+  } else if (/\.(mp4|m3u8|webm)(\?.*)?$/i.test(queryTarget)) {
+    detectedPlatform = 'direct';
+    title = 'Direct CDN Media Stream';
+  }
+
+  const rawSampleVideo = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+  const downloadProxyUrl = `/api/stream-download?url=${encodeURIComponent(rawSampleVideo)}&filename=${encodeURIComponent(title.replace(/\s+/g, '_'))}`;
+
+  const mockResponse: ResolveResponse = {
+    success: true,
+    title,
+    thumbnail,
+    m3u8_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+    fast_download_url: downloadProxyUrl,
+    size: '348.2 MB',
+    duration: 634,
+    shareId,
+    serverTime: new Date().toISOString(),
+    source,
+    platform: detectedPlatform,
+    youtube_id: detectedYtId,
+    transcript: detectedTranscript,
+    is_mock: true,
+  };
+
+  MEDIA_CACHE.set(cacheKey, { data: mockResponse, expiresAt: Date.now() + CACHE_TTL_MS });
+  res.status(200).json(mockResponse);
+}

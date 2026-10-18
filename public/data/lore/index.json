@@ -1,0 +1,103 @@
+{
+  "series": [
+    {
+      "slug": "battle-through-the-heavens",
+      "worldCount": 87,
+      "characterCount": 485,
+      "cultivationCount": 55,
+      "techniquesCount": 221,
+      "artifactsCount": 108,
+      "clansCount": 27,
+      "galleryCount": 0,
+      "timelineCount": 0
+    },
+    {
+      "slug": "soulland",
+      "worldCount": 0,
+      "characterCount": 1747,
+      "cultivationCount": 5,
+      "techniquesCount": 0,
+      "artifactsCount": 0,
+      "clansCount": 0,
+      "galleryCount": 0,
+      "timelineCount": 0
+    },
+    {
+      "slug": "xian-ni",
+      "worldCount": 70,
+      "characterCount": 480,
+      "cultivationCount": 33,
+      "techniquesCount": 19,
+      "artifactsCount": 23,
+      "clansCount": 43,
+      "galleryCount": 0,
+      "timelineCount": 0
+    },
+    {
+      "slug": "wanmei-shijie",
+      "worldCount": 80,
+      "characterCount": 460,
+      "cultivationCount": 30,
+      "techniquesCount": 37,
+      "artifactsCount": 85,
+      "clansCount": 20,
+      "galleryCount": 0,
+      "timelineCount": 0
+    },
+    {
+      "slug": "swallowed-star",
+      "worldCount": 363,
+      "characterCount": 1158,
+      "cultivationCount": 177,
+      "techniquesCount": 1,
+      "artifactsCount": 499,
+      "clansCount": 134,
+      "galleryCount": 0,
+      "timelineCount": 0
+    },
+    {
+      "slug": "shrouding-the-heavens",
+      "worldCount": 3,
+      "characterCount": 341,
+      "cultivationCount": 36,
+      "techniquesCount": 0,
+      "artifactsCount": 11,
+      "clansCount": 0,
+      "galleryCount": 0,
+      "timelineCount": 0
+    },
+    {
+      "slug": "thegreatruler",
+      "worldCount": 110,
+      "characterCount": 455,
+      "cultivationCount": 177,
+      "techniquesCount": 0,
+      "artifactsCount": 114,
+      "clansCount": 0,
+      "galleryCount": 0,
+      "timelineCount": 0
+    },
+    {
+      "slug": "stellar-transformations",
+      "worldCount": 23,
+      "characterCount": 273,
+      "cultivationCount": 19,
+      "techniquesCount": 1,
+      "artifactsCount": 0,
+      "clansCount": 1,
+      "galleryCount": 0,
+      "timelineCount": 0
+    },
+    {
+      "slug": "wu-dong-qian-kun",
+      "worldCount": 108,
+      "characterCount": 463,
+      "cultivationCount": 98,
+      "techniquesCount": 0,
+      "artifactsCount": 61,
+      "clansCount": 32,
+      "galleryCount": 0,
+      "timelineCount": 0
+    }
+  ]
+}

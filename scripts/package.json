@@ -1,0 +1,12 @@
+{
+  "name": "donghuastream-sync",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Background sync scripts to populate DonghuaStream database from external APIs",
+  "scripts": {
+    "sync:donghua": "node sync-donghua.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.0"
+  }
+}

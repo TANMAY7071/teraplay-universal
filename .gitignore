@@ -1,0 +1,61 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Sensitive files
+.env
+.env.*
+supabase/.temp/
+scratch/
+scripts/
+!/scripts/
+!/scripts/**
+/scripts/node_modules/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# Graphify
+ARCHITECTURE_GRAPH.md
+graphify-out/
+
+# Diagnostics & Screenshots
+.archify/
+*.zip
+verify_*.png
+
+.zcode/
+
+# Plugin state
+.mimosa/
+
+# Machine-local agent skill packs (nested repos, ~127MB - not app code)
+/.agents/skills/everything-claude-code/
+/.agents/skills/superpowers/
+/.agents/skills/ui-ux-pro-max-skill/
+.venv/

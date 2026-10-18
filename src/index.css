@@ -1,0 +1,591 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Light mode colors: Bright, Airy, Premium, Cinematic */
+    --background: 228 33% 97.8%;
+    /* #F7F8FC */
+    --foreground: 224 71.4% 4.1%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71.4% 4.1%;
+
+    --primary: 280 100% 70%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220 14.3% 10%;
+
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 191 100% 50%;
+    --accent-foreground: 224 71.4% 4.1%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 280 100% 70%;
+
+    /* Custom donghua theme colors */
+    --donghua-orange: 25 100% 60%;
+    --donghua-cyan: 191 100% 50%;
+    --donghua-purple: 280 100% 70%;
+    --donghua-pink: 340 100% 70%;
+
+    /* Premium cinematic surfaces & text tones (tuned to reduce eye strain) */
+    --surface-1: 0 0% 100%;
+    --surface-2: 224 32% 96%;
+    --text-mid: 215 16% 40%;
+    --text-low: 215 14% 52%;
+    --tier-gold: 38 72% 45%;
+    --tier-silver: 220 10% 56%;
+    --tier-bronze: 24 55% 44%;
+    --scrollbar-thumb: 220 10% 46% / 0.35;
+    --scrollbar-thumb-hover: 220 10% 40% / 0.55;
+    --hairline: 220 13% 40% / 0.22;
+    --tile-outline: 220 15% 18% / 0.1;
+    --tile-outline-hover: 220 15% 18% / 0.2;
+    --tile-radius: 1rem;
+
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(280 100% 70% / 0.8), hsl(191 100% 50% / 0.8));
+    --gradient-card: linear-gradient(135deg, hsl(224 23% 8%), hsl(217 19% 12%));
+    --gradient-accent: linear-gradient(90deg, hsl(280 100% 70%), hsl(191 100% 50%));
+
+    /* Shadows and glows */
+    --shadow-glow: 0 0 30px hsl(280 100% 70% / 0.3);
+    --shadow-card: 0 8px 32px hsl(220 26% 5% / 0.5);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 225 32% 4%;
+    --foreground: 210 40% 98%;
+
+    --card: 224 28% 7%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 224 28% 7%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 280 100% 70%;
+    --primary-foreground: 220 26% 5%;
+
+    --secondary: 222 24% 11%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 222 24% 11%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 191 100% 50%;
+    --accent-foreground: 220 26% 5%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 222 20% 16%;
+    --input: 222 20% 16%;
+    --ring: 280 100% 70%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Premium cinematic surfaces & text tones (dark) */
+    --surface-1: 225 24% 6%;
+    --surface-2: 224 19% 9%;
+    --text-mid: 215 16% 68%;
+    --text-low: 215 12% 47%;
+    --tier-gold: 41 68% 60%;
+    --tier-silver: 220 12% 76%;
+    --tier-bronze: 26 54% 52%;
+    --scrollbar-thumb: 0 0% 100% / 0.16;
+    --scrollbar-thumb-hover: 0 0% 100% / 0.3;
+    --hairline: 0 0% 100% / 0.16;
+    --tile-outline: 0 0% 100% / 0.08;
+    --tile-outline-hover: 0 0% 100% / 0.18;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  img, a {
+    -webkit-user-drag: none !important;
+    -khtml-user-drag: none !important;
+    -moz-user-drag: none !important;
+    -o-user-drag: none !important;
+  }
+
+  input, textarea, [contenteditable="true"], [role="textbox"] {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at 15% 5%, hsl(var(--primary) / 0.05), transparent 32rem),
+      radial-gradient(circle at 85% 12%, hsl(var(--accent) / 0.04), transparent 28rem),
+      linear-gradient(180deg, #FCFCFE 0%, #F6F8FC 100%);
+    min-height: 100vh;
+    overflow-x: hidden !important;
+    max-width: 100vw;
+    width: 100%;
+    position: relative;
+    touch-action: pan-y pinch-zoom;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #root {
+    overflow-x: hidden !important;
+    max-width: 100vw;
+    width: 100%;
+    position: relative;
+    touch-action: pan-y pinch-zoom;
+  }
+
+  .dark body {
+    background-image:
+      radial-gradient(circle at 15% 5%, hsl(var(--primary) / 0.12), transparent 32rem),
+      radial-gradient(circle at 85% 12%, hsl(var(--accent) / 0.08), transparent 28rem),
+      linear-gradient(180deg, hsl(225 32% 4%), hsl(var(--background)));
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Single root scrollbar with reserved stable gutter */
+  html {
+    scroll-behavior: smooth;
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    max-width: 100vw;
+    width: 100%;
+    touch-action: pan-y pinch-zoom;
+  }
+
+  @supports (scrollbar-gutter: stable) {
+    html {
+      scrollbar-gutter: stable !important;
+    }
+  }
+
+  /* Block Radix UI padding/margin offsets on body when modal opens */
+  body[style],
+  body[data-scroll-locked],
+  html[data-scroll-locked] {
+    padding-right: 0px !important;
+    margin-right: 0px !important;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.35);
+    color: hsl(var(--foreground));
+  }
+
+  .premium-surface {
+    @apply border border-white/10 bg-card/70 shadow-[0_24px_80px_hsl(220_45%_2%/0.45)] backdrop-blur-xl;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal-up {
+      animation: reveal-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+  }
+
+  @keyframes reveal-up {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Theme transition animation */
+  * {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  }
+
+  /* Mobile responsive utilities */
+  @media (max-width: 480px) {
+    .container {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+  }
+
+  /* Touch target improvement for mobile buttons (excluding switches and carousel indicators) */
+  @media (hover: none) and (pointer: coarse) {
+    button:not([role="switch"]):not([data-carousel-dot]):not([role="tab"]),
+    [role="button"]:not([role="switch"]):not([data-carousel-dot]):not([role="tab"]),
+    .clickable {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  /* Floating Navigator Animations */
+  @keyframes slide-in-top {
+    from {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-in-bottom {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-in-top {
+    animation: slide-in-top 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-slide-in-bottom {
+    animation: slide-in-bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes danmaku-slide {
+    0% {
+      left: 100%;
+      transform: translate3d(0, 0, 0);
+    }
+
+    100% {
+      left: 0%;
+      transform: translate3d(-100%, 0, 0);
+    }
+  }
+
+  .animate-danmaku-move {
+    animation: danmaku-slide 7s linear forwards;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 1.5s infinite;
+  }
+
+  .animate-delayed-fade-in {
+    animation: fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
+  }
+
+  @keyframes kenburns {
+    0% {
+      transform: scale(1.02) translate(0, 0);
+    }
+    50% {
+      transform: scale(1.08) translate(-1%, -1%);
+    }
+    100% {
+      transform: scale(1.02) translate(0, 0);
+    }
+  }
+
+  .animate-kenburns {
+    animation: kenburns 25s ease-in-out infinite alternate;
+  }
+}
+
+/* Custom Ultra-Premium Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--scrollbar-thumb));
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--scrollbar-thumb-hover));
+}
+
+@supports (scrollbar-width: thin) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--scrollbar-thumb)) transparent;
+  }
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none !important;
+}
+
+@supports (scrollbar-width: none) {
+  .scrollbar-none {
+    scrollbar-width: none !important;
+  }
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* ==========================================================================
+   LENIS OFFICIAL SMOOTH SCROLL STYLES
+   ========================================================================== */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+/* ==========================================================================
+   PREMIUM CINEMATIC SURFACES
+   Poster tiles, leaderboard rank watermarks and section chrome.
+   Goal: tonal depth instead of pure-white-on-black, so nothing "pinches".
+   ========================================================================== */
+
+.poster-tile {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--tile-radius, 1rem);
+  background-color: hsl(var(--surface-2));
+  box-shadow:
+    inset 0 1px 0 0 hsl(0 0% 100% / 0.07),
+    0 16px 34px -20px hsl(225 60% 2% / 0.95);
+  outline: 1px solid hsl(var(--tile-outline));
+  outline-offset: -1px;
+  transition:
+    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    outline-color 0.35s ease,
+    box-shadow 0.45s ease;
+}
+
+.group:hover .poster-tile,
+.poster-tile:hover {
+  transform: translateY(-4px);
+  outline-color: hsl(var(--tile-outline-hover));
+  box-shadow:
+    inset 0 1px 0 0 hsl(0 0% 100% / 0.1),
+    0 30px 54px -22px hsl(225 60% 2% / 1);
+}
+
+/* Bottom scrim: keeps titles legible without crushing the artwork to black */
+.poster-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    hsl(225 45% 3% / 0.92) 0%,
+    hsl(225 40% 4% / 0.55) 24%,
+    hsl(225 40% 4% / 0.08) 48%,
+    transparent 70%
+  );
+}
+
+/* Glass sweep on hover - premium feel, pure CSS, no layout cost */
+.poster-sheen::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: -70%;
+  width: 45%;
+  z-index: 4;
+  opacity: 0;
+  pointer-events: none;
+  transform: skewX(-16deg);
+  background: linear-gradient(100deg, transparent, hsl(0 0% 100% / 0.15), transparent);
+}
+
+.group:hover .poster-sheen::before {
+  opacity: 1;
+  animation: sheen-sweep 0.95s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes sheen-sweep {
+  from {
+    left: -70%;
+  }
+
+  to {
+    left: 130%;
+  }
+}
+
+/* Leaderboard rank numeral: contained + blended so it never fights the art */
+.rank-watermark {
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.055em;
+  color: transparent;
+  background-image: linear-gradient(175deg, hsl(0 0% 100% / 0.92) 0%, hsl(0 0% 100% / 0.4) 45%, hsl(0 0% 100% / 0.08) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 3px 10px hsl(225 60% 2% / 0.65));
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.rank-watermark--gold {
+  background-image: linear-gradient(175deg, hsl(var(--tier-gold)) 0%, hsl(var(--tier-gold) / 0.28) 100%);
+  filter: drop-shadow(0 3px 12px hsl(38 80% 20% / 0.7));
+}
+
+.rank-watermark--silver {
+  background-image: linear-gradient(175deg, hsl(var(--tier-silver)) 0%, hsl(var(--tier-silver) / 0.24) 100%);
+}
+
+.rank-watermark--bronze {
+  background-image: linear-gradient(175deg, hsl(var(--tier-bronze)) 0%, hsl(var(--tier-bronze) / 0.24) 100%);
+}
+
+/* Section chrome: eyebrow label + hairline rule instead of a bare bold heading */
+.section-eyebrow {
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: hsl(var(--text-low));
+}
+
+.hairline-rule {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, hsl(var(--hairline)), hsl(var(--hairline) / 0.18) 46%, transparent 100%);
+}
+
+/* End-of-rail "view all" tile: fills the rail so a lone card never leaves a void */
+.rail-end-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 100%;
+  border-radius: var(--tile-radius, 1rem);
+  border: 1px dashed hsl(var(--tile-outline-hover));
+  background-color: hsl(0 0% 100% / 0.02);
+  color: hsl(var(--text-mid));
+  text-align: center;
+  transition:
+    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s ease,
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.rail-end-tile:hover {
+  transform: translateY(-4px);
+  border-color: hsl(var(--primary) / 0.45);
+  background-color: hsl(var(--primary) / 0.07);
+  color: hsl(0 0% 100%);
+}
+
+/* Solid purple progress indicator */
+.progress-soft {
+  background-color: hsl(var(--primary));
+  background-image: linear-gradient(90deg, hsl(var(--primary)), hsl(270 90% 65%));
+}
