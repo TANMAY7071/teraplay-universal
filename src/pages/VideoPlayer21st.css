@@ -14,10 +14,19 @@ html:has(.tp-root[data-theme="light"]) {
   background-color: #f4f6fb !important;
 }
 
-@supports (scrollbar-gutter: auto) {
-  html:has(.tp-root) {
-    scrollbar-gutter: auto !important;
-  }
+html,
+html:has(.tp-root) {
+  scrollbar-gutter: stable !important;
+}
+
+html[data-theme="dark"],
+html:has(.tp-root[data-theme="dark"]) {
+  color-scheme: dark;
+}
+
+html[data-theme="light"],
+html:has(.tp-root[data-theme="light"]) {
+  color-scheme: light;
 }
 
 @supports (scrollbar-width: thin) {
@@ -266,6 +275,20 @@ body:has(.tp-root)::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.32);
   transform: translateY(-1px);
+}
+
+.tp-theme-icon-btn {
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+html[data-theme="dark"] .tp-theme-icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+html[data-theme="light"] .tp-theme-icon-btn:hover {
+  background-color: rgba(0, 0, 0, 0.07) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
 }
 
 .tp-btn-nav-accent {

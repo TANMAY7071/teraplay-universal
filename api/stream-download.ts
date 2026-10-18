@@ -30,8 +30,9 @@ export default async function handler(req: any, res: any) {
     .replace(/[^a-zA-Z0-9_\-\. ]/g, '')
     .trim() || 'media';
 
-  const baseName = cleanFilename.replace(/\.(mp4|mp3|m4a|webm|mkv)$/i, '');
-  const finalExt = requestedExt || (targetUrl.includes('mime=audio') || targetUrl.includes('audio') ? 'mp3' : 'mp4');
+  const baseName = cleanFilename.replace(/\.(mp4|mp3|m4a|webm|mkv|jpg|jpeg|png|webp)$/i, '');
+  const isImageTarget = targetUrl.includes('.jpg') || targetUrl.includes('dst-jpg') || targetUrl.includes('.png') || requestedExt === 'jpg' || requestedExt === 'jpeg' || requestedExt === 'png';
+  const finalExt = requestedExt || (targetUrl.includes('mime=audio') || targetUrl.includes('audio') ? 'mp3' : (isImageTarget ? 'jpg' : 'mp4'));
   const downloadName = `${baseName}.${finalExt}`;
 
   try {
@@ -50,7 +51,7 @@ export default async function handler(req: any, res: any) {
     if (isInstagram) {
       upstreamHeaders['Referer'] = 'https://www.instagram.com/';
       upstreamHeaders['Origin'] = 'https://www.instagram.com';
-      upstreamHeaders['Sec-Fetch-Dest'] = 'video';
+      upstreamHeaders['Sec-Fetch-Dest'] = isImageTarget ? 'image' : 'video';
       upstreamHeaders['Sec-Fetch-Mode'] = 'cors';
       upstreamHeaders['Sec-Fetch-Site'] = 'cross-site';
     }
@@ -80,6 +81,10 @@ export default async function handler(req: any, res: any) {
       m4a: 'audio/mp4',
       mp4: 'video/mp4',
       webm: 'video/webm',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      webp: 'image/webp',
     };
     const contentType = mimeMap[finalExt] || upstreamResponse.headers.get('content-type') || 'video/mp4';
     const contentLength = upstreamResponse.headers.get('content-length');

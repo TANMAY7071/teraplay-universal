@@ -278,6 +278,156 @@ def format_friendly_error(err_str):
     clean = re.sub(r'See https?:\/\/[^\s]+ for [^\.]*\.', '', clean)
     return clean.strip() or "Video stream could not be extracted. Please check the link and try again."
 
+import struct
+
+def get_jpeg_dimensions(url):
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        with urllib.request.urlopen(req, timeout=4) as r:
+            data = r.read(65536)
+            i = 0
+            while i < len(data) - 9:
+                if data[i] == 0xFF and data[i+1] in [0xC0, 0xC1, 0xC2]:
+                    h, w = struct.unpack('>HH', data[i+5:i+9])
+                    return w, h
+                i += 1
+    except Exception:
+        pass
+    return None, None
+
+def resolve_instagram_media(url):
+    if not yt_dlp:
+        return None
+    ydl_opts = {
+        'quiet': True,
+        'no_warnings': True,
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+        }
+    }
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ie = ydl.get_info_extractor('Instagram')
+            res = ie._real_extract(url)
+            if not res:
+                return None
+
+            title = res.get('title') or 'Instagram Post'
+            uploader = res.get('uploader') or res.get('uploader_id') or 'Instagram Creator'
+            entries = res.get('entries') or []
+            is_carousel = len(entries) > 1
+
+            # Detect actual image dimensions from the first item
+            first_url = None
+            if is_carousel:
+                for item in entries:
+                    thumbs = item.get('thumbnails') or []
+                    if thumbs and thumbs[-1].get('url'):
+                        first_url = thumbs[-1].get('url')
+                        break
+            else:
+                target = entries[0] if entries else res
+                thumbs = target.get('thumbnails') or res.get('thumbnails') or []
+                if thumbs and thumbs[-1].get('url'):
+                    first_url = thumbs[-1].get('url')
+
+            det_w, det_h = (None, None)
+            if first_url:
+                det_w, det_h = get_jpeg_dimensions(first_url)
+
+            final_w = det_w or 1080
+            final_h = det_h or 1350
+            is_vertical = final_h > final_w
+            res_label = f"{final_w} × {final_h}"
+            tier_label = "4K Ultra HD" if (final_w >= 3000 or final_h >= 3000) else ("1080p HD" if (final_w >= 1080 or final_h >= 1080) else "HD")
+
+            thumbnails = []
+            formats = []
+
+            if is_carousel:
+                for idx, item in enumerate(entries):
+                    thumbs = item.get('thumbnails') or []
+                    if thumbs:
+                        best = thumbs[-1]
+                        slide_url = best.get('url')
+                        slide_label = f"Slide {idx + 1} of {len(entries)} ({tier_label} Portrait)" if is_vertical else f"Slide {idx + 1} of {len(entries)} ({tier_label})"
+                        thumbnails.append({
+                            "url": slide_url,
+                            "width": final_w,
+                            "height": final_h,
+                            "resolution": res_label,
+                            "quality_label": slide_label,
+                        })
+                        formats.append({
+                            "format_id": f"slide_{idx + 1}",
+                            "quality": f"Slide {idx + 1} Image ({tier_label} JPG)",
+                            "height": final_h,
+                            "ext": "jpg",
+                            "filesize": f"{res_label} JPG",
+                            "url": slide_url,
+                            "download_url": slide_url,
+                            "has_audio": False,
+                            "has_video": False,
+                            "is_audio_only": False,
+                            "is_progressive": True
+                        })
+            else:
+                target = entries[0] if entries else res
+                thumbs = target.get('thumbnails') or res.get('thumbnails') or []
+                if thumbs:
+                    best = thumbs[-1]
+                    slide_url = best.get('url')
+                    thumbnails.append({
+                        "url": slide_url,
+                        "width": final_w,
+                        "height": final_h,
+                        "resolution": res_label,
+                        "quality_label": f"Full-Res Image ({tier_label} Portrait)" if is_vertical else f"Full-Res Image ({tier_label})",
+                    })
+                    formats.append({
+                        "format_id": "image_1",
+                        "quality": f"Full-Res Image ({tier_label} JPG)",
+                        "height": final_h,
+                        "ext": "jpg",
+                        "filesize": f"{res_label} JPG",
+                        "url": slide_url,
+                        "download_url": slide_url,
+                        "has_audio": False,
+                        "has_video": False,
+                        "is_audio_only": False,
+                        "is_progressive": True
+                    })
+
+            if not thumbnails:
+                return None
+
+            primary_thumb = thumbnails[0]["url"]
+            clean_title = f"{uploader}: {title}" if uploader and title and not title.startswith(uploader) else (title or 'Instagram Media')
+
+            return {
+                "success": True,
+                "title": clean_title,
+                "thumbnail": primary_thumb,
+                "thumbnails": thumbnails,
+                "stream_url": primary_thumb,
+                "download_url": primary_thumb,
+                "size": f"{len(thumbnails)} {tier_label} Slides" if is_carousel else f"{tier_label} Photo",
+                "duration": 0,
+                "shareId": res.get('id') or 'instagram',
+                "source": "instagram_carousel_engine",
+                "platform": "instagram",
+                "media_type": "carousel" if is_carousel else "image",
+                "is_vertical": is_vertical,
+                "aspect_ratio": f"{final_w}:{final_h}",
+                "formats": formats,
+                "video_formats": formats,
+                "audio_formats": [],
+                "is_mock": False
+            }
+    except Exception:
+        return None
+
 def resolve_ytdlp(url):
     if not yt_dlp:
         return {"success": False, "error": "yt-dlp is not installed"}
@@ -308,9 +458,17 @@ def resolve_ytdlp(url):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
     except Exception as e:
+        if 'instagram' in url.lower():
+            ig_res = resolve_instagram_media(url)
+            if ig_res and ig_res.get('success'):
+                return ig_res
         return {"success": False, "error": format_friendly_error(str(e))}
 
     if not info:
+        if 'instagram' in url.lower():
+            ig_res = resolve_instagram_media(url)
+            if ig_res and ig_res.get('success'):
+                return ig_res
         return {"success": False, "error": "Could not extract video metadata"}
 
     try:
@@ -570,6 +728,10 @@ def resolve_ytdlp(url):
             stream_url = f"https://www.youtube.com/watch?v={youtube_id}"
 
         if not stream_url:
+            if platform == 'instagram':
+                ig_res = resolve_instagram_media(url)
+                if ig_res and ig_res.get('success'):
+                    return ig_res
             return {"success": False, "error": "No direct media stream found for this link"}
 
         if not all_videos and stream_url:
@@ -588,6 +750,17 @@ def resolve_ytdlp(url):
 
         available_formats = all_videos + audio_formats_list
 
+        info_w = info.get('width') or 0
+        info_h = info.get('height') or 0
+        if not info_w or not info_h:
+            for f in raw_formats:
+                fw = f.get('width') or 0
+                fh = f.get('height') or 0
+                if fw and fh and (fw * fh > info_w * info_h):
+                    info_w = fw
+                    info_h = fh
+        is_vertical = info_h > info_w if (info_w and info_h) else False
+
         return {
             "success": True,
             "title": title,
@@ -601,6 +774,8 @@ def resolve_ytdlp(url):
             "platform": platform,
             "youtube_id": youtube_id,
             "transcript": transcript,
+            "is_vertical": is_vertical,
+            "aspect_ratio": f"{info_w}:{info_h}" if (info_w and info_h) else None,
             "formats": available_formats,
             "video_formats": all_videos,
             "audio_formats": audio_formats_list

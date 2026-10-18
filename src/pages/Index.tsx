@@ -26,6 +26,8 @@ import {
   Info,
   AlertCircle,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Music,
   Video,
   Volume2,
@@ -45,19 +47,20 @@ import { normalizeMediaUrl, extractYouTubeVideoId, isTeraBoxUrl } from '@/lib/ur
 import { getSeoConfigForPath } from '@/data/seoRoutes';
 import { useAuth } from '@/contexts/AuthContext';
 import AdBannerSlot from '@/components/ads/AdBannerSlot';
+import { ThemeChanger } from '@/components/ThemeChanger';
 import './VideoPlayer21st.css';
 
-export interface TranscriptItem {
-  start: number;
-  duration: number;
-  text: string;
-}
+import {
+  type TranscriptItem,
+  type TranscriptData,
+  FALLBACK_DEMO_TRANSCRIPT,
+  formatTime,
+  formatSrtTimestamp,
+  generateSrtContent,
+  generateTxtContent,
+} from '@/lib/transcription';
 
-export interface TranscriptData {
-  language: string;
-  items: TranscriptItem[];
-  count: number;
-}
+export type { TranscriptItem, TranscriptData };
 
 export interface MediaFormatOption {
   format_id: string;
@@ -109,81 +112,13 @@ export interface ResolvedMedia {
   formats?: MediaFormatOption[];
   video_formats?: MediaFormatOption[];
   audio_formats?: MediaFormatOption[];
+  media_type?: 'video' | 'carousel' | 'image';
+  is_vertical?: boolean;
+  aspect_ratio?: string;
   is_mock?: boolean;
 }
 
 const GUEST_MAX_PLAYS = 5;
-
-// Sample fallback transcript for instant demonstration and offline mode
-const FALLBACK_DEMO_TRANSCRIPT: TranscriptItem[] = [
-  { start: 1.36, duration: 1.68, text: "[Music intro]" },
-  { start: 18.64, duration: 3.24, text: "We're no strangers to love" },
-  { start: 22.64, duration: 4.32, text: "You know the rules and so do I" },
-  { start: 27.04, duration: 4.0, text: "A full commitment's what I'm thinking of" },
-  { start: 31.12, duration: 3.96, text: "You wouldn't get this from any other guy" },
-  { start: 35.16, duration: 4.36, text: "I just wanna tell you how I'm feeling" },
-  { start: 40.52, duration: 2.4, text: "Gotta make you understand" },
-  { start: 43.0, duration: 2.12, text: "Never gonna give you up" },
-  { start: 45.2, duration: 1.88, text: "Never gonna let you down" },
-  { start: 47.32, duration: 3.8, text: "Never gonna run around and desert you" },
-  { start: 51.48, duration: 2.0, text: "Never gonna make you cry" },
-  { start: 53.6, duration: 1.92, text: "Never gonna say goodbye" },
-  { start: 55.72, duration: 3.64, text: "Never gonna tell a lie and hurt you" },
-];
-
-function formatTime(sec: number): string {
-  const totalSec = Math.max(0, Math.floor(sec));
-  const s = totalSec % 60;
-  const totalMin = Math.floor(totalSec / 60);
-  const m = totalMin % 60;
-  const h = Math.floor(totalMin / 60);
-  const pad = (n: number, z = 2) => String(n).padStart(z, '0');
-  if (h > 0) {
-    return `${pad(h)}:${pad(m)}:${pad(s)}`;
-  }
-  return `${pad(m)}:${pad(s)}`;
-}
-
-function formatSrtTimestamp(seconds: number): string {
-  const totalMs = Math.max(0, Math.floor(seconds * 1000));
-  const ms = totalMs % 1000;
-  const totalSec = Math.floor(totalMs / 1000);
-  const s = totalSec % 60;
-  const totalMin = Math.floor(totalSec / 60);
-  const m = totalMin % 60;
-  const h = Math.floor(totalMin / 60);
-  const pad = (n: number, z = 2) => String(n).padStart(z, '0');
-  return `${pad(h)}:${pad(m)}:${pad(s)},${pad(ms, 3)}`;
-}
-
-function generateSrtContent(items: TranscriptItem[]): string {
-  return items
-    .map((item, index) => {
-      const nextItem = items[index + 1];
-      const startStr = formatSrtTimestamp(item.start);
-      const dur = item.duration && item.duration > 0 ? item.duration : 2.5;
-      const rawEnd = item.start + dur;
-      const endVal = nextItem && nextItem.start > item.start ? Math.min(rawEnd, nextItem.start) : rawEnd;
-      const endStr = formatSrtTimestamp(endVal);
-      const cleanText = item.text.replace(/\r?\n+/g, '\n').trim();
-      return `${index + 1}\n${startStr} --> ${endStr}\n${cleanText}`;
-    })
-    .join('\n\n');
-}
-
-function generateTxtContent(items: TranscriptItem[], withTimestamps: boolean, title: string): string {
-  const header = `Transcript: ${title}\nExported from TeraPlay Universal Dock\n${'='.repeat(40)}\n\n`;
-  const body = items
-    .map((item) => {
-      const clean = item.text.replace(/\r?\n+/g, ' ').trim();
-      if (withTimestamps) {
-        return `[${formatTime(item.start)}] ${clean}`;
-      }
-      return clean;
-    })
-    .join(withTimestamps ? '\n' : ' ');
-  return header + body;
-}
 
 function triggerFileDownload(content: string, filename: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
@@ -200,7 +135,7 @@ function triggerFileDownload(content: string, filename: string, mimeType: string
 // ==========================================
 // RESOLUTION & ASPECT RATIO HELPERS
 // ==========================================
-export function getStandardResTier(height?: number, fallbackLabel?: string): string {
+function getStandardResTier(height?: number, fallbackLabel?: string): string {
   if (!height || height <= 0) return fallbackLabel || 'MP4 Video';
   if (height >= 2000) return '4K Ultra HD';
   if (height >= 1300) return '1440p 2K QHD';
@@ -213,7 +148,7 @@ export function getStandardResTier(height?: number, fallbackLabel?: string): str
   return `${height}p`;
 }
 
-export function getShortResTag(height?: number): string {
+function getShortResTag(height?: number): string {
   if (!height || height <= 0) return 'MP4';
   if (height >= 2000) return '4K';
   if (height >= 1300) return '1440p 2K';
@@ -224,7 +159,7 @@ export function getShortResTag(height?: number): string {
   return `${height}p`;
 }
 
-export function isCinemaWidescreen(height?: number): boolean {
+function isCinemaWidescreen(height?: number): boolean {
   if (!height) return false;
   return [1350, 1012, 800, 676, 536, 450, 338].includes(height) || (height > 0 && ![2160, 1440, 1080, 720, 480, 360, 240, 144].includes(height));
 }
@@ -442,6 +377,7 @@ export default function Index() {
   // Studio Mode Tabs: 'downloads' | 'transcript' | 'thumbnails' | 'player'
   const [youtubeTab, setYoutubeTab] = useState<'downloads' | 'transcript' | 'thumbnails' | 'player'>('downloads');
   const [downloadFormatTab, setDownloadFormatTab] = useState<'video' | 'audio'>('video');
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [isQuickDropdownOpen, setIsQuickDropdownOpen] = useState(false);
   const quickDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -457,6 +393,8 @@ export default function Index() {
 
   const [transcriptSearch, setTranscriptSearch] = useState('');
   const [showTimestamps, setShowTimestamps] = useState(true);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcribeNotice, setTranscribeNotice] = useState<{ message: string; code?: string } | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('teraplay-theme') as 'dark' | 'light') || 'dark';
@@ -474,18 +412,16 @@ export default function Index() {
     });
   }, []);
 
-  // Synchronize documentElement theme class for Apple HIG system matching
+  // Synchronize documentElement theme class (color-scheme handled declaratively in CSS to avoid scrollbar layout shift)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const root = document.documentElement;
       if (theme === 'dark') {
         root.classList.remove('light');
         root.classList.add('dark');
-        root.style.colorScheme = 'dark';
       } else {
         root.classList.remove('dark');
         root.classList.add('light');
-        root.style.colorScheme = 'light';
       }
     }
   }, [theme]);
@@ -620,6 +556,8 @@ export default function Index() {
 
     setIsLoading(true);
     setResolveError(null);
+    setTranscribeNotice(null);
+    setIsTranscribing(false);
 
     const isYt = normalized.platform === 'youtube' || !!extractYouTubeVideoId(raw);
     const ytId = extractYouTubeVideoId(raw) || undefined;
@@ -726,6 +664,7 @@ export default function Index() {
         throw new Error(data.error || 'Failed to extract video stream from this link');
       }
 
+      const isImg = data.media_type === 'carousel' || data.media_type === 'image' || data.formats?.some((f: MediaFormatOption) => f.ext === 'jpg');
       setResolvedVideo({
         title: data.title || 'Shared Video File',
         thumbnail: data.thumbnail || '',
@@ -741,11 +680,15 @@ export default function Index() {
         formats: data.formats || [],
         video_formats: data.video_formats || [],
         audio_formats: data.audio_formats || [],
+        media_type: data.media_type || (isImg ? 'carousel' : 'video'),
+        is_vertical: data.is_vertical,
+        aspect_ratio: data.aspect_ratio,
         is_mock: data.is_mock,
       });
 
+      setActiveSlideIndex(0);
       incrementGuestPlays();
-      toast.success('Stream loaded! Playing video...');
+      toast.success(isImg ? 'Instagram Media loaded! All slides ready.' : 'Stream loaded! Playing video...');
 
       setTimeout(() => {
         const el = document.getElementById('player-viewport');
@@ -851,27 +794,72 @@ export default function Index() {
     [downloadFormatTab, videoFormats, audioFormats]
   );
 
+  const isImageMedia = useMemo(() => {
+    if (!resolvedVideo) return false;
+    return (
+      resolvedVideo.media_type === 'carousel' ||
+      resolvedVideo.media_type === 'image' ||
+      resolvedVideo.formats?.some((f) => f.ext === 'jpg' || f.ext === 'jpeg' || f.ext === 'png') ||
+      Boolean(resolvedVideo.m3u8_url && /\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(resolvedVideo.m3u8_url))
+    );
+  }, [resolvedVideo]);
+
+  const isVerticalMedia = useMemo(() => {
+    if (!resolvedVideo) return false;
+    if (resolvedVideo.is_vertical !== undefined) {
+      return Boolean(resolvedVideo.is_vertical);
+    }
+    const firstThumb = resolvedVideo.thumbnails?.[0];
+    if (firstThumb?.width && firstThumb?.height) {
+      return firstThumb.height > firstThumb.width;
+    }
+    if (resolvedVideo.platform === 'instagram' && resolvedVideo.media_type === 'carousel') {
+      return true;
+    }
+    return false;
+  }, [resolvedVideo]);
+
+  const carouselSlides = useMemo(() => {
+    if (!resolvedVideo) return [];
+    if (resolvedVideo.thumbnails && resolvedVideo.thumbnails.length > 0) {
+      return resolvedVideo.thumbnails;
+    }
+    if (resolvedVideo.thumbnail) {
+      return [{ url: resolvedVideo.thumbnail, quality_label: 'Original Media' }];
+    }
+    return [];
+  }, [resolvedVideo]);
+
   const thumbnailList = useMemo(() => {
     if (!resolvedVideo) return [];
     if (resolvedVideo.thumbnails && resolvedVideo.thumbnails.length > 0) {
       return resolvedVideo.thumbnails.map((t, idx) => {
-        const tag = t.height ? `${t.height}p` : `thumb_${idx + 1}`;
-        const label = t.quality_label || (t.height ? `${t.height}p Quality` : `Cover Image ${idx + 1}`);
+        const isCarousel = resolvedVideo.media_type === 'carousel' || resolvedVideo.thumbnails!.length > 4;
+        const tag = isCarousel ? `slide_${idx + 1}` : (t.height ? `${t.height}p` : `thumb_${idx + 1}`);
+        const label = isCarousel
+          ? `Slide ${idx + 1} of ${resolvedVideo.thumbnails!.length}`
+          : (t.quality_label || (t.height ? `${t.height}p Quality` : `Cover Image ${idx + 1}`));
+        const sublabel = isCarousel
+          ? (t.quality_label?.replace(/^Slide \d+ of \d+\s*\((.*?)\)$/, '$1') || 'Original Studio Quality')
+          : (t.height ? `${t.height}p Resolution` : 'Original Quality');
         const res = t.resolution || (t.width && t.height ? `${t.width} × ${t.height}` : 'HD Quality');
         const badge =
-          (t.width && t.width >= 1920) || (t.height && t.height >= 1080)
+          (t.width && t.width >= 2000) || (t.height && t.height >= 2000)
+            ? '4K UHD'
+            : (t.width && t.width >= 1920) || (t.height && t.height >= 1080)
             ? 'Highest Quality'
             : (t.width && t.width >= 1280) || (t.height && t.height >= 720)
             ? 'High Definition'
             : 'Standard';
         const badgeColor =
-          badge === 'Highest Quality'
+          badge === '4K UHD' || badge === 'Highest Quality'
             ? 'text-[#e4f222] bg-[#e4f222]/15 border-[#e4f222]/30'
             : badge === 'High Definition'
             ? 'text-sky-400 bg-sky-400/15 border-sky-400/30'
             : 'text-amber-400 bg-amber-400/15 border-amber-400/30';
         return {
           label,
+          sublabel,
           res,
           badge,
           badgeColor,
@@ -885,6 +873,7 @@ export default function Index() {
       return [
         {
           label: 'MaxRes Quality (1080p)',
+          sublabel: 'Full HD 1080p',
           res: '1920 × 1080',
           badge: 'Highest Quality',
           badgeColor: 'text-[#e4f222] bg-[#e4f222]/15 border-[#e4f222]/30',
@@ -893,6 +882,7 @@ export default function Index() {
         },
         {
           label: 'High Quality (HQ 720p)',
+          sublabel: 'HD 720p',
           res: '1280 × 720 / 480 × 360',
           badge: 'High Definition',
           badgeColor: 'text-sky-400 bg-sky-400/15 border-sky-400/30',
@@ -901,6 +891,7 @@ export default function Index() {
         },
         {
           label: 'Standard Quality (SD)',
+          sublabel: 'Standard 480p',
           res: '640 × 480',
           badge: 'Standard Res',
           badgeColor: 'text-amber-400 bg-amber-400/15 border-amber-400/30',
@@ -909,6 +900,7 @@ export default function Index() {
         },
         {
           label: 'Medium Quality (MQ)',
+          sublabel: 'Compact 180p',
           res: '320 × 180',
           badge: 'Compact Size',
           badgeColor: 'text-slate-400 bg-slate-400/15 border-slate-400/30',
@@ -922,7 +914,8 @@ export default function Index() {
       return [
         {
           label: 'Primary Cover Thumbnail',
-          res: 'Original Resolution',
+          sublabel: 'Original Media Cover',
+          res: 'HD Standard',
           badge: 'HD Quality',
           badgeColor: 'text-[#e4f222] bg-[#e4f222]/15 border-[#e4f222]/30',
           url: resolvedVideo.thumbnail,
@@ -993,9 +986,88 @@ export default function Index() {
     toast.success('Downloaded SubRip .SRT subtitle file!');
   };
 
+  const handleGenerateAiTranscript = async (forceDemo = false) => {
+    if (!resolvedVideo) return;
+    setIsTranscribing(true);
+    setTranscribeNotice(null);
+
+    if (forceDemo) {
+      setResolvedVideo((prev) =>
+        prev
+          ? {
+              ...prev,
+              transcript: {
+                language: 'en',
+                items: FALLBACK_DEMO_TRANSCRIPT,
+                count: FALLBACK_DEMO_TRANSCRIPT.length,
+              },
+            }
+          : prev
+      );
+      setIsTranscribing(false);
+      toast.success('Loaded demo transcript cues!');
+      return;
+    }
+
+    try {
+      let directUrl = resolvedVideo.audio_formats?.[0]?.url || resolvedVideo.fast_download_url;
+      if (directUrl?.startsWith('/api/stream-download')) {
+        try {
+          const parsed = new URL(directUrl, window.location.origin);
+          const raw = parsed.searchParams.get('url');
+          if (raw) directUrl = raw;
+        } catch {
+          // Fallback to directUrl as provided
+        }
+      }
+
+      const targetMediaUrl = directUrl || resolvedVideo.m3u8_url || inputUrl.trim();
+
+      const queryParams = new URLSearchParams();
+      if (targetMediaUrl) queryParams.set('url', targetMediaUrl);
+      if (inputUrl.trim() && inputUrl.trim() !== targetMediaUrl) queryParams.set('platformUrl', inputUrl.trim());
+      if (resolvedVideo.platform) queryParams.set('platform', resolvedVideo.platform);
+      if (resolvedVideo.shareId) queryParams.set('id', resolvedVideo.shareId);
+
+      const res = await fetch(`/api/transcribe?${queryParams.toString()}`);
+      const data = await res.json();
+
+      if (data.success && data.transcript?.items?.length) {
+        setResolvedVideo((prev) => (prev ? { ...prev, transcript: data.transcript } : prev));
+        const cueCount = data.transcript.items.length;
+        const srcLabel = data.source === 'native' ? 'Platform Subtitles' : 'Groq Whisper AI';
+        toast.success(`Transcript ready: ${cueCount} cues loaded via ${srcLabel}!`);
+      } else {
+        const errMsg = data.error || 'No transcript could be generated for this media.';
+        setTranscribeNotice({ message: errMsg, code: data.code });
+        toast.error(errMsg);
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Network connection failed while contacting transcription service.';
+      setTranscribeNotice({ message: errMsg, code: 'NETWORK_ERROR' });
+      toast.error(errMsg);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
   const handleDownloadThumbnail = async (imgUrl: string, qualityLabel: string) => {
-    const safeTitle = (resolvedVideo?.title || 'youtube_thumbnail').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const safeTitle = (resolvedVideo?.title || 'media_cover').replace(/[^a-zA-Z0-9_-]/g, '_');
     const filename = `${safeTitle}_${qualityLabel}.jpg`;
+
+    // Direct proxy download for Instagram and external CDNs to avoid browser CORS blocks
+    if (imgUrl.includes('fbcdn.net') || imgUrl.includes('cdninstagram.com') || imgUrl.includes('instagram.com')) {
+      const proxyUrl = `/api/stream-download?url=${encodeURIComponent(imgUrl)}&filename=${encodeURIComponent(`${safeTitle}_${qualityLabel}`)}&ext=jpg&source=instagram`;
+      const a = document.createElement('a');
+      a.href = proxyUrl;
+      a.setAttribute('download', filename);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success(`Downloading ${qualityLabel}...`);
+      return;
+    }
+
     try {
       let res = await fetch(imgUrl);
       // Auto fallback to HQ if MaxRes is a 404 (common on older video uploads)
@@ -1018,11 +1090,27 @@ export default function Index() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
-      toast.success(`Downloaded ${qualityLabel} thumbnail!`);
+      toast.success(`Downloaded ${qualityLabel}!`);
     } catch {
-      window.open(imgUrl, '_blank');
-      toast.info(`Opening ${qualityLabel} thumbnail in new tab`);
+      const proxyUrl = `/api/stream-download?url=${encodeURIComponent(imgUrl)}&filename=${encodeURIComponent(`${safeTitle}_${qualityLabel}`)}&ext=jpg`;
+      const a = document.createElement('a');
+      a.href = proxyUrl;
+      a.setAttribute('download', filename);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.info(`Downloading ${qualityLabel} via secure stream...`);
     }
+  };
+
+  const handleDownloadAllThumbnails = () => {
+    if (!thumbnailList.length) return;
+    toast.info(`Starting batch download of ${thumbnailList.length} items...`);
+    thumbnailList.forEach((item, i) => {
+      setTimeout(() => {
+        handleDownloadThumbnail(item.url, item.tag);
+      }, i * 350);
+    });
   };
 
   const handleCopyEmbed = async () => {
@@ -1103,24 +1191,7 @@ export default function Index() {
         </div>
 
         <div className="tp-nav-actions">
-          <button
-            type="button"
-            className="tp-theme-btn"
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          >
-            {theme === 'dark' ? (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-              </svg>
-            ) : (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-              </svg>
-            )}
-          </button>
+          <ThemeChanger theme={theme} onToggle={toggleTheme} variant="icon" />
 
           {user ? (
             <div className="flex items-center gap-2">
@@ -1616,9 +1687,13 @@ export default function Index() {
               >
                 <Subtitles className="w-4 h-4" />
                 <span>Transcript & Subtitles</span>
-                {resolvedVideo.transcript?.items && (
+                {resolvedVideo.transcript?.items ? (
                   <span className="text-[10px] bg-amber-500/15 text-amber-500 dark:text-[#e4f222] px-2 py-0.5 rounded-full border border-amber-500/30 dark:border-[#e4f222]/30 font-mono">
                     {resolvedVideo.transcript.items.length} cues
+                  </span>
+                ) : (
+                  <span className="text-[10px] bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/30 font-mono">
+                    Groq AI
                   </span>
                 )}
               </button>
@@ -1661,8 +1736,8 @@ export default function Index() {
                 {/* TOP SECTION: SIDE-BY-SIDE VIDEO PLAYER & QUICK ACTIONS CARD (IMAGE 3) */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   {/* LEFT: EMBEDDED LIVE PLAYER */}
-                  <div className="lg:col-span-7 space-y-2">
-                    <div id="studio-player-frame" className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-[var(--tp-border-card)] shadow-2xl group">
+                  <div className={`${isVerticalMedia ? 'lg:col-span-6 xl:col-span-5 mx-auto w-full max-w-md lg:max-w-none' : 'lg:col-span-7'} space-y-2`}>
+                    <div id="studio-player-frame" className={`relative ${isVerticalMedia ? 'aspect-[3/4] max-h-[640px] max-w-[480px] mx-auto' : 'aspect-video'} rounded-2xl overflow-hidden bg-black border border-[var(--tp-border-card)] shadow-2xl group`}>
                       {isYouTubeMode && resolvedVideo.youtube_id ? (
                         <iframe
                           className="w-full h-full"
@@ -1679,6 +1754,39 @@ export default function Index() {
                           allow="accelerometer; autoplay; fullscreen; picture-in-picture"
                           allowFullScreen
                         />
+                      ) : isImageMedia ? (
+                        <div className="relative w-full h-full flex items-center justify-center bg-black/95 select-none overflow-hidden">
+                          <img
+                            src={carouselSlides[activeSlideIndex]?.url || resolvedVideo.thumbnail || resolvedVideo.m3u8_url}
+                            alt={resolvedVideo.title}
+                            className="w-full h-full object-contain transition-all duration-300"
+                          />
+                          {carouselSlides.length > 1 && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setActiveSlideIndex((prev) => (prev > 0 ? prev - 1 : carouselSlides.length - 1))}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 transition-all active:scale-95 shadow-xl backdrop-blur-md"
+                                aria-label="Previous slide"
+                              >
+                                <ChevronLeft className="w-5 h-5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setActiveSlideIndex((prev) => (prev < carouselSlides.length - 1 ? prev + 1 : 0))}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 transition-all active:scale-95 shadow-xl backdrop-blur-md"
+                                aria-label="Next slide"
+                              >
+                                <ChevronRight className="w-5 h-5" />
+                              </button>
+                              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-xs font-mono font-bold text-white flex items-center gap-2 shadow-lg">
+                                <span>Slide {activeSlideIndex + 1} of {carouselSlides.length}</span>
+                                <span className="w-1 h-1 rounded-full bg-white/40" />
+                                <span className="text-[#e4f222]">{resolvedVideo.thumbnails?.[activeSlideIndex]?.resolution || '1080p Original'}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       ) : (
                         <CustomVideoPlayer
                           videoUrl={resolvedVideo.m3u8_url || resolvedVideo.fast_download_url}
@@ -1692,18 +1800,26 @@ export default function Index() {
                     <div className="flex items-center justify-between px-1 text-[11px] text-[var(--tp-muted)] font-mono">
                       <span className="flex items-center gap-1.5 text-emerald-400">
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        {isYouTubeMode ? 'Live YouTube Player (Adaptive)' : `${(resolvedVideo.platform || 'Universal').toUpperCase()} Video Player`}
+                        {isYouTubeMode
+                          ? 'Live YouTube Player (Adaptive)'
+                          : isImageMedia
+                          ? `${(resolvedVideo.platform || 'Instagram').toUpperCase()} Carousel Viewer (1080p)`
+                          : `${(resolvedVideo.platform || 'Universal').toUpperCase()} Video Player`}
                       </span>
-                      <span>Max {getShortResTag(bestVideo?.height)} Ready for Download</span>
+                      <span>
+                        {isImageMedia
+                          ? `${carouselSlides.length} Slides Ready for Download`
+                          : `Max ${getShortResTag(bestVideo?.height)} Ready for Download`}
+                      </span>
                     </div>
                   </div>
 
                   {/* RIGHT: QUICK DOWNLOAD CARD & ACTIONS (IMAGE 3 REFERENCE) */}
-                  <div className="lg:col-span-5 rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] backdrop-blur-xl p-5 space-y-4 shadow-xl">
+                  <div className={`${isVerticalMedia ? 'lg:col-span-6 xl:col-span-7' : 'lg:col-span-5'} rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] backdrop-blur-xl p-5 space-y-4 shadow-xl`}>
                     <div className="flex items-center justify-between">
                       <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-cyan-400 bg-cyan-400/10 border border-cyan-400/25 px-2.5 py-1 rounded-full">
                         <Zap className="w-3.5 h-3.5 fill-current" />
-                        Max {getShortResTag(bestVideo?.height)} Available
+                        {isImageMedia ? `${carouselSlides.length} 1080p Slides Available` : `Max ${getShortResTag(bestVideo?.height)} Available`}
                       </span>
                       <span className="text-[11px] font-mono text-[var(--tp-muted)]">
                         Source: {resolvedVideo.youtube_id ? `YouTube [${resolvedVideo.youtube_id}]` : (resolvedVideo.platform || 'Universal')}
@@ -1722,32 +1838,47 @@ export default function Index() {
                     </div>
 
                     <div className="space-y-2.5 pt-1">
-                      {/* Action 1: Watch Online */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const el = document.getElementById('studio-player-frame');
-                          if (el) {
-                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          }
-                        }}
-                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 dark:text-cyan-300 font-bold text-xs sm:text-sm hover:bg-cyan-500/25 transition-all shadow-lg shadow-cyan-500/10"
-                      >
-                        <Play className="w-4 h-4 fill-current" />
-                        <span>Watch Online in Player</span>
-                      </button>
+                      {isImageMedia ? (
+                        <a
+                          href={carouselSlides[activeSlideIndex]?.url || resolvedVideo.m3u8_url}
+                          download={`instagram_slide_${activeSlideIndex + 1}.jpg`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 dark:text-cyan-300 font-bold text-xs sm:text-sm hover:bg-cyan-500/25 transition-all shadow-lg shadow-cyan-500/10"
+                        >
+                          <Download className="w-4 h-4 fill-current" />
+                          <span>Download Slide {activeSlideIndex + 1} (1080p JPG)</span>
+                        </a>
+                      ) : (
+                        /* Action 1: Watch Online */
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const el = document.getElementById('studio-player-frame');
+                            if (el) {
+                              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }}
+                          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 dark:text-cyan-300 font-bold text-xs sm:text-sm hover:bg-cyan-500/25 transition-all shadow-lg shadow-cyan-500/10"
+                        >
+                          <Play className="w-4 h-4 fill-current" />
+                          <span>Watch Online in Player</span>
+                        </button>
+                      )}
 
                       {/* Action 2: Split Download Dropdown (Image 3) */}
                       <div className="relative" ref={quickDropdownRef}>
                         <div className="flex items-stretch rounded-xl shadow-lg shadow-[#e4f222]/15">
                           <a
-                            href={bestVideo?.download_url || bestVideo?.url}
-                            download
+                            href={isImageMedia ? (carouselSlides[activeSlideIndex]?.url || resolvedVideo.m3u8_url) : (bestVideo?.download_url || bestVideo?.url)}
+                            download={isImageMedia ? `instagram_slide_${activeSlideIndex + 1}.jpg` : undefined}
+                            target={isImageMedia ? "_blank" : undefined}
+                            rel={isImageMedia ? "noreferrer" : undefined}
                             className="tp-btn tp-btn-download flex-1 justify-center rounded-r-none border-r border-black/20 active:scale-[0.99] transition-transform"
                             style={{ height: '44px', fontSize: '13px' }}
                           >
                             <Download className="w-4 h-4" />
-                            <span>Download Video ({getShortResTag(bestVideo?.height)})</span>
+                            <span>{isImageMedia ? `Download Slide ${activeSlideIndex + 1} (1080p)` : `Download Video (${getShortResTag(bestVideo?.height)})`}</span>
                           </a>
 
                           <button
@@ -1755,7 +1886,7 @@ export default function Index() {
                             onClick={() => setIsQuickDropdownOpen(!isQuickDropdownOpen)}
                             className="tp-btn tp-btn-download rounded-l-none px-3.5 active:scale-[0.99] transition-transform"
                             style={{ height: '44px' }}
-                            title="Select quick download quality"
+                            title={isImageMedia ? "Select carousel slide" : "Select quick download quality"}
                             aria-expanded={isQuickDropdownOpen}
                           >
                             <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isQuickDropdownOpen ? 'rotate-180' : ''}`} />
@@ -1774,11 +1905,35 @@ export default function Index() {
                         {isQuickDropdownOpen && (
                           <div className="absolute right-0 top-full mt-2 w-full sm:w-[320px] max-h-[360px] overflow-y-auto bg-[var(--tp-paper-elevated)] border border-[var(--tp-border-card)] backdrop-blur-2xl rounded-2xl p-2.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
                             <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--tp-muted)] px-3 py-1 flex items-center justify-between">
-                              <span>Video Qualities (MP4)</span>
-                              <span className="text-[9px] text-[#e4f222]">Standard Res</span>
+                              <span>{isImageMedia ? 'Carousel Slides (1080p JPG)' : 'Video Qualities (MP4)'}</span>
+                              <span className="text-[9px] text-[#e4f222]">{isImageMedia ? `${carouselSlides.length} Slides` : 'Standard Res'}</span>
                             </div>
                             <div className="space-y-0.5">
-                              {videoFormats.map((vf) => {
+                              {isImageMedia ? (
+                                carouselSlides.map((slide, idx) => (
+                                  <a
+                                    key={idx}
+                                    href={slide.url}
+                                    download={`instagram_slide_${idx + 1}.jpg`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={() => {
+                                      setActiveSlideIndex(idx);
+                                      setIsQuickDropdownOpen(false);
+                                    }}
+                                    className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-[var(--tp-paper-input)] active:scale-[0.98] text-[var(--tp-ink)] font-medium transition-all"
+                                  >
+                                    <span className="flex items-center gap-2">
+                                      <ImageIcon className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                                      <span className="font-semibold">Slide {idx + 1} of {carouselSlides.length}</span>
+                                    </span>
+                                    <span className="text-[10px] font-mono tabular-nums text-[var(--tp-accent-ink)] bg-[var(--tp-accent)]/15 border border-[var(--tp-accent)]/30 px-1.5 py-0.5 rounded shrink-0">
+                                      1080p HD
+                                    </span>
+                                  </a>
+                                ))
+                              ) : (
+                                videoFormats.map((vf) => {
                                 const isCinema = isCinemaWidescreen(vf.height);
                                 const tier = getStandardResTier(vf.height, vf.quality);
                                 return (
@@ -1810,7 +1965,8 @@ export default function Index() {
                                     </span>
                                   </a>
                                 );
-                              })}
+                              })
+                            )}
                             </div>
 
                             {audioFormats.length > 0 && (
@@ -2080,6 +2236,22 @@ export default function Index() {
 
                     <button
                       type="button"
+                      onClick={() => handleGenerateAiTranscript(false)}
+                      disabled={isTranscribing}
+                      className="tp-btn tp-btn-secondary"
+                      style={{ height: '36px', fontSize: '12px' }}
+                      title="Transcribe or regenerate subtitles using Groq Whisper AI"
+                    >
+                      {isTranscribing ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-500" />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-[#e4f222]" />
+                      )}
+                      <span>{isTranscribing ? 'Transcribing...' : 'AI Transcribe'}</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={handleCopyTranscript}
                       className="tp-btn tp-btn-secondary"
                       style={{ height: '36px', fontSize: '12px' }}
@@ -2155,13 +2327,13 @@ export default function Index() {
                         </div>
                       ))
                     ) : (
-                      <div className="py-12 text-center space-y-3">
-                        <Info className="w-8 h-8 text-[var(--tp-muted)] mx-auto" />
-                        <p className="text-sm text-[var(--tp-muted)]">
-                          {transcriptSearch ? `No matching cues found for "${transcriptSearch}".` : 'No closed captions or transcript tracks found for this video.'}
-                        </p>
-                        <div className="flex items-center justify-center gap-2">
-                          {transcriptSearch && (
+                      <div className="py-10 text-center space-y-4 max-w-md mx-auto">
+                        {transcriptSearch ? (
+                          <div className="space-y-3">
+                            <Info className="w-8 h-8 text-[var(--tp-muted)] mx-auto" />
+                            <p className="text-sm text-[var(--tp-muted)]">
+                              No matching cues found for "{transcriptSearch}".
+                            </p>
                             <Button
                               variant="outline"
                               size="sm"
@@ -2170,28 +2342,86 @@ export default function Index() {
                             >
                               Clear Search
                             </Button>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              if (resolvedVideo) {
-                                setResolvedVideo({
-                                  ...resolvedVideo,
-                                  transcript: {
-                                    language: 'en',
-                                    items: FALLBACK_DEMO_TRANSCRIPT,
-                                    count: FALLBACK_DEMO_TRANSCRIPT.length,
-                                  },
-                                });
-                                toast.success('Sample transcript loaded!');
-                              }
-                            }}
-                            className="border-[var(--tp-border-card)] text-xs text-[var(--tp-ink)] bg-[var(--tp-paper-input)]"
-                          >
-                            Load Demo Transcripts
-                          </Button>
-                        </div>
+                          </div>
+                        ) : isTranscribing ? (
+                          <div className="space-y-3 py-6">
+                            <RefreshCw className="w-8 h-8 animate-spin text-[var(--tp-mid)] dark:text-[#e4f222] mx-auto" />
+                            <p className="text-sm font-semibold text-[var(--tp-ink)]">
+                              Transcribing audio with Groq Whisper AI...
+                            </p>
+                            <p className="text-xs text-[var(--tp-muted)]">
+                              Extracting media stream & querying whisper-large-v3-turbo model
+                            </p>
+                          </div>
+                        ) : transcribeNotice ? (
+                          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-left space-y-3">
+                            <div className="flex items-start gap-2.5">
+                              <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                              <div className="space-y-1 flex-1">
+                                <p className="text-xs font-bold text-amber-500 dark:text-amber-300">
+                                  Transcription Notice ({transcribeNotice.code || 'NOTICE'})
+                                </p>
+                                <p className="text-xs text-[var(--tp-muted)] leading-relaxed">
+                                  {transcribeNotice.message}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 pt-2 border-t border-amber-500/20">
+                              <Button
+                                size="sm"
+                                onClick={() => handleGenerateAiTranscript(true)}
+                                className="tp-btn tp-btn-primary text-xs"
+                                style={{ height: '32px' }}
+                              >
+                                Load Demo Transcripts (1-Click)
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleGenerateAiTranscript(false)}
+                                className="border-[var(--tp-border-card)] text-xs text-[var(--tp-ink)] bg-[var(--tp-paper-input)]"
+                                style={{ height: '32px' }}
+                              >
+                                Retry
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-[#e4f222] flex items-center justify-center mx-auto">
+                              <Sparkles className="w-6 h-6" />
+                            </div>
+                            <div className="space-y-1">
+                              <h3 className="text-sm font-semibold text-[var(--tp-ink)]">
+                                No closed captions found for this {resolvedVideo?.platform ? resolvedVideo.platform.toUpperCase() : 'media'}
+                              </h3>
+                              <p className="text-xs text-[var(--tp-muted)] leading-relaxed">
+                                Generate instant, accurate timestamped subtitles using Groq Whisper (whisper-large-v3-turbo) or load demo cues.
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+                              <Button
+                                type="button"
+                                onClick={() => handleGenerateAiTranscript(false)}
+                                disabled={isTranscribing}
+                                className="tp-btn tp-btn-primary text-xs flex items-center gap-1.5"
+                                style={{ height: '36px' }}
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                                <span>Generate AI Transcript (Groq Whisper)</span>
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleGenerateAiTranscript(true)}
+                                className="border-[var(--tp-border-card)] text-xs text-[var(--tp-ink)] bg-[var(--tp-paper-input)]"
+                                style={{ height: '36px' }}
+                              >
+                                Load Demo Transcripts
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2202,29 +2432,49 @@ export default function Index() {
             {/* TAB 2: THUMBNAIL STUDIO */}
             {youtubeTab === 'thumbnails' && (
               <div className="p-4 sm:p-6 space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h3 className="text-base font-bold text-[var(--tp-ink)]">Full-Resolution Video Thumbnails & Covers</h3>
-                    <p className="text-xs text-[var(--tp-muted)]">Download high-definition video cover images and posters in original quality.</p>
+                    <h3 className="text-base font-bold text-[var(--tp-ink)]">
+                      {isImageMedia ? 'Full-Resolution Carousel Slides & Artwork' : 'Full-Resolution Video Thumbnails & Covers'}
+                    </h3>
+                    <p className="text-xs text-[var(--tp-muted)] mt-0.5">
+                      {isImageMedia
+                        ? 'Download high-definition artwork and carousel slides in original lossless quality.'
+                        : 'Download high-definition video cover images and posters in original quality.'}
+                    </p>
                   </div>
-                  <span className="text-xs font-mono text-emerald-500 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
-                    {thumbnailList.length} {thumbnailList.length === 1 ? 'Size' : 'Sizes'} Available
-                  </span>
+                  <div className="flex items-center gap-2.5 self-start sm:self-auto">
+                    {thumbnailList.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={handleDownloadAllThumbnails}
+                        className="tp-btn tp-btn-download flex items-center gap-1.5 shadow-md"
+                        style={{ height: '34px', fontSize: '11px', padding: '0 12px' }}
+                        title="Download all slides sequentially"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download All ({thumbnailList.length})</span>
+                      </button>
+                    )}
+                    <span className="text-xs font-mono font-semibold text-emerald-500 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg whitespace-nowrap">
+                      {thumbnailList.length} {thumbnailList.length === 1 ? 'Item' : isImageMedia ? 'Slides' : 'Sizes'} Available
+                    </span>
+                  </div>
                 </div>
 
                 {thumbnailList.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {thumbnailList.map((thumb) => (
+                  <div className={`grid ${isVerticalMedia ? 'grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'} gap-4`}>
+                    {thumbnailList.map((thumb, idx) => (
                       <div
-                        key={thumb.url + thumb.tag}
-                        className="group rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] overflow-hidden p-3.5 space-y-3 transition-all hover:border-[var(--tp-mid)]/40 hover:shadow-xl"
+                        key={thumb.url + thumb.tag + idx}
+                        className="group flex flex-col justify-between rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] overflow-hidden p-3.5 space-y-3 transition-all hover:border-[var(--tp-mid)]/40 hover:shadow-xl"
                       >
-                        {/* Image Preview Container */}
-                        <div className="relative aspect-video rounded-xl overflow-hidden bg-black/60 border border-[var(--tp-border-subtle)]">
+                        {/* Image Preview Container (Pristine Artwork, No Intrusive Badges) */}
+                        <div className={`relative ${isVerticalMedia ? 'aspect-[3/4]' : 'aspect-video'} rounded-xl overflow-hidden bg-black/60 border border-[var(--tp-border-subtle)] flex items-center justify-center`}>
                           <img
                             src={thumb.url}
                             alt={`${thumb.label} preview`}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            className={`w-full h-full ${isVerticalMedia ? 'object-contain bg-black/40' : 'object-cover'} transition-transform duration-300 group-hover:scale-105`}
                             loading="lazy"
                             onError={(e) => {
                               if (resolvedVideo.youtube_id && !thumb.url.includes('hqdefault.jpg')) {
@@ -2232,44 +2482,52 @@ export default function Index() {
                               }
                             }}
                           />
-                          <div className="absolute top-2 left-2 flex items-center gap-1.5">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${thumb.badgeColor}`}>
-                              {thumb.badge}
-                            </span>
-                          </div>
-                          <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-sm text-[10px] font-mono text-white px-2 py-0.5 rounded-md border border-white/10">
+                          <div className="absolute bottom-2 right-2 bg-black/75 backdrop-blur-md text-[10px] font-mono text-white/90 px-2 py-0.5 rounded-md border border-white/10 shadow-sm pointer-events-none">
                             {thumb.res}
                           </div>
                         </div>
 
-                        {/* Info & Download Action */}
-                        <div className="flex items-center justify-between pt-1">
-                          <div>
-                            <h4 className="text-xs font-bold text-[var(--tp-ink)]">{thumb.label}</h4>
-                            <span className="text-[11px] text-[var(--tp-muted)] font-mono">{thumb.res}</span>
+                        {/* Card Info & Actions Stacked */}
+                        <div className="space-y-2.5 pt-0.5">
+                          {/* Row 1: Title & Quality Badge */}
+                          <div className="flex items-center justify-between gap-1.5">
+                            <h4 className="text-xs font-bold text-[var(--tp-ink)] truncate" title={thumb.label}>
+                              {thumb.label}
+                            </h4>
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border shrink-0 ${thumb.badgeColor}`}>
+                              {thumb.badge}
+                            </span>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
+                          {/* Row 2: Subtitle Specs */}
+                          <div className="flex items-center justify-between text-[11px] text-[var(--tp-muted)] font-mono">
+                            <span className="truncate">{thumb.sublabel || thumb.res}</span>
+                            <span className="uppercase text-[10px] opacity-75 shrink-0">{isImageMedia ? 'JPG' : 'Cover'}</span>
+                          </div>
+
+                          {/* Row 3: Action Buttons (Equal 50/50 Split Grid, Full Width, Zero Text Clipping) */}
+                          <div className="grid grid-cols-2 gap-2 pt-1">
                             <a
                               href={thumb.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="tp-btn tp-btn-secondary"
-                              style={{ height: '34px', fontSize: '11px', padding: '0 10px' }}
+                              className="tp-btn tp-btn-secondary flex items-center justify-center gap-1.5 w-full text-center"
+                              style={{ height: '34px', fontSize: '11px', padding: '0 6px' }}
                               title="Open full resolution in new tab"
                             >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              <span>Preview</span>
+                              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                              <span className="truncate">Preview</span>
                             </a>
 
                             <button
                               type="button"
                               onClick={() => handleDownloadThumbnail(thumb.url, thumb.tag)}
-                              className="tp-btn tp-btn-download"
-                              style={{ height: '34px', fontSize: '11px', padding: '0 12px' }}
+                              className="tp-btn tp-btn-download flex items-center justify-center gap-1.5 w-full text-center font-medium"
+                              style={{ height: '34px', fontSize: '11px', padding: '0 6px' }}
+                              title="Download high-resolution JPG"
                             >
-                              <Download className="w-3.5 h-3.5" />
-                              <span>Download JPG</span>
+                              <Download className="w-3.5 h-3.5 shrink-0" />
+                              <span className="truncate">Download JPG</span>
                             </button>
                           </div>
                         </div>
@@ -2284,9 +2542,9 @@ export default function Index() {
               </div>
             )}
 
-            {/* TAB 3: VIDEO PLAYER (YOUTUBE EMBED OR CUSTOM VIDEO PLAYER) */}
+            {/* TAB 3: VIDEO PLAYER (YOUTUBE EMBED OR CUSTOM VIDEO PLAYER OR IMAGE VIEWER) */}
             {youtubeTab === 'player' && (
-              <div className="w-full aspect-video bg-black relative">
+              <div className={`w-full ${isVerticalMedia ? 'aspect-[3/4] max-h-[720px] max-w-[540px] mx-auto' : 'aspect-video'} bg-black relative flex items-center justify-center`}>
                 {isYouTubeMode && resolvedVideo.youtube_id ? (
                   <iframe
                     className="w-full h-full"
@@ -2303,6 +2561,39 @@ export default function Index() {
                     allow="accelerometer; autoplay; fullscreen; picture-in-picture"
                     allowFullScreen
                   />
+                ) : isImageMedia ? (
+                  <div className="relative w-full h-full flex items-center justify-center bg-black/95 select-none overflow-hidden">
+                    <img
+                      src={carouselSlides[activeSlideIndex]?.url || resolvedVideo.thumbnail || resolvedVideo.m3u8_url}
+                      alt={resolvedVideo.title}
+                      className="w-full h-full object-contain transition-all duration-300"
+                    />
+                    {carouselSlides.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setActiveSlideIndex((prev) => (prev > 0 ? prev - 1 : carouselSlides.length - 1))}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 transition-all active:scale-95 shadow-xl backdrop-blur-md"
+                          aria-label="Previous slide"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveSlideIndex((prev) => (prev < carouselSlides.length - 1 ? prev + 1 : 0))}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 transition-all active:scale-95 shadow-xl backdrop-blur-md"
+                          aria-label="Next slide"
+                        >
+                          <ChevronRight className="w-5 h-5" />
+                        </button>
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-xs font-mono font-bold text-white flex items-center gap-2 shadow-lg">
+                          <span>Slide {activeSlideIndex + 1} of {carouselSlides.length}</span>
+                          <span className="w-1 h-1 rounded-full bg-white/40" />
+                          <span className="text-[#e4f222]">{resolvedVideo.thumbnails?.[activeSlideIndex]?.resolution || '1080p Original'}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 ) : (
                   <CustomVideoPlayer
                     videoUrl={resolvedVideo.m3u8_url || resolvedVideo.fast_download_url}

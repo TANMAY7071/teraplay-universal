@@ -60,6 +60,32 @@ const apiResolveDevPlugin = (): Plugin => ({
           res.end(JSON.stringify({ success: false, error: err.message }));
           return;
         }
+      } else if (req.url?.startsWith("/api/transcribe")) {
+        try {
+          const { default: handler } = await import("./api/transcribe.ts");
+          const parsed = new URL(req.url, "http://localhost");
+          const query: Record<string, string> = {};
+          parsed.searchParams.forEach((v, k) => {
+            query[k] = v;
+          });
+          (req as any).query = query;
+          (res as any).status = (code: number) => {
+            res.statusCode = code;
+            return {
+              json: (data: any) => {
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify(data));
+              },
+              end: () => res.end(),
+            };
+          };
+          return handler(req as any, res as any);
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ success: false, error: err.message }));
+          return;
+        }
       } else if (req.url?.startsWith("/api/stream-download")) {
         try {
           const { default: handler } = await import("./api/stream-download.ts");

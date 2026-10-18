@@ -183,11 +183,12 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
   if (trimmed.includes('instagram.com') || trimmed.includes('instagr.am')) {
     const igInfo = extractInstagramShortcode(trimmed);
     const shortcode = igInfo ? igInfo.shortcode : undefined;
+    const pathType = igInfo?.type === 'reel' ? 'reel' : 'p';
     return {
       isValid: true,
       platform: 'instagram',
       shareId: shortcode,
-      normalizedUrl: shortcode ? `https://www.instagram.com/reel/${shortcode}/` : trimmed,
+      normalizedUrl: shortcode ? `https://www.instagram.com/${pathType}/${shortcode}/` : trimmed,
       originalUrl: trimmed,
     };
   }

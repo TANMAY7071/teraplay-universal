@@ -64,6 +64,9 @@ interface ResolveResponse {
   }>;
   video_formats?: Array<any>;
   audio_formats?: Array<any>;
+  media_type?: 'video' | 'carousel' | 'image';
+  is_vertical?: boolean;
+  aspect_ratio?: string;
   is_mock?: boolean;
   error?: string;
 }
@@ -161,6 +164,9 @@ function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
             formats: mappedFormats,
             video_formats: mappedVideoFormats,
             audio_formats: mappedAudioFormats,
+            media_type: parsed.media_type || (parsed.formats?.some((f: any) => f.ext === 'jpg') ? 'carousel' : 'video'),
+            is_vertical: Boolean(parsed.is_vertical),
+            aspect_ratio: parsed.aspect_ratio || undefined,
             is_mock: false,
           });
           return;
@@ -233,6 +239,9 @@ async function runRemoteResolver(targetUrl: string): Promise<ResolveResponse | n
         formats: mappedFormats,
         video_formats: mappedVideoFormats,
         audio_formats: mappedAudioFormats,
+        media_type: parsed.media_type,
+        is_vertical: Boolean(parsed.is_vertical),
+        aspect_ratio: parsed.aspect_ratio || undefined,
         is_mock: false,
       };
     }
@@ -279,6 +288,10 @@ async function extractInstagramEmbed(shortcode: string): Promise<Partial<Resolve
           size: 'HD 1080p',
           duration: 30,
           source: 'instagram_embed_engine',
+          platform: 'instagram',
+          media_type: 'video',
+          is_vertical: true,
+          aspect_ratio: '9:16',
           is_mock: false,
         };
       }
