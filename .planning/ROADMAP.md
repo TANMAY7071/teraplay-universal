@@ -9,7 +9,7 @@ A phased journey evolving a broken legacy streaming prototype into a high-perfor
 - [x] **Phase 1: Universal Creator Dock & Platform Normalization** - Auto-detect YouTube, TeraBox, and direct video links; build interactive 3-tab YouTube Studio (captions, thumbnails, embed) and custom HLS player.
 - [x] **Phase 2: Monetization & Compliance Architecture** - Implement discrete ad slots for Monetag/Adsterra/AdSense and deploy legal pages (DMCA, Privacy, Terms, Disclaimer, Contact).
 - [x] **Phase 3: Universal Engine Expansion & Microservice Architecture** - Expanded to all 1,751 yt-dlp extractors; fixed 1080p progressive audio+video downloads; dynamic thumbnails; honest WhatsApp E2EE handling; packaged FastAPI Docker microservice (`backend/`) for $0 Render/Railway deployment.
-- [ ] **Phase 4: Live Network Deployment & Publisher Verification** - Deploy frontend to Vercel, connect `PYTHON_RESOLVER_URL` to Render microservice, paste Monetag/Adsterra ad tags, and verify live edge caching.
+- [x] **Phase 4: Live Network Deployment & Publisher Verification** - Deployed frontend to Vercel (`https://teraplay-universal.vercel.app`), connected `PYTHON_RESOLVER_URL` to Render microservice (`https://teraplay-universal.onrender.com`), verified live edge caching and universal media extraction.
 
 ## Phase Details
 
