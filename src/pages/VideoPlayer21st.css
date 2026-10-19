@@ -369,40 +369,45 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   -webkit-user-select: none;
   pointer-events: none;
   opacity: 0;
-  transform: scale(1.035);
-  transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 1.4s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: opacity, transform;
+  visibility: hidden;
+  /* Direct Flip with Flash Mitigation: Instant/micro 140ms snap prevents muddy desaturated overlap */
+  transition: opacity 0.14s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.14s ease-out;
+  will-change: opacity;
 }
 
-/* Dark Mode (Default): Night sky with moon and stars */
+/* Dark Mode (Default): Instant clean display */
 .tp-root .tp-hero-sky-night,
 .tp-root[data-theme="dark"] .tp-hero-sky-night {
   opacity: 1;
-  transform: scale(1);
+  visibility: visible;
+  z-index: 1;
 }
 
 .tp-root .tp-hero-sky-day,
 .tp-root[data-theme="dark"] .tp-hero-sky-day {
   opacity: 0;
-  transform: scale(1.035);
+  visibility: hidden;
+  z-index: 0;
 }
 
-/* Light Mode: Azure anime sky with fluffy white clouds */
+/* Light Mode: Instant clean display */
 .tp-root[data-theme="light"] .tp-hero-sky-day {
   opacity: 1;
-  transform: scale(1);
+  visibility: visible;
+  z-index: 1;
 }
 
 .tp-root[data-theme="light"] .tp-hero-sky-night {
   opacity: 0;
-  transform: scale(1.035);
+  visibility: hidden;
+  z-index: 0;
 }
 
 /* Atmospheric vignette & seamless bottom transition into page paper */
 .tp-hero-sky-overlay {
   position: absolute;
   inset: 0;
+  z-index: 2;
   pointer-events: none;
   background: linear-gradient(180deg, 
     rgba(6, 11, 24, 0.45) 0%, 
@@ -411,7 +416,7 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
     rgba(6, 11, 24, 0.65) 82%, 
     var(--tp-paper) 100%
   );
-  transition: background 0.8s ease;
+  transition: background 0.14s ease-out;
 }
 
 .tp-root[data-theme="light"] .tp-hero-sky-overlay {
@@ -425,9 +430,9 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tp-hero-sky-img {
-    transition: opacity 0.3s ease;
-    transform: none !important;
+  .tp-hero-sky-img,
+  .tp-hero-sky-overlay {
+    transition: none !important;
   }
 }
 
