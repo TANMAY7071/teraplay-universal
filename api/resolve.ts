@@ -302,6 +302,191 @@ async function extractInstagramEmbed(shortcode: string): Promise<Partial<Resolve
   return null;
 }
 
+async function extractTikTokDirect(targetUrl: string): Promise<ResolveResponse | null> {
+  try {
+    const endpoint = `https://www.tikwm.com/api/?url=${encodeURIComponent(targetUrl.trim())}`;
+    const res = await fetch(endpoint, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!res.ok) return null;
+    const payload = (await res.json()) as any;
+    if (payload?.code !== 0 || !payload?.data) return null;
+
+    const data = payload.data;
+    const videoId = String(data.id || 'tiktok_video');
+    const title = data.title || `TikTok Video [${videoId}]`;
+    const cover = data.cover || data.origin_cover || '';
+    const duration = Number(data.duration || 0);
+
+    const images: string[] = Array.isArray(data.images) ? data.images : [];
+    if (images.length > 0) {
+      const thumbnails = images.map((imgUrl, idx) => ({
+        url: imgUrl,
+        width: 1080,
+        height: 1920,
+        resolution: '1080 × 1920',
+        quality_label: `Slide ${idx + 1} of ${images.length} (HD Photo)`,
+      }));
+      const formats = images.map((imgUrl, idx) => ({
+        format_id: `slide_${idx + 1}`,
+        quality: `Slide ${idx + 1} Photo (JPG)`,
+        height: 1920,
+        ext: 'jpg',
+        filesize: 'HD Photo',
+        url: imgUrl,
+        download_url: `/api/stream-download?url=${encodeURIComponent(imgUrl)}&filename=${encodeURIComponent(`tiktok_slide_${idx + 1}`)}&ext=jpg&source=tiktok`,
+        has_audio: false,
+        has_video: false,
+        is_audio_only: false,
+        is_progressive: true,
+      }));
+
+      const audioFormats = data.music
+        ? [
+            {
+              format_id: 'music_audio',
+              quality: 'Original Audio (MP3)',
+              height: 0,
+              ext: 'mp3',
+              filesize: 'Audio Track',
+              url: data.music,
+              download_url: `/api/stream-download?url=${encodeURIComponent(data.music)}&filename=${encodeURIComponent(`tiktok_audio_${videoId}`)}&ext=mp3&source=tiktok`,
+              has_audio: true,
+              has_video: false,
+              is_audio_only: true,
+              is_progressive: false,
+            },
+          ]
+        : [];
+
+      return {
+        success: true,
+        title,
+        thumbnail: cover || thumbnails[0]?.url || '',
+        thumbnails,
+        m3u8_url: thumbnails[0]?.url || '',
+        fast_download_url: formats[0]?.download_url,
+        size: `${images.length} HD Slides`,
+        duration: 0,
+        shareId: videoId,
+        serverTime: new Date().toISOString(),
+        source: 'tiktok_tikwm_engine',
+        platform: 'tiktok',
+        media_type: 'carousel',
+        is_vertical: true,
+        aspect_ratio: '9:16',
+        formats,
+        video_formats: formats,
+        audio_formats: audioFormats,
+        is_mock: false,
+      };
+    }
+
+    const playUrl = data.play || data.hdplay;
+    const wmUrl = data.wmplay;
+    const primaryStream = playUrl || wmUrl;
+    if (!primaryStream) return null;
+
+    const sizeBytes = Number(data.size || 0);
+    const sizeLabel = sizeBytes > 0 ? `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB` : 'HD Quality';
+    const cleanTitle = title.replace(/[^a-zA-Z0-9_\-]/g, '_');
+
+    const downloadProxy = `/api/stream-download?url=${encodeURIComponent(primaryStream)}&filename=${encodeURIComponent(cleanTitle)}&source=tiktok`;
+
+    const formats = [];
+    if (playUrl) {
+      formats.push({
+        format_id: 'hd_no_watermark',
+        quality: '1080p HD (No Watermark)',
+        height: 1080,
+        ext: 'mp4',
+        filesize: sizeLabel,
+        url: playUrl,
+        download_url: downloadProxy,
+        has_audio: true,
+        has_video: true,
+        is_audio_only: false,
+        is_progressive: true,
+      });
+    }
+    if (wmUrl && wmUrl !== playUrl) {
+      formats.push({
+        format_id: 'watermark',
+        quality: 'Original (With Watermark)',
+        height: 1080,
+        ext: 'mp4',
+        filesize: sizeLabel,
+        url: wmUrl,
+        download_url: `/api/stream-download?url=${encodeURIComponent(wmUrl)}&filename=${encodeURIComponent(`${cleanTitle}_wm`)}&source=tiktok`,
+        has_audio: true,
+        has_video: true,
+        is_audio_only: false,
+        is_progressive: true,
+      });
+    }
+
+    const audioFormats = [];
+    if (data.music) {
+      const audioObj = {
+        format_id: 'music_mp3',
+        quality: 'Original Audio (MP3)',
+        height: 0,
+        ext: 'mp3',
+        filesize: 'Audio MP3',
+        url: data.music,
+        download_url: `/api/stream-download?url=${encodeURIComponent(data.music)}&filename=${encodeURIComponent(`${cleanTitle}_audio`)}&ext=mp3&source=tiktok`,
+        has_audio: true,
+        has_video: false,
+        is_audio_only: true,
+        is_progressive: false,
+      };
+      audioFormats.push(audioObj);
+      formats.push(audioObj);
+    }
+
+    return {
+      success: true,
+      title,
+      thumbnail: cover,
+      thumbnails: cover
+        ? [
+            {
+              url: cover,
+              width: 1080,
+              height: 1920,
+              resolution: '1080 × 1920',
+              quality_label: 'Cover Thumbnail',
+            },
+          ]
+        : [],
+      m3u8_url: primaryStream,
+      fast_download_url: downloadProxy,
+      size: sizeLabel,
+      duration,
+      shareId: videoId,
+      serverTime: new Date().toISOString(),
+      source: 'tiktok_tikwm_engine',
+      platform: 'tiktok',
+      media_type: 'video',
+      is_vertical: true,
+      aspect_ratio: '9:16',
+      formats,
+      video_formats: formats.filter((f) => !f.is_audio_only),
+      audio_formats: audioFormats,
+      is_mock: false,
+    };
+  } catch (err: any) {
+    console.warn('[TikTokDirectExtractor] Upstream query error:', err?.message);
+    return null;
+  }
+}
+
 export default async function handler(req: any, res: any) {
   // CORS configuration
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -383,6 +568,16 @@ export default async function handler(req: any, res: any) {
 
       MEDIA_CACHE.set(cacheKey, { data: resolved, expiresAt: Date.now() + CACHE_TTL_MS });
       res.status(200).json(resolved);
+      return;
+    }
+  }
+
+  // If TikTok link, attempt direct TikTok extractor
+  if (cacheKey.includes('tiktok.com')) {
+    const ttExtracted = await extractTikTokDirect(queryTarget);
+    if (ttExtracted && ttExtracted.success) {
+      MEDIA_CACHE.set(cacheKey, { data: ttExtracted, expiresAt: Date.now() + CACHE_TTL_MS });
+      res.status(200).json(ttExtracted);
       return;
     }
   }

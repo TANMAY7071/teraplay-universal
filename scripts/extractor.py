@@ -428,7 +428,192 @@ def resolve_instagram_media(url):
     except Exception:
         return None
 
+def resolve_tiktok_media(url):
+    try:
+        clean_url = url.strip()
+        endpoint = f"https://www.tikwm.com/api/?url={urllib.parse.quote(clean_url)}"
+        req = urllib.request.Request(
+            endpoint,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*'
+            }
+        )
+        with urllib.request.urlopen(req, timeout=10) as res:
+            if res.status != 200:
+                return None
+            payload = json.loads(res.read().decode('utf-8'))
+            if payload.get('code') != 0 or not payload.get('data'):
+                return None
+
+            data = payload['data']
+            video_id = str(data.get('id') or 'tiktok_video')
+            title = data.get('title') or f"TikTok Video [{video_id}]"
+            cover = data.get('cover') or data.get('origin_cover') or ''
+            duration = int(data.get('duration') or 0)
+
+            # Check if image slideshow / carousel
+            images = data.get('images') or []
+            if images:
+                thumbnails = []
+                formats = []
+                for idx, img_url in enumerate(images):
+                    slide_label = f"Slide {idx + 1} of {len(images)} (HD Photo)"
+                    thumbnails.append({
+                        "url": img_url,
+                        "width": 1080,
+                        "height": 1920,
+                        "resolution": "1080 × 1920",
+                        "quality_label": slide_label,
+                    })
+                    formats.append({
+                        "format_id": f"slide_{idx + 1}",
+                        "quality": f"Slide {idx + 1} Photo (JPG)",
+                        "height": 1920,
+                        "ext": "jpg",
+                        "filesize": "HD Photo",
+                        "url": img_url,
+                        "download_url": img_url,
+                        "has_audio": False,
+                        "has_video": False,
+                        "is_audio_only": False,
+                        "is_progressive": True
+                    })
+
+                audio_formats = []
+                music_url = data.get('music')
+                if music_url:
+                    audio_formats.append({
+                        "format_id": "music_audio",
+                        "quality": "Original Audio (MP3)",
+                        "height": 0,
+                        "ext": "mp3",
+                        "filesize": "Audio Track",
+                        "url": music_url,
+                        "download_url": music_url,
+                        "has_audio": True,
+                        "has_video": False,
+                        "is_audio_only": True,
+                        "is_progressive": False
+                    })
+
+                return {
+                    "success": True,
+                    "title": title,
+                    "thumbnail": cover or (thumbnails[0]["url"] if thumbnails else ""),
+                    "thumbnails": thumbnails,
+                    "stream_url": thumbnails[0]["url"] if thumbnails else "",
+                    "download_url": thumbnails[0]["url"] if thumbnails else "",
+                    "size": f"{len(images)} HD Slides",
+                    "duration": 0,
+                    "shareId": video_id,
+                    "source": "tiktok_tikwm_engine",
+                    "platform": "tiktok",
+                    "media_type": "carousel",
+                    "is_vertical": True,
+                    "aspect_ratio": "9:16",
+                    "formats": formats,
+                    "video_formats": formats,
+                    "audio_formats": audio_formats,
+                    "is_mock": False
+                }
+
+            no_watermark_url = data.get('play') or data.get('hdplay')
+            watermark_url = data.get('wmplay')
+            music_url = data.get('music')
+            primary_stream = no_watermark_url or watermark_url
+            if not primary_stream:
+                return None
+
+            size_bytes = int(data.get('size') or 0)
+            size_label = format_size(size_bytes)
+
+            formats = []
+            if no_watermark_url:
+                formats.append({
+                    "format_id": "hd_no_watermark",
+                    "quality": "1080p HD (No Watermark)",
+                    "height": 1080,
+                    "ext": "mp4",
+                    "filesize": size_label,
+                    "url": no_watermark_url,
+                    "download_url": no_watermark_url,
+                    "has_audio": True,
+                    "has_video": True,
+                    "is_audio_only": False,
+                    "is_progressive": True
+                })
+            if watermark_url and watermark_url != no_watermark_url:
+                formats.append({
+                    "format_id": "watermark",
+                    "quality": "Original (With Watermark)",
+                    "height": 1080,
+                    "ext": "mp4",
+                    "filesize": size_label,
+                    "url": watermark_url,
+                    "download_url": watermark_url,
+                    "has_audio": True,
+                    "has_video": True,
+                    "is_audio_only": False,
+                    "is_progressive": True
+                })
+
+            audio_formats = []
+            if music_url:
+                audio_formats.append({
+                    "format_id": "music_mp3",
+                    "quality": "Original Audio (MP3)",
+                    "height": 0,
+                    "ext": "mp3",
+                    "filesize": "Audio MP3",
+                    "url": music_url,
+                    "download_url": music_url,
+                    "has_audio": True,
+                    "has_video": False,
+                    "is_audio_only": True,
+                    "is_progressive": False
+                })
+                formats.append(audio_formats[0])
+
+            thumbnails = [
+                {
+                    "url": cover,
+                    "width": 1080,
+                    "height": 1920,
+                    "resolution": "1080 × 1920",
+                    "quality_label": "Cover Thumbnail",
+                }
+            ] if cover else []
+
+            return {
+                "success": True,
+                "title": title,
+                "thumbnail": cover,
+                "thumbnails": thumbnails,
+                "stream_url": primary_stream,
+                "download_url": primary_stream,
+                "size": size_label,
+                "duration": duration,
+                "shareId": video_id,
+                "source": "tiktok_tikwm_engine",
+                "platform": "tiktok",
+                "media_type": "video",
+                "is_vertical": True,
+                "aspect_ratio": "9:16",
+                "formats": formats,
+                "video_formats": [f for f in formats if not f.get('is_audio_only')],
+                "audio_formats": audio_formats,
+                "is_mock": False
+            }
+    except Exception:
+        return None
+
 def resolve_ytdlp(url):
+    if 'tiktok.com' in url.lower():
+        tt_res = resolve_tiktok_media(url)
+        if tt_res and tt_res.get('success'):
+            return tt_res
+
     if not yt_dlp:
         return {"success": False, "error": "yt-dlp is not installed"}
 
@@ -462,6 +647,10 @@ def resolve_ytdlp(url):
             ig_res = resolve_instagram_media(url)
             if ig_res and ig_res.get('success'):
                 return ig_res
+        if 'tiktok' in url.lower():
+            tt_res = resolve_tiktok_media(url)
+            if tt_res and tt_res.get('success'):
+                return tt_res
         return {"success": False, "error": format_friendly_error(str(e))}
 
     if not info:
@@ -469,6 +658,10 @@ def resolve_ytdlp(url):
             ig_res = resolve_instagram_media(url)
             if ig_res and ig_res.get('success'):
                 return ig_res
+        if 'tiktok' in url.lower():
+            tt_res = resolve_tiktok_media(url)
+            if tt_res and tt_res.get('success'):
+                return tt_res
         return {"success": False, "error": "Could not extract video metadata"}
 
     try:

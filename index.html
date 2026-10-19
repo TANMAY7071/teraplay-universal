@@ -4,12 +4,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#060b18" id="meta-theme-color" />
   <script>
     (function () {
       try {
         var t = localStorage.getItem('teraplay-theme') || 'dark';
         document.documentElement.classList.toggle('dark', t === 'dark');
         document.documentElement.classList.toggle('light', t === 'light');
+        var meta = document.getElementById('meta-theme-color');
+        if (meta) {
+          meta.setAttribute('content', t === 'light' ? '#1253a8' : '#060b18');
+        }
       } catch (e) {}
     })();
   </script>
@@ -53,7 +58,7 @@
   </script>
 </head>
 
-<body class="bg-[#07090e] text-slate-100 antialiased selection:bg-primary selection:text-white">
+<body class="bg-[#060b18] text-slate-100 antialiased selection:bg-primary selection:text-white">
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>

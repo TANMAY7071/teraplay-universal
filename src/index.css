@@ -208,10 +208,18 @@ All colors MUST be HSL.
     touch-action: pan-y pinch-zoom;
   }
 
-  /* Block Radix UI padding/margin offsets on body when modal opens */
+  /* Block Radix UI padding/margin offsets and overflow locks on body when modal opens */
+  :root,
+  html,
+  body,
   body[style],
+  html[style],
   body[data-scroll-locked],
-  html[data-scroll-locked] {
+  html[data-scroll-locked],
+  body[style*="overflow: hidden"],
+  body[style*="overflow:hidden"] {
+    --removed-body-scroll-bar-size: 0px !important;
+    overflow-y: auto !important;
     padding-right: 0px !important;
     margin-right: 0px !important;
   }
@@ -259,10 +267,10 @@ All colors MUST be HSL.
     }
   }
 
-  /* Touch target improvement for mobile buttons (excluding switches and carousel indicators) */
+  /* Touch target improvement for mobile buttons (excluding switches, carousel indicators, and compact dock/nav controls) */
   @media (hover: none) and (pointer: coarse) {
-    button:not([role="switch"]):not([data-carousel-dot]):not([role="tab"]),
-    [role="button"]:not([role="switch"]):not([data-carousel-dot]):not([role="tab"]),
+    button:not([role="switch"]):not([data-carousel-dot]):not([role="tab"]):not(.tp-theme-icon-btn):not(.tp-btn-theme):not(.tp-btn-nav-accent):not(.tp-btn-paste-inline):not(.tp-chip):not(.tp-clear-btn),
+    [role="button"]:not([role="switch"]):not([data-carousel-dot]):not([role="tab"]):not(.tp-theme-icon-btn):not(.tp-btn-theme):not(.tp-btn-nav-accent):not(.tp-btn-paste-inline):not(.tp-chip):not(.tp-clear-btn),
     .clickable {
       min-height: 44px;
       min-width: 44px;
@@ -561,3 +569,52 @@ body {
   background-color: hsl(var(--primary));
   background-image: linear-gradient(90deg, hsl(var(--primary)), hsl(270 90% 65%));
 }
+
+/* =========================================================================
+   UNIVERSAL ZERO-LAYOUT-SHIFT BUTTON & INTERACTION GUARD
+   Guarantees that all current AND future buttons maintain 100% rigid outer
+   geometry with surface-only feedback. Disables active/hover scales,
+   translate jumps, and subpixel font antialiasing shake across the entire app.
+   ========================================================================= */
+button,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+a.tp-btn,
+a.tp-btn-nav-accent,
+a.tp-btn-download,
+.tp-btn,
+.tp-chip,
+.tp-theme-btn,
+.tp-theme-icon-btn,
+.clickable {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button:active,
+[role="button"]:active,
+input[type="button"]:active,
+input[type="submit"]:active,
+input[type="reset"]:active,
+a.tp-btn:active,
+a.tp-btn-nav-accent:active,
+a.tp-btn-download:active,
+.tp-btn:active,
+.tp-chip:active,
+.tp-theme-btn:active,
+.tp-theme-icon-btn:active {
+  transform: none !important;
+}
+
+/* Neutralize button hover transforms that shift nearby content */
+.tp-root button:hover:not(:disabled),
+.tp-root [role="button"]:hover:not(:disabled),
+.tp-root .tp-btn:hover:not(:disabled),
+.tp-root .tp-chip:hover:not(:disabled) {
+  transform: none !important;
+}
+

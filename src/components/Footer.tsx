@@ -5,7 +5,7 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 const Footer = () => {
   const { site_name: siteName } = useSiteSettings();
   return (
-    <footer className="border-t border-white/10 mt-0 hidden md:block relative z-10" style={{ backgroundColor: '#05060a' }}>
+    <footer className="border-t border-white/10 mt-0 hidden md:block relative z-10 overflow-hidden" style={{ backgroundColor: '#05060a' }}>
       <div className="mx-auto w-full max-w-[1440px] px-5 md:px-8 lg:px-12 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Logo and Description */}

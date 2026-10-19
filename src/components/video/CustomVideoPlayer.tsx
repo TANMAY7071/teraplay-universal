@@ -479,7 +479,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       {!isIframeEmbed && hasIntro && (
         <button
           onClick={skipIntro}
-          className="absolute bottom-24 right-6 z-25 bg-black/75 hover:bg-primary border border-white/20 hover:border-transparent text-white font-extrabold text-xs sm:text-sm py-2.5 px-5 rounded-xl shadow-2xl backdrop-blur-md flex items-center gap-2 transform active:scale-95 transition-all animate-reveal-up"
+          className="absolute bottom-24 right-6 z-25 bg-black/75 hover:bg-primary border border-white/20 hover:border-transparent text-white font-extrabold text-xs sm:text-sm py-2.5 px-5 rounded-xl shadow-2xl backdrop-blur-md flex items-center gap-2 active:opacity-90 transition-colors animate-reveal-up"
         >
           <SkipForward className="w-4 h-4 fill-current" />
           Skip Intro

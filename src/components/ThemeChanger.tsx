@@ -30,38 +30,35 @@ export const ThemeChanger: React.FC<ThemeChangerProps> = ({
         onClick={handleClick}
         aria-label={`Switch to ${isLight ? 'dark' : 'light'} mode`}
         title={`Current: ${isLight ? 'Light' : 'Dark'} mode (tap to switch)`}
-        className={`tp-theme-icon-btn relative inline-flex items-center justify-center shrink-0 rounded-lg select-none cursor-pointer overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tp-mid,#2659d9)] ${className}`}
+        className={`tp-theme-icon-btn relative inline-flex items-center justify-center shrink-0 rounded-[6px] select-none cursor-pointer overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${className}`}
         style={{
-          width: `${size}px`,
-          height: `${size}px`,
-          backgroundColor: isLight ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.07)',
-          border: isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.12)',
-          boxShadow: isLight
-            ? '0 1px 2px rgba(0, 0, 0, 0.04)'
-            : '0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04)',
+          width: '31px',
+          height: '31px',
+          boxSizing: 'border-box',
           touchAction: 'manipulation',
         }}
       >
         {/* Sun Icon (Vibrant Orange: #ff9323, 8 rounded pill rays + central disc) */}
         <span
-          className="absolute inset-0 flex items-center justify-center pointer-events-none transition-all duration-300"
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
           style={{
             opacity: isLight ? 1 : 0,
-            transform: isLight ? 'rotate(0deg) scale(1)' : 'rotate(60deg) scale(0.4)',
-            transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+            transform: isLight ? 'rotate(0deg) scale(1)' : 'rotate(45deg) scale(0.5)',
+            transition: 'opacity 0.2s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+            transformOrigin: 'center center',
           }}
           aria-hidden={!isLight}
         >
           <svg
-            width="20"
-            height="20"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
             className="shrink-0"
           >
             {/* Central Solid Disc */}
-            <circle cx="12" cy="12" r="4.8" fill="#ff9323" />
+            <circle cx="12" cy="12" r="4.6" fill="#ff9323" />
             {/* 8 Rounded Capsule Rays */}
             <path
               d="M12 2v2.8M12 19.2V22M2 12h2.8M19.2 12H22M4.93 4.93l1.98 1.98M17.09 17.09l1.98 1.98M4.93 19.07l1.98-1.98M17.09 6.91l1.98-1.98"
@@ -72,13 +69,14 @@ export const ThemeChanger: React.FC<ThemeChangerProps> = ({
           </svg>
         </span>
 
-        {/* Moon Icon (Clean Matte Silver/Grey: #949494, Smooth Crescent) */}
+        {/* Moon Icon (Clean Matte Silver/Blue: #dbe6ff, Smooth Crescent) */}
         <span
-          className="absolute inset-0 flex items-center justify-center pointer-events-none transition-all duration-300"
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
           style={{
             opacity: !isLight ? 1 : 0,
-            transform: !isLight ? 'rotate(0deg) scale(1)' : 'rotate(-60deg) scale(0.4)',
-            transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+            transform: !isLight ? 'rotate(0deg) scale(1)' : 'rotate(-45deg) scale(0.5)',
+            transition: 'opacity 0.2s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+            transformOrigin: 'center center',
           }}
           aria-hidden={isLight}
         >
@@ -92,8 +90,8 @@ export const ThemeChanger: React.FC<ThemeChangerProps> = ({
           >
             <path
               d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
-              fill="#949494"
-              stroke="#949494"
+              fill="#dbe6ff"
+              stroke="#dbe6ff"
               strokeWidth="0.5"
               strokeLinejoin="round"
             />
