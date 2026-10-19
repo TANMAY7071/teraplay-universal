@@ -1245,7 +1245,7 @@ export default function Index() {
             className="tp-hero-sky-img tp-hero-sky-day"
           />
           <img
-            src="/assets/bg-night.webp"
+            src="/assets/bg-night.png"
             alt=""
             fetchPriority="high"
             decoding="async"
