@@ -1323,7 +1323,7 @@ export default function Index() {
                   </button>
                 )}
 
-                {/* Shrunken inline Paste tab */}
+                {/* Mobile-only shrunken inline Paste tab */}
                 <button
                   type="button"
                   onClick={handlePasteClipboard}
@@ -1335,8 +1335,19 @@ export default function Index() {
                 </button>
               </div>
 
-              {/* Full-width Launch & Analyze CTA row on mobile, inline on desktop */}
+              {/* Action Buttons: Desktop has [Paste] + [Launch & Analyze]; Mobile has full-width [Launch & Analyze] */}
               <div className="tp-actions-row">
+                {/* Desktop-only original prominent Paste button */}
+                <button
+                  type="button"
+                  onClick={handlePasteClipboard}
+                  className="tp-btn tp-btn-paste tp-btn-paste-desktop"
+                  title="Paste link from clipboard"
+                >
+                  <Clipboard className="w-4 h-4 text-[#e4f222]" />
+                  <span>Paste</span>
+                </button>
+
                 <button type="submit" disabled={isLoading} className="tp-btn tp-btn-primary tp-btn-launch">
                   {isLoading ? (
                     <>
