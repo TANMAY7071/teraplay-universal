@@ -57,6 +57,8 @@ interface ResolveResponse {
     filesize?: string;
     url: string;
     download_url?: string;
+    audio_url?: string;
+    can_mux?: boolean;
     has_audio: boolean;
     has_video: boolean;
     is_audio_only?: boolean;
@@ -138,7 +140,7 @@ function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
           const mapFormat = (f: any) => ({
             ...f,
             download_url: f.url
-              ? `/api/stream-download?url=${encodeURIComponent(f.url)}&filename=${encodeURIComponent(`${cleanTitle}_${f.format_id}`)}&ext=${encodeURIComponent(f.ext || (f.is_audio_only ? 'mp3' : 'mp4'))}&source=${encodeURIComponent(parsed.source || '')}`
+              ? `/api/stream-download?url=${encodeURIComponent(f.url)}${f.audio_url ? `&audio_url=${encodeURIComponent(f.audio_url)}` : ''}&filename=${encodeURIComponent(`${cleanTitle}_${f.format_id}`)}&ext=${encodeURIComponent(f.ext || (f.is_audio_only ? 'mp3' : 'mp4'))}&source=${encodeURIComponent(parsed.source || '')}`
               : f.download_url || '',
           });
 
@@ -213,7 +215,7 @@ async function runRemoteResolver(targetUrl: string): Promise<ResolveResponse | n
       const mapFormat = (f: any) => ({
         ...f,
         download_url: f.url
-          ? `/api/stream-download?url=${encodeURIComponent(f.url)}&filename=${encodeURIComponent(`${cleanTitle}_${f.format_id}`)}&ext=${encodeURIComponent(f.ext || (f.is_audio_only ? 'mp3' : 'mp4'))}&source=${encodeURIComponent(parsed.source || '')}`
+          ? `/api/stream-download?url=${encodeURIComponent(f.url)}${f.audio_url ? `&audio_url=${encodeURIComponent(f.audio_url)}` : ''}&filename=${encodeURIComponent(`${cleanTitle}_${f.format_id}`)}&ext=${encodeURIComponent(f.ext || (f.is_audio_only ? 'mp3' : 'mp4'))}&source=${encodeURIComponent(parsed.source || '')}`
           : f.download_url || '',
       });
 
@@ -746,17 +748,49 @@ export default async function handler(req: any, res: any) {
 
   const mockFormats = [
     {
+      format_id: '2160p',
+      quality: '4K Ultra HD (Audio + Video)',
+      height: 2160,
+      ext: 'mp4',
+      filesize: '145.8 MB',
+      url: rawSampleVideo,
+      audio_url: rawSampleVideo,
+      download_url: `${downloadProxyUrl}&audio_url=${encodeURIComponent(rawSampleVideo)}`,
+      has_audio: true,
+      has_video: true,
+      is_audio_only: false,
+      is_progressive: false,
+      can_mux: true,
+    },
+    {
+      format_id: '1440p',
+      quality: '1440p 2K QHD (Audio + Video)',
+      height: 1440,
+      ext: 'mp4',
+      filesize: '88.4 MB',
+      url: rawSampleVideo,
+      audio_url: rawSampleVideo,
+      download_url: `${downloadProxyUrl}&audio_url=${encodeURIComponent(rawSampleVideo)}`,
+      has_audio: true,
+      has_video: true,
+      is_audio_only: false,
+      is_progressive: false,
+      can_mux: true,
+    },
+    {
       format_id: '1080p',
       quality: '1080p Full HD (Audio + Video)',
       height: 1080,
       ext: 'mp4',
       filesize: '45.2 MB',
       url: rawSampleVideo,
-      download_url: downloadProxyUrl,
+      audio_url: rawSampleVideo,
+      download_url: `${downloadProxyUrl}&audio_url=${encodeURIComponent(rawSampleVideo)}`,
       has_audio: true,
       has_video: true,
       is_audio_only: false,
-      is_progressive: true,
+      is_progressive: false,
+      can_mux: true,
     },
     {
       format_id: '720p',
@@ -772,8 +806,21 @@ export default async function handler(req: any, res: any) {
       is_progressive: true,
     },
     {
+      format_id: '480p',
+      quality: '480p SD (Audio + Video)',
+      height: 480,
+      ext: 'mp4',
+      filesize: '16.5 MB',
+      url: rawSampleVideo,
+      download_url: downloadProxyUrl,
+      has_audio: true,
+      has_video: true,
+      is_audio_only: false,
+      is_progressive: true,
+    },
+    {
       format_id: 'mp3_320',
-      quality: '320 kbps (High Quality)',
+      quality: '320 kbps (High Quality MP3)',
       height: 0,
       ext: 'mp3',
       filesize: '8.1 MB',

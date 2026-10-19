@@ -5,15 +5,32 @@ Resolves real video streams from Instagram, YouTube, Facebook, TeraBox, and univ
 """
 
 import sys
+import os
+import ssl
 import json
 import re
+import shutil
 import urllib.parse
 import urllib.request
+
+try:
+    import certifi
+    os.environ['SSL_CERT_FILE'] = certifi.where()
+    os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+    ssl._create_default_https_context = ssl._create_unverified_context
+except Exception:
+    pass
 
 try:
     import yt_dlp
 except ImportError:
     yt_dlp = None
+
+try:
+    import imageio_ffmpeg
+    FFMPEG_PATH = imageio_ffmpeg.get_ffmpeg_exe()
+except Exception:
+    FFMPEG_PATH = shutil.which('ffmpeg')
 
 def format_size(bytes_val):
     if not bytes_val or bytes_val <= 0:
@@ -301,6 +318,7 @@ def resolve_instagram_media(url):
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
+        'nocheckcertificate': True,
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
             'Accept-Language': 'en-US,en;q=0.9',
@@ -623,6 +641,7 @@ def resolve_ytdlp(url):
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
+        'nocheckcertificate': True,
         'extract_flat': False,
         'skip_download': True,
         'noplaylist': True,
@@ -638,6 +657,9 @@ def resolve_ytdlp(url):
             'Accept-Language': 'en-US,en;q=0.9',
         }
     }
+
+    if FFMPEG_PATH:
+        ydl_opts['ffmpeg_location'] = FFMPEG_PATH
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -798,7 +820,22 @@ def resolve_ytdlp(url):
                 "is_progressive": True
             })
 
-        # 2. Extract High-Res Video Streams (4K, 1440p, 1080p, 720p, 480p, 360p)
+        # 2. Extract Audio Tracks First (to attach to high-res video formats for muxing)
+        audio_streams = [
+            f for f in raw_formats
+            if f.get('url')
+            and f.get('vcodec') in ['none', None]
+            and f.get('acodec') not in ['none', None]
+        ]
+        m4a_audio = [f for f in audio_streams if f.get('ext') == 'm4a']
+        best_audio = m4a_audio[-1] if m4a_audio else (audio_streams[-1] if audio_streams else None)
+
+        if not best_audio and progressive:
+            best_audio = progressive[-1]
+
+        best_audio_url = best_audio.get('url') if best_audio else None
+
+        # 3. Extract High-Res Video Streams (4K, 1440p, 1080p, 720p, 480p, 360p)
         target_buckets = [
             (2160, '4K Ultra HD', 150),
             (1440, '1440p 2K QHD', 120),
@@ -843,33 +880,22 @@ def resolve_ytdlp(url):
 
             video_formats.append({
                 "format_id": str(best.get('format_id')),
-                "quality": f"{label} (Video Stream)",
+                "quality": f"{label} (Audio + Video)" if best_audio_url else f"{label} (Video Stream)",
                 "height": h,
                 "ext": best.get('ext') or 'mp4',
                 "filesize": format_size(sz),
                 "url": best.get('url'),
-                "has_audio": False,
+                "audio_url": best_audio_url,
+                "has_audio": bool(best_audio_url),
                 "has_video": True,
                 "is_audio_only": False,
-                "is_progressive": False
+                "is_progressive": False,
+                "can_mux": bool(best_audio_url)
             })
 
-        # Combine video formats: sort by resolution descending, progressive audio+video preferred
+        # Combine video formats: sort by resolution descending, progressive/muxed audio+video preferred
         all_videos = prog_formats + video_formats
         all_videos.sort(key=lambda x: (x.get('height') or 0, 1 if x.get('has_audio') else 0), reverse=True)
-
-        # 3. Extract Audio Tracks
-        audio_streams = [
-            f for f in raw_formats
-            if f.get('url')
-            and f.get('vcodec') in ['none', None]
-            and f.get('acodec') not in ['none', None]
-        ]
-        m4a_audio = [f for f in audio_streams if f.get('ext') == 'm4a']
-        best_audio = m4a_audio[-1] if m4a_audio else (audio_streams[-1] if audio_streams else None)
-
-        if not best_audio and progressive:
-            best_audio = progressive[-1]
 
         audio_formats_list = []
         if best_audio:

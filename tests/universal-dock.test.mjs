@@ -568,4 +568,53 @@ if (origKey) {
 
 console.log('  ✓ Endpoint parameter validation, demo mode, and honest error states verified');
 
+// 7. High-Res Audio+Video Muxing & Stream Download Verification
+console.log('[7/7] Testing YouTube high-res muxed formats and stream-download endpoint...');
+import resolveHandler from '../api/resolve.ts';
+import streamDownloadHandler from '../api/stream-download.ts';
+
+// 7a. Verify resolve handler returns high-res formats with audio_url and has_audio: true
+const resolveRes = createMockRes();
+await resolveHandler({
+  method: 'GET',
+  query: { url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+}, resolveRes);
+
+assert.equal(resolveRes.statusCode, 200);
+assert.equal(resolveRes.body.success, true);
+assert.ok(Array.isArray(resolveRes.body.formats), 'formats must be an array');
+const f1080 = resolveRes.body.formats.find((f) => f.format_id === '1080p' || (f.height && f.height >= 1080));
+assert.ok(f1080, '1080p or higher format should be present');
+assert.equal(f1080.has_audio, true, '1080p format must have has_audio: true for merged output');
+assert.ok(f1080.download_url?.includes('audio_url='), '1080p download_url must contain audio_url query param');
+
+// 7b. Stream download endpoint HEAD request with audio_url returns 200 with video/mp4 headers
+const streamHeadRes = createMockRes();
+await streamDownloadHandler({
+  method: 'HEAD',
+  query: {
+    url: 'https://example.com/video.mp4',
+    audio_url: 'https://example.com/audio.mp4',
+    filename: 'rick_astley_1080p',
+    ext: 'mp4',
+  },
+}, streamHeadRes);
+
+assert.equal(streamHeadRes.statusCode, 200);
+assert.equal(streamHeadRes.headers['Content-Type'], 'video/mp4');
+assert.ok(streamHeadRes.headers['Content-Disposition']?.includes('rick_astley_1080p.mp4'));
+
+// 7c. Missing URL returns 400
+const streamMissingRes = createMockRes();
+await streamDownloadHandler({ method: 'GET', query: {} }, streamMissingRes);
+assert.equal(streamMissingRes.statusCode, 400);
+assert.equal(streamMissingRes.body.success, false);
+
+// 7d. OPTIONS request returns 200 for CORS preflight
+const streamOptionsRes = createMockRes();
+await streamDownloadHandler({ method: 'OPTIONS' }, streamOptionsRes);
+assert.equal(streamOptionsRes.statusCode, 200);
+
+console.log('  ✓ High-res video formats, audio_url muxing parameters, CORS, and stream-download headers verified');
+
 console.log('ALL UNIVERSAL DOCK VERIFICATIONS PASSED SUCCESSFULLY!');
