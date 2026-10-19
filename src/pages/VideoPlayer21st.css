@@ -5,19 +5,83 @@
    Radiant Royal Blue Gradient Hero -> Crisp White Paper Body
    ========================================================================= */
 
+html.dark {
+  background-color: #060b18;
+}
+
+html.light {
+  background: linear-gradient(180deg, #1253a8 0%, #1253a8 50vh, #f4f6fb 50vh, #f4f6fb 100%) !important;
+  background-attachment: fixed !important;
+}
+
 html:has(.tp-root) {
-  background-color: #06174a;
+  background-color: var(--tp-paper, #060b18);
   transition: background-color 0.3s ease;
 }
 
 html:has(.tp-root[data-theme="light"]),
 html.light:has(.tp-root) {
-  background-color: #1a6fd6 !important;
+  background: linear-gradient(180deg, #1253a8 0%, #1253a8 50vh, #f4f6fb 50vh, #f4f6fb 100%) !important;
+  background-attachment: fixed !important;
+}
+
+html.light::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 50vh;
+  background-color: #1253a8;
+  z-index: -999;
+  pointer-events: none;
+}
+
+html.light::after {
+  content: "";
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 50vh;
+  background-color: #f4f6fb;
+  z-index: -999;
+  pointer-events: none;
 }
 
 html:has(.tp-root[data-theme="dark"]),
 html.dark:has(.tp-root) {
-  background-color: #06174a !important;
+  background-color: #060b18 !important;
+  background-image: linear-gradient(180deg, #06174a 0%, #06174a 400px, #060b18 800px, #060b18 100%);
+  background-repeat: no-repeat;
+}
+
+html.dark::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 50vh;
+  background-color: #060b18;
+  z-index: -999;
+  pointer-events: none;
+}
+
+html.dark::after {
+  content: "";
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 50vh;
+  background-color: #060b18;
+  z-index: -999;
+  pointer-events: none;
 }
 
 html {
@@ -31,8 +95,19 @@ html {
 
 body:has(.tp-root) {
   background-color: transparent !important;
+  background-image: none !important;
   color: inherit !important;
   overflow-x: hidden;
+}
+
+html:has(.tp-root[data-theme="light"]) body,
+body:has(.tp-root[data-theme="light"]) {
+  background-color: transparent !important;
+}
+
+html:has(.tp-root[data-theme="dark"]) body,
+body:has(.tp-root[data-theme="dark"]) {
+  background-color: transparent !important;
 }
 
 /* Clean Immersive Full-Screen: Completely hide scrollbar across all engines (scrolling still works) */
@@ -177,28 +252,34 @@ body::-webkit-scrollbar,
   position: sticky;
   top: 0;
   z-index: 40;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   height: 56px;
   width: 100%;
   margin: 0 0 -56px 0;
   padding: 0 clamp(24px, 4.6vw, 56px);
   box-sizing: border-box;
   color: #fff;
-  transition: background-color 0.35s, color 0.35s, box-shadow 0.35s, backdrop-filter 0.35s;
+  transition: background-color 0.25s, color 0.25s, box-shadow 0.25s;
 }
 
 .tp-brand {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  justify-self: start;
   font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.04em;
   line-height: 1;
   color: #ffffff;
+  z-index: 2;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .tp-brand-word {
@@ -206,7 +287,7 @@ body::-webkit-scrollbar,
 }
 
 .tp-brand .tp-svg {
-  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .tp-brand:hover .tp-svg {
@@ -231,6 +312,17 @@ body::-webkit-scrollbar,
   color: #ffffff;
   transition: background-color 0.25s;
   cursor: default;
+  white-space: nowrap;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.tp-nav-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 2;
 }
 
 .tp-center-info:hover {
@@ -245,10 +337,12 @@ body::-webkit-scrollbar,
 }
 
 .tp-nav-actions {
-  justify-self: end;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+  z-index: 2;
 }
 
 .tp-theme-btn {
@@ -263,17 +357,26 @@ body::-webkit-scrollbar,
   color: #ffffff;
   cursor: pointer;
   padding: 0;
-  transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
 
 .tp-theme-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.32);
-  transform: translateY(-1px);
+}
+
+.tp-theme-btn:active {
+  opacity: 0.85;
 }
 
 .tp-theme-icon-btn {
-  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 html[data-theme="dark"] .tp-theme-icon-btn:hover {
@@ -286,45 +389,101 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   border-color: rgba(0, 0, 0, 0.15) !important;
 }
 
+/* Dedicated rock-solid styling for Sign In / Sign Out nav buttons */
+.tp-btn-theme {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 31px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #bac5dc;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.tp-btn-theme:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+.tp-btn-theme:active {
+  opacity: 0.85;
+}
+
+.tp-root[data-theme="light"] .tp-btn-theme {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+}
+
+.tp-root[data-theme="light"] .tp-btn-theme:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.44);
+  color: #ffffff;
+}
+
+.tp-root[data-theme="light"] .tp-btn-theme:active {
+  opacity: 0.85;
+}
+
 .tp-btn-nav-accent {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
+  gap: 4px;
   height: 31px;
-  padding: 0 13px;
-  border-radius: 5px;
+  padding: 0 12px;
+  border-radius: 6px;
   font-size: 12.5px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.01em;
   white-space: nowrap;
   background: var(--tp-accent);
   color: var(--tp-accent-ink);
   overflow: hidden;
   box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.14);
-  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
 }
 
 .tp-btn-nav-accent:hover {
-  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 10px 26px -10px rgba(182, 194, 0, 0.8);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 6px 20px -6px rgba(182, 194, 0, 0.8);
+}
+
+.tp-btn-nav-accent:active {
+  opacity: 0.88;
+  filter: brightness(0.96);
 }
 
 .tp-btn-arrow {
   display: inline-flex;
-  width: 0;
-  opacity: 0;
-  transform: translate(-4px, 4px);
-  transition: width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
-              opacity 0.3s,
-              transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  align-items: center;
+  justify-content: center;
+  width: 10px;
+  height: 10px;
+  margin-left: 2px;
+  opacity: 0.85;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease;
 }
 
 .tp-btn-nav-accent:hover .tp-btn-arrow,
 .tp-btn-nav-accent:focus-visible .tp-btn-arrow {
-  width: 16px;
   opacity: 1;
-  transform: none;
-  padding-left: 6px;
+  transform: translate(1px, -1px);
 }
 
 /* =========================================================================
@@ -332,9 +491,9 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
    ========================================================================= */
 .tp-hero {
   position: relative;
-  width: 100vw;
-  left: 50%;
-  transform: translateX(-50%);
+  width: 100%;
+  left: 0;
+  transform: none;
   min-height: max(620px, 100svh);
   display: flex;
   flex-direction: column;
@@ -457,22 +616,6 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   }
 }
 
-.tp-canvas-field {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.tp-canvas {
-  display: block;
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-}
 
 .tp-hero-badge {
   display: inline-flex;
@@ -592,7 +735,7 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   min-width: 0;
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .tp-input-field-wrap:focus-within {
@@ -677,14 +820,19 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
-              background-color 0.2s,
-              box-shadow 0.2s,
-              color 0.2s;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color 0.15s ease,
+              border-color 0.15s ease,
+              box-shadow 0.15s ease,
+              color 0.15s ease,
+              opacity 0.15s ease;
 }
 
 .tp-btn:active {
-  transform: scale(0.97);
+  opacity: 0.88;
+  filter: brightness(0.96);
 }
 
 /* Unified Apple-Style Inline Paste Capsule Pill */
@@ -712,22 +860,23 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
+  touch-action: manipulation;
   user-select: none;
+  -webkit-user-select: none;
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
 }
 
 .tp-btn-paste-inline:hover {
   background: rgba(255, 255, 255, 0.28);
   border-color: rgba(255, 255, 255, 0.7);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  transform: translateY(-0.5px);
 }
 
 .tp-btn-paste-inline:active {
-  transform: scale(0.96);
   background: rgba(255, 255, 255, 0.35);
+  opacity: 0.85;
 }
 
 .tp-root[data-theme="light"] .tp-btn-paste-inline {
@@ -751,7 +900,7 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
 .tp-btn-primary:hover:not(:disabled) {
   box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.15),
               0 10px 28px rgba(228, 242, 34, 0.6);
-  transform: translateY(-1px);
+  filter: brightness(1.05);
 }
 
 .tp-btn-primary:disabled {
@@ -801,7 +950,10 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   color: #ffffff;
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
   cursor: pointer;
 }
 
@@ -814,12 +966,15 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
 .tp-chip:hover {
   background: rgba(16, 32, 75, 0.65);
   border-color: rgba(255, 255, 255, 0.35);
-  transform: translateY(-1px);
 }
 
 .tp-root[data-theme="light"] .tp-chip:hover {
   background: #ffffff;
   border-color: rgba(38, 89, 217, 0.3);
+}
+
+.tp-chip:active {
+  opacity: 0.85;
 }
 
 .tp-chip[data-active="true"] {
@@ -828,7 +983,6 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   color: #0c101c;
   font-weight: 600;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
-  transform: translateY(-1px);
 }
 
 .tp-root[data-theme="light"] .tp-chip[data-active="true"] {
@@ -862,16 +1016,39 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   font-size: 11px;
 }
 
-/* Guest Plays Banner */
+/* Guest Plays Banner: Rigid geometry baseline prevents vertical layout shifts on auth/reset */
 .tp-guest-meta {
-  margin-top: 12px;
+  margin: 12px auto 0;
   display: flex;
+  width: fit-content;
+  max-width: 100%;
   align-items: center;
   justify-content: center;
   gap: 8px;
   font-size: 12.5px;
+  min-height: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 9999px;
+  border: 1px solid transparent;
   color: rgba(255, 255, 255, 0.9);
   text-shadow: 0 1px 10px rgba(6, 23, 74, 0.4);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.tp-root[data-theme="light"] .tp-guest-meta {
+  color: #334155;
+  text-shadow: none;
+}
+
+.tp-root[data-theme="light"] .tp-guest-meta strong {
+  color: #0f172a !important;
+}
+
+.tp-root[data-theme="light"] .tp-guest-meta:hover {
+  background-color: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.15);
 }
 
 /* =========================================================================
@@ -1070,7 +1247,7 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   background: var(--tp-paper-input);
   border: 1px solid var(--tp-border-subtle);
   color: var(--tp-ink);
-  transition: all 0.2s;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .tp-platform-tab:hover {
@@ -1445,14 +1622,14 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
 }
 
 /* Responsive */
-@media (max-width: 900px) {
-  .tp-nav {
-    grid-template-columns: auto 1fr;
-  }
+@media (max-width: 1080px) {
   .tp-center-info,
   .tp-nav-status {
-    display: none;
+    display: none !important;
   }
+}
+
+@media (max-width: 900px) {
   .tp-features-grid {
     grid-template-columns: 1fr;
     gap: 20px;
@@ -1540,11 +1717,11 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
     cursor: pointer;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
-    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background-color 0.15s ease, opacity 0.15s ease;
   }
   .tp-btn-paste-inline:active {
-    transform: scale(0.95);
     background: rgba(255, 255, 255, 0.28) !important;
+    opacity: 0.85;
   }
   .tp-root[data-theme="light"] .tp-btn-paste-inline {
     background: rgba(255, 255, 255, 0.24) !important;
@@ -1553,6 +1730,7 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   }
   .tp-root[data-theme="light"] .tp-btn-paste-inline:active {
     background: rgba(255, 255, 255, 0.38) !important;
+    opacity: 0.85;
   }
   .tp-format-chips {
     margin-top: 14px;
@@ -1562,4 +1740,40 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
     grid-template-columns: 1fr;
     gap: 28px;
   }
+}
+
+/* =========================================================================
+   ROCK-SOLID BUTTON INTERACTION BASELINE (ZERO LAYOUT SHIFT & JITTER)
+   Guarantees that all buttons across TeraPlay maintain 100% rigid outer
+   geometry with surface-only feedback. No active scales, no translateY,
+   no subpixel text antialiasing shake.
+   ========================================================================= */
+.tp-root button,
+.tp-root .tp-btn,
+.tp-root [role="button"],
+.tp-root a.tp-btn,
+.tp-root a.tp-btn-nav-accent {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.tp-root button:active,
+.tp-root .tp-btn:active,
+.tp-root .tp-btn-primary:active,
+.tp-root .tp-btn-secondary:active,
+.tp-root .tp-btn-download:active,
+.tp-root .tp-btn-paste-inline:active,
+.tp-root .tp-btn-nav-accent:active,
+.tp-root .tp-btn-theme:active,
+.tp-root .tp-chip:active {
+  transform: none !important;
+}
+
+.tp-root .tp-btn-primary:hover:not(:disabled),
+.tp-root .tp-btn-paste-inline:hover,
+.tp-root .tp-theme-btn:hover,
+.tp-root .tp-chip:hover {
+  transform: none !important;
 }
