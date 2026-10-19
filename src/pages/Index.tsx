@@ -1249,7 +1249,7 @@ export default function Index() {
       <section className="tp-hero">
         <div className="tp-hero-sky-container" aria-hidden="true">
           <img
-            src="/assets/bg-day.webp"
+            src="/assets/bg-day.png"
             alt=""
             fetchPriority="high"
             decoding="async"
