@@ -22,18 +22,6 @@ html {
   color-scheme: light dark;
 }
 
-/* View Transitions API Isolation: Prevent crossfade mix-blend desaturation & card shake */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-::view-transition-new(root) {
-  z-index: 9999;
-}
-::view-transition-old(root) {
-  z-index: 1;
-}
 
 @supports (scrollbar-width: thin) {
   html,

@@ -1,8 +1,8 @@
-import React, { startTransition } from 'react';
+import React from 'react';
 
 interface ThemeChangerProps {
   theme: 'dark' | 'light';
-  onToggle: (e?: React.MouseEvent) => void;
+  onToggle: () => void;
   variant?: 'icon' | 'switch';
   className?: string;
   size?: number;
@@ -20,7 +20,7 @@ export const ThemeChanger: React.FC<ThemeChangerProps> = ({
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    onToggle(e);
+    onToggle();
   };
 
   if (variant === 'icon') {

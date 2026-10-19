@@ -248,13 +248,12 @@ All colors MUST be HSL.
     }
   }
 
-  /* Scoped Theme transition: Exclude wildcard * to prevent GPU/CPU reflow drag */
-  html:not(:has(::view-transition-group(root))) body,
-  html:not(:has(::view-transition-group(root))) .tp-root,
-  html:not(:has(::view-transition-group(root))) .tp-input-card,
-  html:not(:has(::view-transition-group(root))) .tp-feature-card,
-  html:not(:has(::view-transition-group(root))) .tp-nav-header {
-    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  /* Clean Scoped Theme transition: Only surfaces, never wildcard * */
+  body,
+  .tp-root,
+  .tp-input-card,
+  .tp-feature-card {
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   }
 
   /* Mobile responsive utilities */
