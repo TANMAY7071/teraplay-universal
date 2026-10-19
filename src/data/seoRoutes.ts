@@ -12,12 +12,12 @@ export interface SeoRouteConfig {
 export const SEO_ROUTES: Record<string, SeoRouteConfig> = {
   '/': {
     path: '/',
-    badge: 'Universal Link Player & Downloader',
-    h1: 'TeraBox Online Video Player & Downloader',
-    subheadline: 'Paste any YouTube, TeraBox, Instagram, Facebook, or TikTok link to stream and download videos instantly in high speed — no app or login required.',
-    metaTitle: 'TeraBox Online Video Player & Fast MP4 Downloader | Free No App',
-    metaDescription: 'Play TeraBox and 1024tera video links online in HD with no app install required. High-speed direct MP4 downloader, zero buffering, and mobile-friendly web player.',
-    keywords: ['terabox player', 'terabox online player', '1024terabox player', 'terabox video downloader', 'watch terabox online'],
+    badge: 'Universal Media & Creator Dock',
+    h1: 'TeraBox Online Video Player & Fast Media Saver',
+    subheadline: 'Watch TeraBox in-browser & save what you love. Fast YouTube transcripts, 1080p thumbnails, watermark-free TikTok & Instagram Reels — zero apps or logins required.',
+    metaTitle: 'TeraBox Online Video Player & Fast Media Saver | Free No App',
+    metaDescription: 'Watch TeraBox in-browser with zero app install. Extract YouTube transcripts, download 1080p thumbnails, save TikTok without watermark, and grab Instagram Reels.',
+    keywords: ['terabox player', 'terabox online player', '1024terabox player', 'youtube transcript downloader', 'youtube thumbnail download', 'tiktok no watermark downloader', 'instagram reels downloader'],
     faqs: [
       {
         question: 'Do I need to install the TeraBox app or register an account?',

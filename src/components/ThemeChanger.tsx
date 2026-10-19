@@ -32,8 +32,12 @@ export const ThemeChanger: React.FC<ThemeChangerProps> = ({
         title={`Current: ${isLight ? 'Light' : 'Dark'} mode (tap to switch)`}
         className={`tp-theme-icon-btn relative inline-flex items-center justify-center shrink-0 rounded-[6px] select-none cursor-pointer overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${className}`}
         style={{
-          width: '31px',
-          height: '31px',
+          width: '32px',
+          height: '32px',
+          minWidth: '32px',
+          minHeight: '32px',
+          maxWidth: '32px',
+          maxHeight: '32px',
           boxSizing: 'border-box',
           touchAction: 'manipulation',
         }}
@@ -43,9 +47,8 @@ export const ThemeChanger: React.FC<ThemeChangerProps> = ({
           className="absolute inset-0 flex items-center justify-center pointer-events-none"
           style={{
             opacity: isLight ? 1 : 0,
-            transform: isLight ? 'rotate(0deg) scale(1)' : 'rotate(45deg) scale(0.5)',
-            transition: 'opacity 0.2s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-            transformOrigin: 'center center',
+            transform: 'none',
+            transition: 'opacity 0.15s ease',
           }}
           aria-hidden={!isLight}
         >
@@ -74,9 +77,8 @@ export const ThemeChanger: React.FC<ThemeChangerProps> = ({
           className="absolute inset-0 flex items-center justify-center pointer-events-none"
           style={{
             opacity: !isLight ? 1 : 0,
-            transform: !isLight ? 'rotate(0deg) scale(1)' : 'rotate(-45deg) scale(0.5)',
-            transition: 'opacity 0.2s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-            transformOrigin: 'center center',
+            transform: 'none',
+            transition: 'opacity 0.15s ease',
           }}
           aria-hidden={isLight}
         >

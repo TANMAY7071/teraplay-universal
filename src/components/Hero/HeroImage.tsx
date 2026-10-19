@@ -65,7 +65,7 @@ const HeroImage: React.FC<HeroImageProps> = ({
       <img
         src={image}
         alt={altText}
-        fetchPriority={active ? "high" : "auto"}
+        {...({ fetchpriority: active ? "high" : "auto" } as Record<string, string>)}
         loading={active ? "eager" : "lazy"}
         decoding="async"
         onLoad={() => setLoaded(true)}

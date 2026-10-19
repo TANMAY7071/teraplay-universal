@@ -369,8 +369,10 @@ body::-webkit-scrollbar,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 31px;
-  height: 31px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
   padding: 0;
   margin: 0;
   border-radius: 6px;
@@ -408,7 +410,7 @@ body::-webkit-scrollbar,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 31px;
+  height: 32px;
   padding: 0 10px;
   border-radius: 6px;
   font-size: 12px;
@@ -456,7 +458,7 @@ body::-webkit-scrollbar,
   align-items: center;
   justify-content: center;
   gap: 4px;
-  height: 31px;
+  height: 32px;
   padding: 0 12px;
   border-radius: 6px;
   font-size: 12.5px;
@@ -1671,6 +1673,7 @@ body::-webkit-scrollbar,
   .tp-nav {
     display: flex;
     justify-content: space-between;
+    align-items: center;
   }
   .tp-center-info,
   .tp-nav-status {
@@ -1695,7 +1698,10 @@ body::-webkit-scrollbar,
 
 @media (max-width: 640px) {
   .tp-nav {
-    padding: 10px 14px;
+    height: 56px;
+    padding: 12px 14px;
+    box-sizing: border-box;
+    align-items: center;
   }
   .tp-btn-nav-accent {
     display: none;
@@ -1817,6 +1823,7 @@ body::-webkit-scrollbar,
 .tp-root .tp-btn-paste-inline:active,
 .tp-root .tp-btn-nav-accent:active,
 .tp-root .tp-btn-theme:active,
+.tp-root .tp-theme-icon-btn:active,
 .tp-root .tp-chip:active {
   transform: none !important;
 }
@@ -1824,6 +1831,7 @@ body::-webkit-scrollbar,
 .tp-root .tp-btn-primary:hover:not(:disabled),
 .tp-root .tp-btn-paste-inline:hover,
 .tp-root .tp-theme-btn:hover,
+.tp-root .tp-theme-icon-btn:hover,
 .tp-root .tp-chip:hover {
   transform: none !important;
 }

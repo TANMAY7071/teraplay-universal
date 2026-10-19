@@ -187,7 +187,7 @@ const DesktopBackground: React.FC<{
       <img
         src={slide.image}
         alt={slide.title}
-        fetchPriority={isActive ? "high" : "auto"}
+        {...({ fetchpriority: isActive ? "high" : "auto" } as Record<string, string>)}
         loading={isActive ? "eager" : "lazy"}
         decoding="async"
         onLoad={() => setLoaded(true)}
