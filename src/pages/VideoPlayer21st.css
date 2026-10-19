@@ -14,23 +14,30 @@ html:has(.tp-root[data-theme="light"]) {
   background-color: #f4f6fb !important;
 }
 
-html,
-html:has(.tp-root) {
-  scrollbar-gutter: stable !important;
+html {
+  scrollbar-gutter: stable;
 }
 
-html[data-theme="dark"],
-html:has(.tp-root[data-theme="dark"]) {
-  color-scheme: dark;
+:root {
+  color-scheme: light dark;
 }
 
-html[data-theme="light"],
-html:has(.tp-root[data-theme="light"]) {
-  color-scheme: light;
+/* View Transitions API Isolation: Prevent crossfade mix-blend desaturation & card shake */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-new(root) {
+  z-index: 9999;
+}
+::view-transition-old(root) {
+  z-index: 1;
 }
 
 @supports (scrollbar-width: thin) {
-  html:has(.tp-root) {
+  html,
+  body {
     scrollbar-color: rgba(38, 89, 217, 0.55) transparent !important;
     scrollbar-width: thin !important;
   }
@@ -42,27 +49,27 @@ body:has(.tp-root) {
   overflow-x: hidden;
 }
 
-/* Custom sleek floating royal blue scrollbar */
-html:has(.tp-root)::-webkit-scrollbar,
-body:has(.tp-root)::-webkit-scrollbar {
-  width: 7px !important;
-  height: 7px !important;
+/* Custom sleek floating royal blue scrollbar (unified 8px) */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
   background: transparent !important;
 }
 
-html:has(.tp-root)::-webkit-scrollbar-track,
-body:has(.tp-root)::-webkit-scrollbar-track {
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
   background: transparent !important;
 }
 
-html:has(.tp-root)::-webkit-scrollbar-thumb,
-body:has(.tp-root)::-webkit-scrollbar-thumb {
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
   background: rgba(38, 89, 217, 0.5) !important;
   border-radius: 999px !important;
 }
 
-html:has(.tp-root)::-webkit-scrollbar-thumb:hover,
-body:has(.tp-root)::-webkit-scrollbar-thumb:hover {
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover {
   background: rgba(38, 89, 217, 0.85) !important;
 }
 
@@ -90,7 +97,7 @@ body:has(.tp-root)::-webkit-scrollbar-thumb:hover {
   --tp-icon-b: #2a5de0;
   --tp-border-subtle: rgba(169, 195, 243, 0.12);
   --tp-border-card: rgba(169, 195, 243, 0.18);
-  --tp-card-shadow: 0 24px 60px -15px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --tp-card-shadow: 0 24px 60px -15px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .tp-root[data-theme="light"] {
@@ -942,8 +949,9 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
-              border-color 0.25s,
-              box-shadow 0.25s;
+              background-color 0.25s ease,
+              border-color 0.25s ease,
+              box-shadow 0.25s ease;
 }
 
 .tp-feature-card:hover {

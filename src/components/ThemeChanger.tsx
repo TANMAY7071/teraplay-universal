@@ -2,7 +2,7 @@ import React, { startTransition } from 'react';
 
 interface ThemeChangerProps {
   theme: 'dark' | 'light';
-  onToggle: () => void;
+  onToggle: (e?: React.MouseEvent) => void;
   variant?: 'icon' | 'switch';
   className?: string;
   size?: number;
@@ -20,9 +20,7 @@ export const ThemeChanger: React.FC<ThemeChangerProps> = ({
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    startTransition(() => {
-      onToggle();
-    });
+    onToggle(e);
   };
 
   if (variant === 'icon') {
@@ -32,7 +30,7 @@ export const ThemeChanger: React.FC<ThemeChangerProps> = ({
         onClick={handleClick}
         aria-label={`Switch to ${isLight ? 'dark' : 'light'} mode`}
         title={`Current: ${isLight ? 'Light' : 'Dark'} mode (tap to switch)`}
-        className={`tp-theme-icon-btn relative inline-flex items-center justify-center shrink-0 rounded-lg select-none cursor-pointer overflow-hidden transition-all duration-200 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tp-mid,#2659d9)] ${className}`}
+        className={`tp-theme-icon-btn relative inline-flex items-center justify-center shrink-0 rounded-lg select-none cursor-pointer overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tp-mid,#2659d9)] ${className}`}
         style={{
           width: `${size}px`,
           height: `${size}px`,
@@ -40,7 +38,7 @@ export const ThemeChanger: React.FC<ThemeChangerProps> = ({
           border: isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.12)',
           boxShadow: isLight
             ? '0 1px 2px rgba(0, 0, 0, 0.04)'
-            : '0 1px 3px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.04)',
+            : '0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04)',
           touchAction: 'manipulation',
         }}
       >

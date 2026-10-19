@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
@@ -402,28 +403,57 @@ export default function Index() {
     return 'dark';
   });
 
-  const toggleTheme = useCallback(() => {
-    setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
+  const toggleTheme = useCallback((e?: React.MouseEvent) => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+
+    const updateDOM = () => {
+      flushSync(() => {
+        setTheme(next);
+      });
       if (typeof window !== 'undefined') {
         localStorage.setItem('teraplay-theme', next);
+        const root = document.documentElement;
+        root.classList.toggle('dark', next === 'dark');
+        root.classList.toggle('light', next === 'light');
       }
-      return next;
-    });
-  }, []);
+    };
 
-  // Synchronize documentElement theme class (color-scheme handled declaratively in CSS to avoid scrollbar layout shift)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const root = document.documentElement;
-      if (theme === 'dark') {
-        root.classList.remove('light');
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-        root.classList.add('light');
-      }
+    // Fallback if browser doesn't support View Transitions or reduced motion preferred
+    if (
+      typeof document === 'undefined' ||
+      !(document as any).startViewTransition ||
+      (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    ) {
+      updateDOM();
+      return;
     }
+
+    const x = e?.clientX ?? (typeof window !== 'undefined' ? window.innerWidth / 2 : 0);
+    const y = e?.clientY ?? (typeof window !== 'undefined' ? 36 : 0);
+    const endRadius = Math.hypot(
+      Math.max(x, typeof window !== 'undefined' ? window.innerWidth - x : 0),
+      Math.max(y, typeof window !== 'undefined' ? window.innerHeight - y : 0)
+    );
+
+    const transition = (document as any).startViewTransition(() => {
+      updateDOM();
+    });
+
+    transition.ready.then(() => {
+      document.documentElement.animate(
+        {
+          clipPath: [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${endRadius}px at ${x}px ${y}px)`,
+          ],
+        },
+        {
+          duration: 320,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          pseudoElement: '::view-transition-new(root)',
+        }
+      );
+    });
   }, [theme]);
 
   // Sync guest plays from localStorage

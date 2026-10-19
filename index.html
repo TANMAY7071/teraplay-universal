@@ -4,6 +4,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('teraplay-theme') || 'dark';
+        document.documentElement.classList.toggle('dark', t === 'dark');
+        document.documentElement.classList.toggle('light', t === 'light');
+      } catch (e) {}
+    })();
+  </script>
   <title>TeraBox Online Video Player & Fast MP4 Downloader | Free No App</title>
   <meta name="description"
     content="Stream and download TeraBox, 1024tera, and NephoBox video links online in HD without installing the TeraBox app. Direct fast MP4 download and mobile player." />
