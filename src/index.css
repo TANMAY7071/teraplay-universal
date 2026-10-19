@@ -198,19 +198,14 @@ All colors MUST be HSL.
     overflow: hidden;
   }
 
-  /* Single root scrollbar with reserved stable gutter */
+  /* Floating overlay scrollbar: Content stretches edge-to-edge under transparent scrollbar */
   html {
     scroll-behavior: smooth;
-    overflow-y: scroll !important;
+    overflow-y: auto;
+    overflow-y: overlay; /* WebKit/Blink: scrollbar floats directly over hero content without reserving space */
     overflow-x: hidden !important;
     width: 100%;
     touch-action: pan-y pinch-zoom;
-  }
-
-  @supports (scrollbar-gutter: stable) {
-    html {
-      scrollbar-gutter: stable !important;
-    }
   }
 
   /* Block Radix UI padding/margin offsets on body when modal opens */
