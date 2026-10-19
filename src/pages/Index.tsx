@@ -1269,6 +1269,7 @@ export default function Index() {
         <div id="resolver-dock" className="tp-resolver-dock">
           <form onSubmit={handleResolveAndPlay} className="tp-input-card">
             <div className="tp-input-row">
+              {/* Row 1: 100% Full-Width URL Input Field */}
               <div className="tp-input-field-wrap">
                 <Search className="w-4 h-4 text-white/70 shrink-0 ml-1.5" aria-hidden="true" />
                 <input
@@ -1316,31 +1317,34 @@ export default function Index() {
                     ✕
                   </button>
                 )}
+              </div>
 
+              {/* Row 2 on mobile / Right section on desktop: Side-by-Side Paste + Launch */}
+              <div className="tp-actions-row">
                 <button
                   type="button"
                   onClick={handlePasteClipboard}
-                  className="tp-btn-paste-inline"
-                  title="Paste from clipboard"
+                  className="tp-btn tp-btn-paste"
+                  title="Paste link from clipboard"
                 >
-                  <Clipboard className="w-3.5 h-3.5 text-[#e4f222]" />
+                  <Clipboard className="w-4 h-4 text-[#e4f222]" />
                   <span>Paste</span>
                 </button>
-              </div>
 
-              <button type="submit" disabled={isLoading} className="tp-btn tp-btn-primary tp-btn-launch">
-                {isLoading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Resolving...</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 fill-current shrink-0" />
-                    <span>Launch & Analyze</span>
-                  </>
-                )}
-              </button>
+                <button type="submit" disabled={isLoading} className="tp-btn tp-btn-primary tp-btn-launch">
+                  {isLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Resolving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-current shrink-0" />
+                      <span>Launch & Analyze</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
 

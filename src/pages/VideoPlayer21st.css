@@ -489,35 +489,41 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   flex: 1;
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
   border-radius: 10px;
-  padding: 3px 6px 3px 10px;
+  padding: 3px 6px 3px 12px;
   min-width: 0;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tp-input-field-wrap:focus-within {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.75);
-  box-shadow: 0 0 0 2px rgba(228, 242, 34, 0.25);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 2px rgba(228, 242, 34, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
+/* Light Theme: Maintain pure translucent glassmorphism, NEVER solid white */
 .tp-root[data-theme="light"] .tp-input-field-wrap {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.38);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 .tp-root[data-theme="light"] .tp-input-field-wrap:focus-within {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: var(--tp-accent);
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 2px rgba(228, 242, 34, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .tp-url-input {
   flex: 1;
   min-width: 0;
   height: 44px;
-  background: transparent;
+  background: transparent !important;
   border: 0;
   color: #ffffff;
   font-size: 15px;
@@ -525,10 +531,7 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   padding: 0 8px;
   outline: none;
   font-family: inherit;
-}
-
-.tp-root[data-theme="light"] .tp-url-input {
-  color: #0c101c;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .tp-url-input::placeholder {
@@ -536,41 +539,14 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
 }
 
 .tp-root[data-theme="light"] .tp-url-input::placeholder {
-  color: rgba(12, 16, 28, 0.5);
+  color: rgba(255, 255, 255, 0.75);
 }
 
-.tp-btn-paste-inline {
-  display: inline-flex;
+.tp-actions-row {
+  display: flex;
   align-items: center;
-  gap: 5px;
-  height: 32px;
-  padding: 0 11px;
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #ffffff;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
+  gap: 8px;
   flex-shrink: 0;
-  transition: all 0.15s ease;
-  backdrop-filter: blur(8px);
-}
-
-.tp-btn-paste-inline:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.55);
-}
-
-.tp-btn-paste-inline:active {
-  transform: scale(0.96);
-}
-
-.tp-root[data-theme="light"] .tp-btn-paste-inline {
-  background: rgba(0, 0, 0, 0.06);
-  border-color: rgba(0, 0, 0, 0.14);
-  color: #0c101c;
 }
 
 .tp-clear-btn {
@@ -595,15 +571,6 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   background: rgba(255, 255, 255, 0.18);
 }
 
-.tp-root[data-theme="light"] .tp-clear-btn {
-  color: rgba(0, 0, 0, 0.45);
-}
-
-.tp-root[data-theme="light"] .tp-clear-btn:hover {
-  color: #0c101c;
-  background: rgba(0, 0, 0, 0.08);
-}
-
 .tp-btn {
   display: inline-flex;
   align-items: center;
@@ -611,7 +578,7 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   gap: 8px;
   height: 46px;
   padding: 0 20px;
-  border-radius: 8px;
+  border-radius: 9px;
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
@@ -625,22 +592,30 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   transform: scale(0.97);
 }
 
+/* Original luminous frosted white Paste button */
 .tp-btn-paste {
-  height: 44px;
-  padding: 0 15px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  height: 46px;
+  padding: 0 18px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45),
+              0 4px 16px rgba(6, 23, 74, 0.15);
   color: #ffffff;
-  font-size: 13px;
-  font-weight: 500;
-  gap: 6px;
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  font-size: 13.5px;
+  font-weight: 600;
+  gap: 7px;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .tp-btn-paste:hover {
-  background: rgba(255, 255, 255, 0.26);
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.65);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65),
+              0 6px 20px rgba(6, 23, 74, 0.25);
 }
 
 .tp-btn-primary {
@@ -1398,11 +1373,25 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   .tp-url-input {
     font-size: 14px;
   }
-  .tp-btn-primary.tp-btn-launch {
+  .tp-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     width: 100%;
+  }
+  .tp-btn-paste {
+    flex: 1;
     height: 46px;
     border-radius: 10px;
-    font-size: 14.5px;
+    font-size: 13.5px;
+    justify-content: center;
+  }
+  .tp-btn-primary.tp-btn-launch {
+    flex: 1.45;
+    height: 46px;
+    border-radius: 10px;
+    font-size: 14px;
+    justify-content: center;
   }
   .tp-format-chips {
     margin-top: 14px;
