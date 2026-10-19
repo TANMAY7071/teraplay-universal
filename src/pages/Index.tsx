@@ -1322,20 +1322,21 @@ export default function Index() {
                     ✕
                   </button>
                 )}
-              </div>
 
-              {/* Row 2 on mobile / Right section on desktop: Side-by-Side Paste + Launch */}
-              <div className="tp-actions-row">
+                {/* Shrunken inline Paste tab */}
                 <button
                   type="button"
                   onClick={handlePasteClipboard}
-                  className="tp-btn tp-btn-paste"
+                  className="tp-btn-paste-inline"
                   title="Paste link from clipboard"
                 >
-                  <Clipboard className="w-4 h-4 text-[#e4f222]" />
+                  <Clipboard className="w-3.5 h-3.5 text-[#e4f222]" />
                   <span>Paste</span>
                 </button>
+              </div>
 
+              {/* Full-width Launch & Analyze CTA row on mobile, inline on desktop */}
+              <div className="tp-actions-row">
                 <button type="submit" disabled={isLoading} className="tp-btn tp-btn-primary tp-btn-launch">
                   {isLoading ? (
                     <>
