@@ -352,8 +352,15 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   z-index: -2;
   overflow: hidden;
   pointer-events: none;
-  background-color: var(--tp-deep);
+  background-color: transparent;
   transform: translate3d(0, 0, 0);
+  /* CSS Alpha Mask: Seamlessly dissolves hero sky into page background (Method 1) */
+  -webkit-mask-image: linear-gradient(180deg, #000000 0%, #000000 60%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000000 0%, #000000 60%, transparent 100%);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
 .tp-hero-sky-img {
@@ -401,29 +408,25 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   z-index: 0;
 }
 
-/* Atmospheric vignette & seamless bottom transition into page paper */
+/* Atmospheric top vignette for navbar & headline contrast; bottom fade governed by alpha mask */
 .tp-hero-sky-overlay {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
   background: linear-gradient(180deg, 
-    rgba(6, 11, 24, 0.45) 0%, 
-    rgba(6, 11, 24, 0.12) 30%, 
-    transparent 55%, 
-    rgba(6, 11, 24, 0.65) 82%, 
-    var(--tp-paper) 100%
+    rgba(6, 11, 24, 0.40) 0%, 
+    rgba(6, 11, 24, 0.08) 25%, 
+    transparent 50%
   );
   transition: background 0.14s ease-out;
 }
 
 .tp-root[data-theme="light"] .tp-hero-sky-overlay {
   background: linear-gradient(180deg, 
-    rgba(12, 38, 98, 0.32) 0%, 
-    rgba(12, 38, 98, 0.08) 30%, 
-    transparent 55%, 
-    rgba(244, 246, 251, 0.6) 82%, 
-    var(--tp-paper) 100%
+    rgba(12, 38, 98, 0.22) 0%, 
+    rgba(12, 38, 98, 0.04) 25%, 
+    transparent 50%
   );
 }
 
