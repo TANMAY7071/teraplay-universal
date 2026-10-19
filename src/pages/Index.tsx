@@ -164,135 +164,7 @@ function isCinemaWidescreen(height?: number): boolean {
   return [1350, 1012, 800, 676, 536, 450, 338].includes(height) || (height > 0 && ![2160, 1440, 1080, 720, 480, 360, 240, 144].includes(height));
 }
 
-// ==========================================
-// INTERACTIVE PARTICLES CANVAS (21ST.DEV STYLE)
-// ==========================================
-const HeroParticlesCanvas: React.FC = React.memo(() => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animationFrameId = 0;
-    let isVisible = true;
-    let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
-    let height = (canvas.height = canvas.parentElement?.clientHeight || 520);
-
-    const onResize = () => {
-      if (!canvas || !canvas.parentElement) return;
-      width = canvas.width = canvas.parentElement.clientWidth;
-      height = canvas.height = canvas.parentElement.clientHeight;
-    };
-    window.addEventListener('resize', onResize);
-
-    const particleCount = Math.min(22, Math.floor(Math.min(width, 1400) / 55));
-    const particles = Array.from({ length: particleCount }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.35,
-      vy: (Math.random() - 0.5) * 0.35,
-      radius: Math.random() * 1.5 + 0.8,
-      alpha: Math.random() * 0.4 + 0.2,
-    }));
-
-    let mouseX = -1000;
-    let mouseY = -1000;
-
-    const onMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      mouseX = e.clientX - rect.left;
-      mouseY = e.clientY - rect.top;
-    };
-    const onMouseLeave = () => {
-      mouseX = -1000;
-      mouseY = -1000;
-    };
-
-    const parent = canvas.parentElement;
-    parent?.addEventListener('mousemove', onMouseMove, { passive: true });
-    parent?.addEventListener('mouseleave', onMouseLeave);
-
-    const render = () => {
-      if (!isVisible) {
-        animationFrameId = 0;
-        return;
-      }
-
-      ctx.clearRect(0, 0, width, height);
-
-      for (let i = 0; i < particles.length; i++) {
-        const p1 = particles[i];
-        p1.x += p1.vx;
-        p1.y += p1.vy;
-
-        if (p1.x < 0) p1.x = width;
-        if (p1.x > width) p1.x = 0;
-        if (p1.y < 0) p1.y = height;
-        if (p1.y > height) p1.y = 0;
-
-        const dxMouse = p1.x - mouseX;
-        const dyMouse = p1.y - mouseY;
-        const distMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
-        if (distMouse < 110) {
-          const force = (110 - distMouse) / 110;
-          p1.x += (dxMouse / distMouse) * force * 1.2;
-          p1.y += (dyMouse / distMouse) * force * 1.2;
-        }
-
-        for (let j = i + 1; j < particles.length; j++) {
-          const p2 = particles[j];
-          const dx = p1.x - p2.x;
-          const dy = p1.y - p2.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          if (dist < 85) {
-            const alpha = (1 - dist / 85) * 0.2;
-            ctx.beginPath();
-            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.15})`;
-            ctx.lineWidth = 0.65;
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-          }
-        }
-
-        ctx.beginPath();
-        ctx.arc(p1.x, p1.y, p1.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${p1.alpha * 0.35})`;
-        ctx.fill();
-      }
-
-      animationFrameId = requestAnimationFrame(render);
-    };
-
-    // IntersectionObserver halts animation loop completely when user scrolls away
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        isVisible = entry?.isIntersecting ?? true;
-        if (isVisible && !animationFrameId) {
-          animationFrameId = requestAnimationFrame(render);
-        }
-      },
-      { threshold: 0 }
-    );
-    observer.observe(canvas);
-
-    animationFrameId = requestAnimationFrame(render);
-
-    return () => {
-      observer.disconnect();
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', onResize);
-      parent?.removeEventListener('mousemove', onMouseMove);
-      parent?.removeEventListener('mouseleave', onMouseLeave);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="tp-canvas pointer-events-none" />;
-});
 
 // ==========================================
 // FAQ ACCORDION SUBCOMPONENT (ISOLATED STATE)
@@ -410,6 +282,10 @@ export default function Index() {
         const root = document.documentElement;
         root.classList.toggle('dark', next === 'dark');
         root.classList.toggle('light', next === 'light');
+        const meta = document.getElementById('meta-theme-color');
+        if (meta) {
+          meta.setAttribute('content', next === 'light' ? '#1253a8' : '#060b18');
+        }
       }
       return next;
     });
@@ -510,7 +386,9 @@ export default function Index() {
     }
   }, [guestPlays, user]);
 
-  const handlePasteClipboard = async () => {
+  const handlePasteClipboard = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     try {
       const text = await navigator.clipboard.readText();
       if (text) {
@@ -523,6 +401,27 @@ export default function Index() {
       toast.error('Clipboard access denied. Please paste manually.');
     }
   };
+
+  const handleOpenDock = useCallback((e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const el = document.getElementById('resolver-dock');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
+
+  const handleSignIn = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    signInWithGoogle();
+  }, [signInWithGoogle]);
+
+  const handleSignOut = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    signOut();
+  }, [signOut]);
 
   const handleResolveAndPlay = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -1203,8 +1102,8 @@ export default function Index() {
               </span>
               <button
                 type="button"
-                onClick={signOut}
-                className="tp-btn-theme text-xs px-2.5 py-1 text-slate-300 hover:text-white"
+                onClick={handleSignOut}
+                className="tp-btn-theme"
                 title="Sign out of testing session"
               >
                 Sign Out
@@ -1213,17 +1112,22 @@ export default function Index() {
           ) : (
             <button
               type="button"
-              onClick={signInWithGoogle}
-              className="tp-btn-theme text-xs px-2.5 py-1 text-slate-300 hover:text-white"
+              onClick={handleSignIn}
+              className="tp-btn-theme"
               title="Sign in (Mock Mode)"
             >
               Sign In
             </button>
           )}
 
-          <a href="#resolver-dock" className="tp-btn-nav-accent">
+          <a
+            href="#resolver-dock"
+            onClick={handleOpenDock}
+            className="tp-btn-nav-accent"
+            aria-label="Open Universal Media Dock"
+          >
             <span>Open Dock</span>
-            <span className="tp-btn-arrow">
+            <span className="tp-btn-arrow" aria-hidden="true">
               <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true">
                 <path d="M2.5 9.5 9.5 2.5M4 2.5h5.5V8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="square" />
               </svg>
@@ -1252,9 +1156,6 @@ export default function Index() {
             className="tp-hero-sky-img tp-hero-sky-night"
           />
           <div className="tp-hero-sky-overlay" />
-        </div>
-        <div className="tp-canvas-field" aria-hidden="true">
-          <HeroParticlesCanvas />
         </div>
 
         <h1 className="tp-title" aria-label="TeraPlay">
@@ -1361,9 +1262,12 @@ export default function Index() {
                 id: 'YouTube',
                 label: 'YouTube Studio',
                 icon: (
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z" fill="#FF0000" />
-                    <path d="M9.545 15.568V8.432L15.818 12l-6.273 3.568z" fill="#ffffff" />
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 256 180" fill="none" aria-hidden="true">
+                    <path
+                      fill="#FF0000"
+                      d="M250.346 28.075A32.18 32.18 0 0 0 227.69 5.418C207.824 0 127.87 0 127.87 0S47.912.164 28.046 5.582A32.18 32.18 0 0 0 5.39 28.24c-6.009 35.298-8.34 89.084.165 122.97a32.18 32.18 0 0 0 22.656 22.657c19.866 5.418 99.822 5.418 99.822 5.418s79.955 0 99.82-5.418a32.18 32.18 0 0 0 22.657-22.657c6.338-35.348 8.291-89.1-.164-123.134"
+                    />
+                    <path fill="#FFFFFF" d="m102.421 128.06l66.328-38.418l-66.328-38.418z" />
                   </svg>
                 ),
               },
@@ -1372,8 +1276,13 @@ export default function Index() {
                 label: 'TeraBox / 1024tera',
                 icon: (
                   <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <rect width="24" height="24" rx="5" fill="#0EA5E9" />
-                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" fill="#ffffff" transform="scale(0.68) translate(5.6, 5.6)" />
+                    <rect width="24" height="24" rx="5.5" fill="#0086FF" />
+                    <path
+                      d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"
+                      fill="#ffffff"
+                      transform="matrix(0.58 0 0 0.58 5.04 5.04)"
+                    />
+                    <path d="M12 9.4l-2.4 2.4h1.5v3h1.8v-3h1.5L12 9.4z" fill="#0086FF" />
                   </svg>
                 ),
               },
@@ -1381,8 +1290,22 @@ export default function Index() {
                 id: 'TikTok',
                 label: 'TikTok',
                 icon: (
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.85.12V9.32a6.34 6.34 0 0 0-.85-.06A6.33 6.33 0 0 0 3.15 15.6a6.33 6.33 0 0 0 6.33 6.33c3.5 0 6.34-2.84 6.34-6.33V8.89a8.17 8.17 0 0 0 4.77 1.52V6.96c-.34-.04-.68-.13-1-.27z" />
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect width="24" height="24" rx="5.5" fill="#010101" />
+                    <g transform="matrix(0.06 0 0 0.06 4.3 3.3)">
+                      <path
+                        fill="#ff004f"
+                        d="M189.72 104.421c18.678 13.345 41.56 21.197 66.273 21.197v-47.53a67 67 0 0 1-13.918-1.456v37.413c-24.711 0-47.59-7.851-66.272-21.195v96.996c0 48.523-39.356 87.855-87.9 87.855c-18.113 0-34.949-5.473-48.934-14.86c15.962 16.313 38.222 26.432 62.848 26.432c48.548 0 87.905-39.332 87.905-87.857v-96.995zm17.17-47.952c-9.546-10.423-15.814-23.893-17.17-38.785v-6.113h-13.189c3.32 18.927 14.644 35.097 30.358 44.898M69.673 225.607a40 40 0 0 1-8.203-24.33c0-22.192 18.001-40.186 40.21-40.186a40.3 40.3 0 0 1 12.197 1.883v-48.593c-4.61-.631-9.262-.9-13.912-.801v37.822a40.3 40.3 0 0 0-12.203-1.882c-22.208 0-40.208 17.992-40.208 40.187c0 15.694 8.997 29.281 22.119 35.9"
+                      />
+                      <path
+                        fill="#ffffff"
+                        d="M175.803 92.849c18.683 13.344 41.56 21.195 66.272 21.195V76.631c-13.794-2.937-26.005-10.141-35.186-20.162c-15.715-9.802-27.038-25.972-30.358-44.898h-34.643v189.843c-.079 22.132-18.049 40.052-40.21 40.052c-13.058 0-24.66-6.221-32.007-15.86c-13.12-6.618-22.118-20.206-22.118-35.898c0-22.193 18-40.187 40.208-40.187c4.255 0 8.356.662 12.203 1.882v-37.822c-47.692.985-86.047 39.933-86.047 87.834c0 23.912 9.551 45.589 25.053 61.428c13.985 9.385 30.82 14.86 48.934 14.86c48.545 0 87.9-39.335 87.9-87.857z"
+                      />
+                      <path
+                        fill="#00f2ea"
+                        d="M242.075 76.63V66.516a66.3 66.3 0 0 1-35.186-10.047a66.47 66.47 0 0 0 35.186 20.163M176.53 11.57a68 68 0 0 1-.728-5.457V0h-47.834v189.845c-.076 22.13-18.046 40.05-40.208 40.05a40.06 40.06 0 0 1-18.09-4.287c7.347 9.637 18.949 15.857 32.007 15.857c22.16 0 40.132-17.918 40.21-40.05V11.571zM99.966 113.58v-10.769a89 89 0 0 0-12.061-.818C39.355 101.993 0 141.327 0 189.845c0 30.419 15.467 57.227 38.971 72.996c-15.502-15.838-25.053-37.516-25.053-61.427c0-47.9 38.354-86.848 86.048-87.833"
+                      />
+                    </g>
                   </svg>
                 ),
               },
@@ -1401,9 +1324,10 @@ export default function Index() {
                       </radialGradient>
                     </defs>
                     <rect width="24" height="24" rx="6" fill="url(#ig-chip-dock)" />
-                    <rect x="5.5" y="5.5" width="13" height="13" rx="3.5" stroke="#ffffff" strokeWidth="1.8" fill="none" />
-                    <circle cx="12" cy="12" r="3.2" stroke="#ffffff" strokeWidth="1.8" fill="none" />
-                    <circle cx="15.8" cy="8.2" r="0.9" fill="#ffffff" />
+                    <path
+                      d="M7 6.5h10a2.5 2.5 0 0 1 2.5 2.5v1.5H4.5V9A2.5 2.5 0 0 1 7 6.5zm-2.5 5.5h15V15a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 15v-3zm6-4l1.2 2h1.8l-1.2-2h-1.8zm4 0l1.2 2h1.8l-1.2-2h-1.8zm-8 0l1.2 2H9.5l-1.2-2H6.5zm4 6l3.5 2.2l-3.5 2.2v-4.4z"
+                      fill="#ffffff"
+                    />
                   </svg>
                 ),
               },
@@ -1413,7 +1337,10 @@ export default function Index() {
                 icon: (
                   <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <circle cx="12" cy="12" r="12" fill="#1877F2" />
-                    <path d="M15.5 12h-2.5v7.5h-3V12h-1.5V9.5h1.5V7.8c0-1.8.8-3 3-3h2.5v2.5h-1.5c-.7 0-.8.3-.8.8v1.4h2.4l-.6 2.5z" fill="#ffffff" />
+                    <path
+                      d="M16.5 12.05h-2.6v9.45h-3.9v-9.45H8.2V8.75h1.8V6.63c0-2.48 1.48-3.85 3.74-3.85c1.08 0 2.22.19 2.22.19v2.44h-1.25c-1.23 0-1.61.76-1.61 1.54v1.8h2.75l-.44 3.3z"
+                      fill="#ffffff"
+                    />
                   </svg>
                 ),
               },
@@ -1421,8 +1348,11 @@ export default function Index() {
                 id: 'Bilibili',
                 label: 'Bilibili',
                 icon: (
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#00A1D6" aria-hidden="true">
-                    <path d="M17.813 4.653h.854c1.51 0 2.769 1.233 2.769 2.758v10.446c0 1.525-1.259 2.758-2.769 2.758H5.333C3.823 20.615 2.564 19.382 2.564 17.857V7.411c0-1.525 1.259-2.758 2.769-2.758h.854l-1.92-2.112a.8.8 0 0 1 .059-1.127.8.8 0 0 1 1.127.059l2.76 3.036h7.627l2.76-3.036a.8.8 0 0 1 1.127-.059.8.8 0 0 1 .059 1.127l-1.92 2.112zM7.2 10.4a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4zm9.6 0a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4z" />
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      fill="#23ADE5"
+                      d="M17.813 4.653h.854q2.266.08 3.773 1.574Q23.946 7.72 24 9.987v7.36q-.054 2.266-1.56 3.773c-1.506 1.507-2.262 1.524-3.773 1.56H5.333q-2.266-.054-3.773-1.56C.053 19.614.036 18.858 0 17.347v-7.36q.054-2.267 1.56-3.76t3.773-1.574h.774l-1.174-1.12a1.23 1.23 0 0 1-.373-.906q0-.534.373-.907l.027-.027q.4-.373.92-.373t.92.373L9.653 4.44q.107.106.187.213h4.267a.8.8 0 0 1 .16-.213l2.853-2.747q.4-.373.92-.373c.347 0 .662.151.929.4s.391.551.391.907q0 .532-.373.906zM5.333 7.24q-1.12.027-1.88.773q-.76.748-.786 1.894v7.52q.026 1.146.786 1.893t1.88.773h13.334q1.12-.026 1.88-.773t.786-1.893v-7.52q-.026-1.147-.786-1.894t-1.88-.773zM8 11.107q.56 0 .933.373q.375.374.4.96v1.173q-.025.586-.4.96q-.373.375-.933.374c-.56-.001-.684-.125-.933-.374q-.375-.373-.4-.96V12.44q0-.56.386-.947q.387-.386.947-.386m8 0q.56 0 .933.373q.375.374.4.96v1.173q-.025.586-.4.96q-.373.375-.933.374c-.56-.001-.684-.125-.933-.374q-.375-.373-.4-.96V12.44q.025-.586.4-.96q.373-.373.933-.373"
+                    />
                   </svg>
                 ),
               },
@@ -1430,9 +1360,11 @@ export default function Index() {
                 id: 'Dailymotion',
                 label: 'Dailymotion',
                 icon: (
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
-                    <text x="8" y="16" fontSize="12" fontWeight="bold" fill="currentColor">d</text>
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      fill="#0066DC"
+                      d="M21.823 7.327a11.9 11.9 0 0 0-2.606-3.814a12.1 12.1 0 0 0-3.866-2.57A12.3 12.3 0 0 0 10.617 0H1.831a.6.6 0 0 0-.609.603v3.764c0 .162.064.312.179.426l4.164 4.123a.6.6 0 0 0 .439.177h4.56c.806 0 1.56.313 2.125.88c.557.559.856 1.296.843 2.075c-.029 1.571-1.343 2.849-2.931 2.849h-6.74a.6.6 0 0 0-.432.176a.62.62 0 0 0-.178.427v3.764c0 .162.063.312.178.427l4.139 4.099a.65.65 0 0 0 .476.21h2.572a12.3 12.3 0 0 0 4.733-.945a12.2 12.2 0 0 0 3.866-2.571a12 12 0 0 0 2.607-3.813c.633-1.479.956-3.051.956-4.67s-.321-3.19-.956-4.669zM2.441 4.118V1.982l2.945 2.755l.001 2.297zm4.975 17.813l-2.945-2.917v-2.137l2.945 2.755zm-2.004-5.832h5.19c2.248 0 4.107-1.807 4.147-4.03a4.03 4.03 0 0 0-1.192-2.937a4.2 4.2 0 0 0-2.996-1.239H6.606V5.216h3.996c1.831 0 3.553.706 4.849 1.986a6.724 6.724 0 0 1-.152 9.736a6.88 6.88 0 0 1-4.697 1.84H8.275L5.412 16.1zm15.289.1a10.8 10.8 0 0 1-2.345 3.431a10.9 10.9 0 0 1-3.48 2.314a11 11 0 0 1-4.26.847H8.633v-2.814h1.916c2.145 0 4.161-.802 5.675-2.254a7.88 7.88 0 0 0 2.451-5.728c0-2.177-.87-4.21-2.451-5.728c-1.514-1.454-3.528-2.254-5.675-2.254h-4.16L3.383 1.202h7.234c1.479 0 2.911.285 4.259.847a11 11 0 0 1 3.48 2.313a10.8 10.8 0 0 1 2.345 3.432c.571 1.33.86 2.743.86 4.202s-.289 2.873-.86 4.203"
+                    />
                   </svg>
                 ),
               },
@@ -1440,8 +1372,16 @@ export default function Index() {
                 id: 'Snapchat',
                 label: 'Snapchat',
                 icon: (
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#FFFC00" aria-hidden="true">
-                    <path d="M12.016 2.016c-3.867 0-6.023 2.836-6.023 5.484 0 .961.328 2.086.727 2.883.187.375.14.539-.14.773-.422.352-1.079.82-1.618 1.453-.445.516-.258 1.055.352 1.078.656.023 1.336-.21 1.945-.445.328-.117.516.023.633.258.469.961 1.43 2.156 3.094 2.367.21.023.351.188.351.422 0 .445-.469.727-1.125.961-.75.281-1.805.656-2.062 1.734-.14.586.234 1.055.937 1.031.984-.047 1.945-.422 2.906-.726.258-.07.492-.024.68.14.773.68 1.851.68 2.625 0 .188-.164.422-.21.68-.14.96.304 1.922.68 2.906.726.703.024 1.078-.445.937-1.031-.258-1.078-1.312-1.453-2.062-1.734-.656-.234-1.125-.516-1.125-.961 0-.234.141-.399.351-.422 1.664-.211 2.625-1.406 3.094-2.367.117-.235.305-.375.633-.258.609.235 1.289.468 1.945.445.61-.023.797-.562.352-1.078-.539-.633-1.196-1.101-1.618-1.453-.281-.234-.328-.398-.14-.773.398-.797.727-1.922.727-2.883 0-2.648-2.157-5.484-6.024-5.484z" />
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect width="24" height="24" rx="5.5" fill="#FFFC00" />
+                    <path
+                      fill="#ffffff"
+                      stroke="#000000"
+                      strokeWidth="1.2"
+                      strokeLinejoin="round"
+                      transform="matrix(0.74 0 0 0.74 3.1 2.6)"
+                      d="M12.206.793c.99 0 4.347.276 5.93 3.821c.529 1.193.403 3.219.299 4.847l-.003.06c-.012.18-.022.345-.03.51c.075.045.203.09.401.09c.3-.016.659-.12 1.033-.301a1 1 0 0 1 .464-.104c.182 0 .359.029.509.09c.45.149.734.479.734.838q.022.674-1.213 1.168c-.089.029-.209.075-.344.119c-.45.135-1.139.36-1.333.81c-.09.224-.061.524.12.868l.015.015c.06.136 1.526 3.475 4.791 4.014c.255.044.435.27.42.509a.6.6 0 0 1-.045.225c-.24.569-1.273.988-3.146 1.271c-.059.091-.12.375-.164.57c-.029.179-.074.36-.134.553c-.076.271-.27.405-.555.405h-.03a3 3 0 0 1-.538-.074a6 6 0 0 0-1.273-.135c-.3 0-.599.015-.913.074c-.6.104-1.123.464-1.723.884c-.853.599-1.826 1.288-3.294 1.288c-.06 0-.119-.015-.18-.015h-.149c-1.468 0-2.427-.675-3.279-1.288c-.599-.42-1.107-.779-1.707-.884a7 7 0 0 0-.928-.074c-.54 0-.958.089-1.272.149a3 3 0 0 1-.54.074c-.374 0-.523-.224-.583-.42c-.061-.192-.09-.389-.135-.567c-.046-.181-.105-.494-.166-.57c-1.918-.222-2.95-.642-3.189-1.226a.6.6 0 0 1-.055-.225a.496.496 0 0 1 .42-.509c3.264-.54 4.73-3.879 4.791-4.02l.016-.029c.18-.345.224-.645.119-.869c-.195-.434-.884-.658-1.332-.809a2 2 0 0 1-.346-.119c-1.107-.435-1.257-.93-1.197-1.273c.09-.479.674-.793 1.168-.793c.146 0 .27.029.383.074c.42.194.789.3 1.104.3c.234 0 .384-.06.465-.105l-.046-.569c-.098-1.626-.225-3.651.307-4.837C7.392 1.077 10.739.807 11.727.807l.419-.015h.06z"
+                    />
                   </svg>
                 ),
               },
@@ -1449,8 +1389,12 @@ export default function Index() {
                 id: 'LinkedIn',
                 label: 'LinkedIn',
                 icon: (
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#0A66C2" aria-hidden="true">
-                    <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.67 1.67 0 1 0 0-3.34 1.67 1.67 0 0 0 0 3.34m1.39 10.24v-8.37H5.07v8.37h2.78z" />
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect width="24" height="24" rx="5" fill="#0A66C2" />
+                    <path
+                      fill="#ffffff"
+                      d="M19 19h-3.1v-4.9c0-1.2-.02-2.7-1.6-2.7c-1.6 0-1.9 1.3-1.9 2.6V19H9.3V8.8h3v1.4h.04c.4-.8 1.4-1.6 2.9-1.6c3.1 0 3.7 2.1 3.7 4.8V19zM5.8 7.4c-1 0-1.8-.8-1.8-1.8s.8-1.8 1.8-1.8s1.8.8 1.8 1.8s-.8 1.8-1.8 1.8zm1.5 11.6H4.3V8.8h3V19z"
+                    />
                   </svg>
                 ),
               },
@@ -1458,8 +1402,11 @@ export default function Index() {
                 id: 'Vimeo',
                 label: 'Vimeo',
                 icon: (
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#1AB7EA" aria-hidden="true">
-                    <path d="M22.396 7.164c-.093 2.026-1.507 4.8-4.245 8.32C15.323 19.161 12.935 21 10.985 21c-1.214 0-2.24-1.119-3.08-3.356-.56-2.052-1.12-4.105-1.68-6.158-.622-2.24-1.29-3.36-2.004-3.36-.156 0-.7.328-1.634.98L1.4 7.633c1.152-1.01 2.286-2.02 3.403-3.03 1.554-1.336 2.72-2.037 3.498-2.1 1.9-.155 3.072.95 3.518 3.315.528 2.8.887 4.542 1.076 5.228.56 2.395 1.182 3.593 1.867 3.593.53 0 1.23-.746 2.1-2.24.87-1.493 1.34-2.426 1.41-2.799.155-.84-.25-1.26-1.213-1.26-.467 0-.965.093-1.494.28 1.027-3.36 3.018-4.976 5.972-4.85 2.178.094 3.204 1.23 3.078 3.404z" />
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 256 223" fill="none" aria-hidden="true">
+                    <path
+                      fill="#1AB7EA"
+                      d="M255.876 51.662c-1.139 24.968-18.545 59.157-52.209 102.55q-52.21 67.99-88.343 67.989c-14.918 0-27.551-13.799-37.863-41.406c-6.892-25.306-13.775-50.61-20.664-75.915c-7.663-27.592-15.878-41.406-24.661-41.406c-1.915 0-8.617 4.038-20.091 12.081L0 60.008a3257 3257 0 0 0 37.36-33.38C54.21 12.038 66.86 4.366 75.29 3.59q29.886-2.876 36.79 40.938c4.974 31.514 8.415 51.116 10.35 58.788c5.742 26.145 12.06 39.201 18.965 39.201c5.358 0 13.407-8.478 24.138-25.436c10.722-16.963 16.464-29.868 17.24-38.733c1.525-14.638-4.22-21.975-17.24-21.975c-6.128 0-12.447 1.413-18.946 4.206c12.58-41.29 36.618-61.343 72.1-60.199c26.304.773 38.705 17.867 37.19 51.282"
+                    />
                   </svg>
                 ),
               },
@@ -1467,8 +1414,15 @@ export default function Index() {
                 id: 'WhatsApp',
                 label: 'WhatsApp (E2EE)',
                 icon: (
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#25D366" aria-hidden="true">
-                    <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.56 20.15 9.11 19.76 7.85 19L7.55 18.83L4.43 19.65L5.26 16.61L5.06 16.29C4.24 14.99 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.67 12.05 3.67Z" />
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      fill="#25D366"
+                      d="M12.05 2C6.53 2 2.05 6.48 2.05 12c0 1.95.56 3.77 1.53 5.32L2.3 22l4.83-1.27A9.9 9.9 0 0 0 12.05 22c5.52 0 10-4.48 10-10s-4.48-10-10-10z"
+                    />
+                    <path
+                      fill="#ffffff"
+                      d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97c-.27-.1-.47-.15-.67.15c-.2.3-.77.97-.94 1.16c-.17.2-.35.22-.64.08c-.3-.15-1.26-.46-2.39-1.48c-.88-.78-1.48-1.76-1.65-2.06c-.17-.3-.02-.46.13-.6c.13-.14.3-.35.45-.52c.15-.18.2-.3.3-.5c.1-.2.05-.37-.03-.52c-.07-.15-.67-1.61-.92-2.21c-.24-.58-.48-.5-.67-.51h-.57c-.2 0-.52.07-.79.37c-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.48c.71.31 1.26.49 1.69.63c.71.23 1.36.2 1.87.12c.57-.08 1.76-.72 2.01-1.41c.25-.7.25-1.29.17-1.41c-.07-.13-.27-.2-.57-.35z"
+                    />
                   </svg>
                 ),
               },
@@ -1492,7 +1446,6 @@ export default function Index() {
                 data-active={activeChip === chip.id ? 'true' : 'false'}
                 onClick={() => {
                   setActiveChip(chip.id as PlatformChip);
-                  urlInputRef.current?.focus();
                 }}
               >
                 {chip.icon}
@@ -1527,7 +1480,7 @@ export default function Index() {
           {/* Guest play indicator */}
           {!user ? (
             <div
-              className="tp-guest-meta cursor-pointer hover:border-white/20 transition-all select-none"
+              className="tp-guest-meta cursor-pointer hover:border-white/20 hover:bg-white/5 transition-colors select-none"
               onClick={() => {
                 try {
                   localStorage.removeItem('teraplay_guest_plays');
@@ -1594,9 +1547,10 @@ export default function Index() {
                       onClick={() => {
                         setResolveError(null);
                         setInputUrl('');
-                        urlInputRef.current?.focus();
+                        const el = document.getElementById('resolver-dock');
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                       }}
-                      className="tp-btn tp-btn-primary active:scale-[0.98] transition-transform"
+                      className="tp-btn tp-btn-primary active:opacity-90"
                       style={{ height: '36px', fontSize: '12px' }}
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
@@ -1692,7 +1646,7 @@ export default function Index() {
               <button
                 type="button"
                 onClick={() => setYoutubeTab('downloads')}
-                className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
                   youtubeTab === 'downloads'
                     ? 'border-[var(--tp-mid)] text-[var(--tp-mid)] dark:border-[#e4f222] dark:text-[#e4f222]'
                     : 'border-transparent text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
@@ -1710,7 +1664,7 @@ export default function Index() {
               <button
                 type="button"
                 onClick={() => setYoutubeTab('transcript')}
-                className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
                   youtubeTab === 'transcript'
                     ? 'border-[var(--tp-mid)] text-[var(--tp-mid)] dark:border-[#e4f222] dark:text-[#e4f222]'
                     : 'border-transparent text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
@@ -1732,7 +1686,7 @@ export default function Index() {
               <button
                 type="button"
                 onClick={() => setYoutubeTab('thumbnails')}
-                className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
                   youtubeTab === 'thumbnails'
                     ? 'border-[var(--tp-mid)] text-[var(--tp-mid)] dark:border-[#e4f222] dark:text-[#e4f222]'
                     : 'border-transparent text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
@@ -1750,7 +1704,7 @@ export default function Index() {
               <button
                 type="button"
                 onClick={() => setYoutubeTab('player')}
-                className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 py-3.5 px-4 border-b-2 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
                   youtubeTab === 'player'
                     ? 'border-[var(--tp-mid)] text-[var(--tp-mid)] dark:border-[#e4f222] dark:text-[#e4f222]'
                     : 'border-transparent text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
@@ -1797,7 +1751,7 @@ export default function Index() {
                               <button
                                 type="button"
                                 onClick={() => setActiveSlideIndex((prev) => (prev > 0 ? prev - 1 : carouselSlides.length - 1))}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 transition-all active:scale-95 shadow-xl backdrop-blur-md"
+                                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 transition-colors active:opacity-85 shadow-xl backdrop-blur-md"
                                 aria-label="Previous slide"
                               >
                                 <ChevronLeft className="w-5 h-5" />
@@ -1805,7 +1759,7 @@ export default function Index() {
                               <button
                                 type="button"
                                 onClick={() => setActiveSlideIndex((prev) => (prev < carouselSlides.length - 1 ? prev + 1 : 0))}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 transition-all active:scale-95 shadow-xl backdrop-blur-md"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 transition-colors active:opacity-85 shadow-xl backdrop-blur-md"
                                 aria-label="Next slide"
                               >
                                 <ChevronRight className="w-5 h-5" />
@@ -1875,7 +1829,7 @@ export default function Index() {
                           download={`instagram_slide_${activeSlideIndex + 1}.jpg`}
                           target="_blank"
                           rel="noreferrer"
-                          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 dark:text-cyan-300 font-bold text-xs sm:text-sm hover:bg-cyan-500/25 transition-all shadow-lg shadow-cyan-500/10"
+                          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 dark:text-cyan-300 font-bold text-xs sm:text-sm hover:bg-cyan-500/25 transition-colors shadow-lg shadow-cyan-500/10"
                         >
                           <Download className="w-4 h-4 fill-current" />
                           <span>Download Slide {activeSlideIndex + 1} (1080p JPG)</span>
@@ -1890,7 +1844,7 @@ export default function Index() {
                               el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
                           }}
-                          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 dark:text-cyan-300 font-bold text-xs sm:text-sm hover:bg-cyan-500/25 transition-all shadow-lg shadow-cyan-500/10"
+                          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 dark:text-cyan-300 font-bold text-xs sm:text-sm hover:bg-cyan-500/25 transition-colors shadow-lg shadow-cyan-500/10"
                         >
                           <Play className="w-4 h-4 fill-current" />
                           <span>Watch Online in Player</span>
@@ -1905,7 +1859,7 @@ export default function Index() {
                             download={isImageMedia ? `instagram_slide_${activeSlideIndex + 1}.jpg` : undefined}
                             target={isImageMedia ? "_blank" : undefined}
                             rel={isImageMedia ? "noreferrer" : undefined}
-                            className="tp-btn tp-btn-download flex-1 justify-center rounded-r-none border-r border-black/20 active:scale-[0.99] transition-transform"
+                            className="tp-btn tp-btn-download flex-1 justify-center rounded-r-none border-r border-black/20 active:opacity-90"
                             style={{ height: '44px', fontSize: '13px' }}
                           >
                             <Download className="w-4 h-4" />
@@ -1915,7 +1869,7 @@ export default function Index() {
                           <button
                             type="button"
                             onClick={() => setIsQuickDropdownOpen(!isQuickDropdownOpen)}
-                            className="tp-btn tp-btn-download rounded-l-none px-3.5 active:scale-[0.99] transition-transform"
+                            className="tp-btn tp-btn-download rounded-l-none px-3.5 active:opacity-90"
                             style={{ height: '44px' }}
                             title={isImageMedia ? "Select carousel slide" : "Select quick download quality"}
                             aria-expanded={isQuickDropdownOpen}
@@ -1952,7 +1906,7 @@ export default function Index() {
                                       setActiveSlideIndex(idx);
                                       setIsQuickDropdownOpen(false);
                                     }}
-                                    className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-[var(--tp-paper-input)] active:scale-[0.98] text-[var(--tp-ink)] font-medium transition-all"
+                                    className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-[var(--tp-paper-input)] active:opacity-90 text-[var(--tp-ink)] font-medium transition-colors"
                                   >
                                     <span className="flex items-center gap-2">
                                       <ImageIcon className="w-3.5 h-3.5 text-sky-400 shrink-0" />
@@ -1973,7 +1927,7 @@ export default function Index() {
                                     href={vf.download_url || vf.url}
                                     download
                                     onClick={() => setIsQuickDropdownOpen(false)}
-                                    className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-[var(--tp-paper-input)] active:scale-[0.98] text-[var(--tp-ink)] font-medium transition-all"
+                                    className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-[var(--tp-paper-input)] active:opacity-90 text-[var(--tp-ink)] font-medium transition-colors"
                                   >
                                     <span className="flex items-center gap-2">
                                       <Film className="w-3.5 h-3.5 text-sky-400 shrink-0" />
@@ -2014,7 +1968,7 @@ export default function Index() {
                                       href={af.download_url || af.url}
                                       download
                                       onClick={() => setIsQuickDropdownOpen(false)}
-                                      className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-[var(--tp-paper-input)] active:scale-[0.98] text-[var(--tp-ink)] font-medium transition-all"
+                                      className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-[var(--tp-paper-input)] active:opacity-90 text-[var(--tp-ink)] font-medium transition-colors"
                                     >
                                       <span className="flex items-center gap-2">
                                         <Music className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -2037,7 +1991,7 @@ export default function Index() {
                         <a
                           href={bestAudio.download_url || bestAudio.url}
                           download
-                          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-500 dark:text-amber-300 font-bold text-xs sm:text-sm hover:bg-amber-500/20 active:scale-[0.98] transition-all shadow-md"
+                          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-500 dark:text-amber-300 font-bold text-xs sm:text-sm hover:bg-amber-500/20 active:opacity-90 transition-colors shadow-md"
                         >
                           <Music className="w-4 h-4 fill-current/20" />
                           <span>Download Audio (MP3 320 kbps)</span>
@@ -2053,7 +2007,7 @@ export default function Index() {
                             const el = document.getElementById('studio-tabs-nav');
                             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                           }}
-                          className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border font-bold text-xs sm:text-sm active:scale-[0.98] transition-all shadow-md ${
+                          className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border font-bold text-xs sm:text-sm active:opacity-90 transition-colors shadow-md ${
                             resolvedVideo.transcript?.items?.length
                               ? 'bg-amber-500/10 border-amber-500/25 text-amber-500 dark:text-amber-300 hover:bg-amber-500/20'
                               : 'bg-purple-500/10 border-purple-500/25 text-purple-400 dark:text-purple-300 hover:bg-purple-500/20'
@@ -2095,7 +2049,7 @@ export default function Index() {
                       <button
                         type="button"
                         onClick={() => setDownloadFormatTab('video')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors ${
                           downloadFormatTab === 'video'
                             ? 'bg-[var(--tp-accent)] text-[var(--tp-accent-ink)] shadow-md font-bold'
                             : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
@@ -2115,7 +2069,7 @@ export default function Index() {
                       <button
                         type="button"
                         onClick={() => setDownloadFormatTab('audio')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors ${
                           downloadFormatTab === 'audio'
                             ? 'bg-[var(--tp-accent)] text-[var(--tp-accent-ink)] shadow-md font-bold'
                             : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
@@ -2208,7 +2162,7 @@ export default function Index() {
                                   <a
                                     href={fmt.download_url || fmt.url}
                                     download
-                                    className="tp-btn tp-btn-download active:scale-[0.97] transition-transform"
+                                    className="tp-btn tp-btn-download active:opacity-90"
                                     style={{ height: '34px', fontSize: '11px', padding: '0 14px' }}
                                   >
                                     <Download className="w-3.5 h-3.5" />
@@ -2216,7 +2170,9 @@ export default function Index() {
                                   </a>
                                   <button
                                     type="button"
-                                    onClick={async () => {
+                                    onClick={async (e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
                                       try {
                                         await navigator.clipboard.writeText(fmt.url);
                                         toast.success('Direct stream link copied!');
@@ -2224,7 +2180,7 @@ export default function Index() {
                                         toast.error('Could not copy link');
                                       }
                                     }}
-                                    className="tp-btn tp-btn-secondary active:scale-[0.97] transition-transform"
+                                    className="tp-btn tp-btn-secondary active:opacity-90"
                                     style={{ height: '34px', fontSize: '11px', padding: '0 10px' }}
                                     title="Copy direct stream link"
                                   >
@@ -2283,7 +2239,7 @@ export default function Index() {
                     <button
                       type="button"
                       onClick={() => setShowTimestamps(!showTimestamps)}
-                      className={`h-9 px-3 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                      className={`h-9 px-3 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
                         showTimestamps
                           ? 'border-[var(--tp-accent)] bg-[var(--tp-accent)]/15 text-[var(--tp-accent-ink)] dark:text-[#e4f222]'
                           : 'border-[var(--tp-border-card)] bg-[var(--tp-paper-elevated)] text-[var(--tp-muted)] hover:text-[var(--tp-ink)] hover:bg-[var(--tp-paper-input)]'
@@ -2527,7 +2483,7 @@ export default function Index() {
                     {thumbnailList.map((thumb, idx) => (
                       <div
                         key={thumb.url + thumb.tag + idx}
-                        className="group flex flex-col justify-between rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] overflow-hidden p-3.5 space-y-3 transition-all hover:border-[var(--tp-mid)]/40 hover:shadow-xl"
+                        className="group flex flex-col justify-between rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] overflow-hidden p-3.5 space-y-3 transition-colors hover:border-[var(--tp-mid)]/40 hover:shadow-xl"
                       >
                         {/* Image Preview Container (Pristine Artwork, No Intrusive Badges) */}
                         <div className={`relative ${isVerticalMedia ? 'aspect-[3/4]' : 'aspect-video'} rounded-xl overflow-hidden bg-black/60 border border-[var(--tp-border-subtle)] flex items-center justify-center`}>
@@ -2633,7 +2589,7 @@ export default function Index() {
                         <button
                           type="button"
                           onClick={() => setActiveSlideIndex((prev) => (prev > 0 ? prev - 1 : carouselSlides.length - 1))}
-                          className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 transition-all active:scale-95 shadow-xl backdrop-blur-md"
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 transition-colors active:opacity-85 shadow-xl backdrop-blur-md"
                           aria-label="Previous slide"
                         >
                           <ChevronLeft className="w-5 h-5" />
@@ -2641,7 +2597,7 @@ export default function Index() {
                         <button
                           type="button"
                           onClick={() => setActiveSlideIndex((prev) => (prev < carouselSlides.length - 1 ? prev + 1 : 0))}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 transition-all active:scale-95 shadow-xl backdrop-blur-md"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 transition-colors active:opacity-85 shadow-xl backdrop-blur-md"
                           aria-label="Next slide"
                         >
                           <ChevronRight className="w-5 h-5" />
