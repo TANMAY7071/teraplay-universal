@@ -473,10 +473,10 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
 }
 
 .tp-input-card:focus-within {
-  border-color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.2);
   box-shadow: 0 30px 80px -10px rgba(6, 23, 74, 0.35),
-              0 0 0 3px rgba(228, 242, 34, 0.35);
+              0 0 0 1px rgba(255, 255, 255, 0.2);
 }
 
 .tp-input-row {
@@ -501,9 +501,9 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
 }
 
 .tp-input-field-wrap:focus-within {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 0 0 2px rgba(228, 242, 34, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 /* Light Theme: Maintain pure translucent glassmorphism, NEVER solid white */
@@ -514,9 +514,9 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
 }
 
 .tp-root[data-theme="light"] .tp-input-field-wrap:focus-within {
-  background: rgba(255, 255, 255, 0.24);
-  border-color: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 0 0 2px rgba(228, 242, 34, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .tp-url-input {
