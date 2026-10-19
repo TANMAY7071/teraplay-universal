@@ -10,30 +10,13 @@ html:has(.tp-root) {
   transition: background-color 0.3s ease;
 }
 
-html:has(.tp-root[data-theme="light"]) {
-  background-color: #f4f6fb !important;
-}
-
 html {
   overflow-y: auto;
-  overflow-y: overlay; /* WebKit/Chromium: floats scrollbar over content without separate track line */
+  overflow-y: overlay; /* WebKit/Chromium: floats scrollbar directly over content without reserving track space */
 }
 
 :root {
   color-scheme: light dark;
-}
-
-@supports (scrollbar-width: thin) {
-  html,
-  body {
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent !important;
-    scrollbar-width: thin !important;
-  }
-  html.light,
-  html[data-theme="light"],
-  .tp-root[data-theme="light"] {
-    scrollbar-color: rgba(12, 21, 56, 0.3) transparent !important;
-  }
 }
 
 body:has(.tp-root) {
@@ -49,6 +32,14 @@ body::-webkit-scrollbar,
   width: 8px !important;
   height: 8px !important;
   background: transparent !important;
+}
+
+::-webkit-scrollbar-button,
+::-webkit-scrollbar-corner {
+  display: none !important;
+  background: transparent !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 html::-webkit-scrollbar-track,
@@ -357,6 +348,9 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
    ========================================================================= */
 .tp-hero {
   position: relative;
+  width: 100vw;
+  left: 50%;
+  transform: translateX(-50%);
   min-height: max(620px, 100svh);
   display: flex;
   flex-direction: column;
