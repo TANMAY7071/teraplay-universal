@@ -1247,7 +1247,23 @@ export default function Index() {
           HERO & UNIVERSAL RESOLVER DOCK
           ========================================================================= */}
       <section className="tp-hero">
-        <div className="tp-hero-bg" aria-hidden="true" />
+        <div className="tp-hero-sky-container" aria-hidden="true">
+          <img
+            src="/assets/bg-day.webp"
+            alt=""
+            fetchPriority="high"
+            decoding="async"
+            className="tp-hero-sky-img tp-hero-sky-day"
+          />
+          <img
+            src="/assets/bg-night.webp"
+            alt=""
+            fetchPriority="high"
+            decoding="async"
+            className="tp-hero-sky-img tp-hero-sky-night"
+          />
+          <div className="tp-hero-sky-overlay" />
+        </div>
         <div className="tp-canvas-field" aria-hidden="true">
           <HeroParticlesCanvas />
         </div>

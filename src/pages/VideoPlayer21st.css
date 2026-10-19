@@ -348,18 +348,87 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
   box-sizing: border-box;
 }
 
-.tp-hero-bg {
+.tp-hero-sky-container {
   position: absolute;
   inset: 0;
   z-index: -2;
-  background: radial-gradient(ellipse 40% 35% at 50% 45%, rgba(97, 137, 229, 0.4) 0%, transparent 100%),
-              linear-gradient(180deg, var(--tp-deep) 0%, #153589 16%, var(--tp-mid) 40%, #1a3c94 62%, #0d2163 82%, var(--tp-paper) 100%);
-  transition: background 0.3s ease;
+  overflow: hidden;
+  pointer-events: none;
+  background-color: var(--tp-deep);
+  transform: translate3d(0, 0, 0);
 }
 
-.tp-root[data-theme="light"] .tp-hero-bg {
-  background: radial-gradient(ellipse 34% 30% at 50% 47%, #6189e5 0%, transparent 100%),
-              linear-gradient(180deg, var(--tp-deep) 0%, #153589 16%, var(--tp-mid) 40%, #6f95ea 60%, var(--tp-light) 74%, #dbe7f9 88%, var(--tp-paper) 100%);
+.tp-hero-sky-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(1.035);
+  transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+/* Dark Mode (Default): Night sky with moon and stars */
+.tp-root .tp-hero-sky-night,
+.tp-root[data-theme="dark"] .tp-hero-sky-night {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.tp-root .tp-hero-sky-day,
+.tp-root[data-theme="dark"] .tp-hero-sky-day {
+  opacity: 0;
+  transform: scale(1.035);
+}
+
+/* Light Mode: Azure anime sky with fluffy white clouds */
+.tp-root[data-theme="light"] .tp-hero-sky-day {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.tp-root[data-theme="light"] .tp-hero-sky-night {
+  opacity: 0;
+  transform: scale(1.035);
+}
+
+/* Atmospheric vignette & seamless bottom transition into page paper */
+.tp-hero-sky-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, 
+    rgba(6, 11, 24, 0.45) 0%, 
+    rgba(6, 11, 24, 0.12) 30%, 
+    transparent 55%, 
+    rgba(6, 11, 24, 0.65) 82%, 
+    var(--tp-paper) 100%
+  );
+  transition: background 0.8s ease;
+}
+
+.tp-root[data-theme="light"] .tp-hero-sky-overlay {
+  background: linear-gradient(180deg, 
+    rgba(12, 38, 98, 0.32) 0%, 
+    rgba(12, 38, 98, 0.08) 30%, 
+    transparent 55%, 
+    rgba(244, 246, 251, 0.6) 82%, 
+    var(--tp-paper) 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-hero-sky-img {
+    transition: opacity 0.3s ease;
+    transform: none !important;
+  }
 }
 
 .tp-canvas-field {

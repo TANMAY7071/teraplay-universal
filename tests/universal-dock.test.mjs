@@ -244,28 +244,43 @@ assert.ok(srtBlocks[2].includes('3\n00:00:08,750 --> 00:00:12,000\nFree forever.
 assert.equal(fmtSrtLib(3665.45), '01:01:05,450');
 assert.equal(fmtSrtLib(7325.805), '02:02:05,805');
 
-// Boundary & edge case formatting verification (NaN, undefined, negative)
+// Boundary & edge case formatting verification (NaN, undefined, negative, Infinity)
 assert.equal(fmtSrtLib(NaN), '00:00:00,000');
 assert.equal(fmtSrtLib(null), '00:00:00,000');
 assert.equal(fmtSrtLib(-10), '00:00:00,000');
+assert.equal(fmtSrtLib(Infinity), '00:00:00,000');
+assert.equal(fmtSrtLib(-Infinity), '00:00:00,000');
 assert.equal(fmtTimeLib(NaN), '00:00');
 assert.equal(fmtTimeLib(undefined), '00:00');
 assert.equal(fmtTimeLib(null), '00:00');
 assert.equal(fmtTimeLib(-10), '00:00');
+assert.equal(fmtTimeLib(Infinity), '00:00');
+assert.equal(fmtTimeLib(-Infinity), '00:00');
 
-// Non-array and null input robustness in SRT and TXT generators
+// Non-array, null, and whitespace-only input robustness in SRT and TXT generators
 assert.equal(genSrtLib({}), '');
 assert.equal(genSrtLib(null), '');
 assert.equal(genSrtLib(undefined), '');
 assert.ok(genTxtLib(null, false, 'Title').includes('No transcript cues available'));
+assert.ok(genTxtLib([{ text: '   ' }], false, 'Title').includes('No transcript cues available'));
 
-// Null/undefined segment element handling in Groq response mapper
+// SubRip standard trailing newline compliance
+assert.ok(srtOut.endsWith('\n'), 'SubRip output must end with trailing newline');
+
+// Null/undefined/Infinity segment element handling in Groq response mapper
 const nullSegmentGroq = {
-  segments: [null, undefined, { start: 1.0, text: 'Valid segment' }],
+  segments: [
+    null,
+    undefined,
+    { start: 1.0, text: 'Valid segment' },
+    { start: Infinity, duration: Infinity, end: Infinity, text: 'Infinite segment' },
+  ],
 };
 const mappedNullSeg = mapGroq(nullSegmentGroq);
-assert.equal(mappedNullSeg.count, 1);
+assert.equal(mappedNullSeg.count, 2);
 assert.equal(mappedNullSeg.items[0].text, 'Valid segment');
+assert.equal(mappedNullSeg.items[1].start, 0); // Normalized from Infinity
+assert.equal(mappedNullSeg.items[1].duration, 2.5); // Normalized from Infinity
 
 // Out-of-order cues and empty-text cue filtering in SRT generator
 const chaoticCues = [
@@ -397,6 +412,153 @@ assert.equal(vimeoRes.body.success, false);
 assert.ok(
   vimeoRes.body.code === 'STREAM_RESOLVE_FAILED' || vimeoRes.body.code === 'MEDIA_FETCH_FAILED'
 );
+
+// 6h. Non-URL target string cleanly returns STREAM_RESOLVE_FAILED without unhandled TypeError
+const invalidUrlRes = createMockRes();
+await transcribeHandler({
+  method: 'GET',
+  query: { url: 'not-a-valid-url-target' },
+}, invalidUrlRes);
+assert.equal(invalidUrlRes.statusCode, 200);
+assert.equal(invalidUrlRes.body.success, false);
+assert.equal(invalidUrlRes.body.code, 'STREAM_RESOLVE_FAILED');
+assert.equal(invalidUrlRes.body.can_fallback_demo, true);
+
+// 6i. Direct audio buffer with WAV and WebM headers accepted as audio payloads
+delete process.env.GROQ_API_KEY;
+const wavAudioRes = createMockRes();
+const wavBuffer = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WAVEfmt ')]);
+await transcribeHandler({
+  method: 'POST',
+  body: wavBuffer,
+  headers: { 'content-type': 'audio/wav' },
+}, wavAudioRes);
+assert.equal(wavAudioRes.statusCode, 200);
+assert.equal(wavAudioRes.body.code, 'MISSING_API_KEY'); // Reached API key check because buffer accepted!
+
+// 6j - 6n. Groq Whisper API HTTP responses & retry handling (Mocked upstream)
+const origGlobalFetch = globalThis.fetch;
+try {
+  process.env.GROQ_API_KEY = 'gsk_mock_valid_test_key';
+
+  // 6j. Groq 401 Invalid/Expired API Key
+  globalThis.fetch = async (url) => {
+    if (String(url).includes('api.groq.com')) {
+      return {
+        status: 401,
+        ok: false,
+        json: async () => ({ error: { message: 'Invalid API Key' } }),
+        text: async () => JSON.stringify({ error: { message: 'Invalid API Key' } }),
+      };
+    }
+    return origGlobalFetch(url);
+  };
+  const groq401Res = createMockRes();
+  await transcribeHandler({
+    method: 'POST',
+    body: Buffer.from('mock_audio_bytes'),
+    headers: { 'content-type': 'audio/mpeg' },
+  }, groq401Res);
+  assert.equal(groq401Res.statusCode, 200);
+  assert.equal(groq401Res.body.code, 'INVALID_API_KEY');
+  assert.equal(groq401Res.body.can_fallback_demo, true);
+
+  // 6k. Groq 429 Rate Limit Exceeded
+  globalThis.fetch = async (url) => {
+    if (String(url).includes('api.groq.com')) {
+      return {
+        status: 429,
+        ok: false,
+        json: async () => ({ error: { message: 'Rate limit' } }),
+        text: async () => JSON.stringify({ error: { message: 'Rate limit' } }),
+      };
+    }
+    return origGlobalFetch(url);
+  };
+  const groq429Res = createMockRes();
+  await transcribeHandler({
+    method: 'POST',
+    body: Buffer.from('mock_audio_bytes'),
+    headers: { 'content-type': 'audio/mpeg' },
+  }, groq429Res);
+  assert.equal(groq429Res.statusCode, 200);
+  assert.equal(groq429Res.body.code, 'RATE_LIMITED');
+  assert.equal(groq429Res.body.can_fallback_demo, true);
+
+  // 6l. Groq 200 with empty transcription returns NO_SPEECH_DETECTED
+  globalThis.fetch = async (url) => {
+    if (String(url).includes('api.groq.com')) {
+      return {
+        status: 200,
+        ok: true,
+        json: async () => ({ task: 'transcribe', language: 'en', duration: 3.0, text: '', segments: [] }),
+      };
+    }
+    return origGlobalFetch(url);
+  };
+  const groqEmptyRes = createMockRes();
+  await transcribeHandler({
+    method: 'POST',
+    body: Buffer.from('mock_audio_bytes'),
+    headers: { 'content-type': 'audio/mpeg' },
+  }, groqEmptyRes);
+  assert.equal(groqEmptyRes.statusCode, 200);
+  assert.equal(groqEmptyRes.body.code, 'NO_SPEECH_DETECTED');
+  assert.equal(groqEmptyRes.body.can_fallback_demo, true);
+
+  // 6m. Groq 200 with valid segments returns success & mapped transcript
+  globalThis.fetch = async (url) => {
+    if (String(url).includes('api.groq.com')) {
+      return {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          task: 'transcribe',
+          language: 'en',
+          duration: 5.2,
+          text: 'Verified audio cue.',
+          segments: [{ id: 0, start: 0.0, end: 5.2, text: 'Verified audio cue.' }],
+        }),
+      };
+    }
+    return origGlobalFetch(url);
+  };
+  const groqSuccessRes = createMockRes();
+  await transcribeHandler({
+    method: 'POST',
+    body: Buffer.from('mock_audio_bytes'),
+    headers: { 'content-type': 'audio/mpeg' },
+  }, groqSuccessRes);
+  assert.equal(groqSuccessRes.statusCode, 200);
+  assert.equal(groqSuccessRes.body.success, true);
+  assert.equal(groqSuccessRes.body.source, 'groq-whisper');
+  assert.equal(groqSuccessRes.body.model, 'whisper-large-v3-turbo');
+  assert.equal(groqSuccessRes.body.transcript.count, 1);
+  assert.equal(groqSuccessRes.body.transcript.items[0].text, 'Verified audio cue.');
+
+  // 6n. Transcription retry action when API key toggles from missing to valid
+  delete process.env.GROQ_API_KEY;
+  const initialRetryRes = createMockRes();
+  await transcribeHandler({
+    method: 'POST',
+    body: Buffer.from('mock_audio_bytes'),
+    headers: { 'content-type': 'audio/mpeg' },
+  }, initialRetryRes);
+  assert.equal(initialRetryRes.body.code, 'MISSING_API_KEY');
+
+  // Key now configured, retry execution succeeds
+  process.env.GROQ_API_KEY = 'gsk_mock_valid_test_key';
+  const postRetryRes = createMockRes();
+  await transcribeHandler({
+    method: 'POST',
+    body: Buffer.from('mock_audio_bytes'),
+    headers: { 'content-type': 'audio/mpeg' },
+  }, postRetryRes);
+  assert.equal(postRetryRes.body.success, true);
+  assert.equal(postRetryRes.body.transcript.count, 1);
+} finally {
+  globalThis.fetch = origGlobalFetch;
+}
 
 if (origKey) {
   process.env.GROQ_API_KEY = origKey;

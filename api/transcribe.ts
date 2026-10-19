@@ -37,6 +37,10 @@ async function extractInstagramEmbedDirectUrl(shortcode: string): Promise<string
       if (videoMatch && videoMatch[1]) {
         return videoMatch[1].replace(/\\u0026/g, '&').replace(/\\/g, '');
       }
+      const videoTagMatch = html.match(/<video[^>]+src=["']([^"']+)["']/i);
+      if (videoTagMatch && videoTagMatch[1]) {
+        return videoTagMatch[1].replace(/&amp;/g, '&');
+      }
     }
   } catch (err: any) {
     console.warn('[InstagramEmbedTranscribe] Upstream query error:', err?.message);
@@ -46,14 +50,15 @@ async function extractInstagramEmbedDirectUrl(shortcode: string): Promise<string
 
 function unwrapStreamUrl(url: string): string {
   if (!url) return '';
-  if (url.includes('/api/stream-download?') || url.includes('/api/stream-download/')) {
+  const trimmed = url.trim();
+  if (trimmed.includes('/api/stream-download?') || trimmed.includes('/api/stream-download/')) {
     try {
-      const dummy = new URL(url, 'http://localhost');
+      const dummy = new URL(trimmed, 'http://localhost');
       const inner = dummy.searchParams.get('url');
-      if (inner) return decodeURIComponent(inner);
+      if (inner) return decodeURIComponent(inner).trim();
     } catch {}
   }
-  return url;
+  return trimmed;
 }
 
 function runLocalTranscriptExtractor(targetUrl: string): Promise<any | null> {
@@ -130,6 +135,33 @@ async function runRemoteTranscriptExtractor(targetUrl: string): Promise<any | nu
   return null;
 }
 
+function getFileNameForMime(mime: string): string {
+  const m = mime.toLowerCase();
+  if (m.includes('audio/mpeg') || m.includes('audio/mp3')) return 'audio.mp3';
+  if (m.includes('audio/mp4') || m.includes('audio/m4a') || m.includes('audio/x-m4a') || m.includes('audio/aac')) return 'audio.m4a';
+  if (m.includes('audio/wav') || m.includes('audio/x-wav')) return 'audio.wav';
+  if (m.includes('audio/webm')) return 'audio.webm';
+  if (m.includes('audio/ogg') || m.includes('audio/opus')) return 'audio.ogg';
+  if (m.includes('audio/flac')) return 'audio.flac';
+  if (m.includes('video/webm')) return 'media.webm';
+  if (m.includes('video/x-msvideo')) return 'media.avi';
+  return 'media.mp4';
+}
+
+function isGroqDirectAudio(mime: string): boolean {
+  const m = mime.toLowerCase();
+  return (
+    m.includes('audio/mpeg') ||
+    m.includes('audio/mp3') ||
+    m.includes('audio/mp4') ||
+    m.includes('audio/m4a') ||
+    m.includes('audio/wav') ||
+    m.includes('audio/webm') ||
+    m.includes('audio/ogg') ||
+    m.includes('audio/flac')
+  );
+}
+
 function detectAudioMimeAndExt(url: string, contentType?: string | null, buffer?: Buffer): { mimeType: string; fileName: string } {
   const ct = (contentType || '').toLowerCase();
   if (ct.includes('audio/mpeg') || ct.includes('audio/mp3')) return { mimeType: 'audio/mpeg', fileName: 'audio.mp3' };
@@ -137,6 +169,7 @@ function detectAudioMimeAndExt(url: string, contentType?: string | null, buffer?
   if (ct.includes('audio/wav') || ct.includes('audio/x-wav')) return { mimeType: 'audio/wav', fileName: 'audio.wav' };
   if (ct.includes('audio/webm')) return { mimeType: 'audio/webm', fileName: 'audio.webm' };
   if (ct.includes('audio/ogg') || ct.includes('audio/opus')) return { mimeType: 'audio/ogg', fileName: 'audio.ogg' };
+  if (ct.includes('audio/flac')) return { mimeType: 'audio/flac', fileName: 'audio.flac' };
   if (ct.includes('video/mp4')) return { mimeType: 'video/mp4', fileName: 'media.mp4' };
   if (ct.includes('video/webm')) return { mimeType: 'video/webm', fileName: 'media.webm' };
 
@@ -155,6 +188,9 @@ function detectAudioMimeAndExt(url: string, contentType?: string | null, buffer?
     if (buffer[0] === 0x1A && buffer[1] === 0x45 && buffer[2] === 0xDF && buffer[3] === 0xA3) {
       return { mimeType: 'audio/webm', fileName: 'audio.webm' };
     }
+    if (buffer[0] === 0x66 && buffer[1] === 0x4C && buffer[2] === 0x61 && buffer[3] === 0x43) {
+      return { mimeType: 'audio/flac', fileName: 'audio.flac' };
+    }
     if (buffer.subarray(4, 8).toString('ascii') === 'ftyp') {
       const brand = buffer.subarray(8, 12).toString('ascii');
       if (brand === 'M4A ' || brand === 'M4B ' || brand === 'dash') {
@@ -170,6 +206,7 @@ function detectAudioMimeAndExt(url: string, contentType?: string | null, buffer?
   if (lowerTarget.includes('.wav')) return { mimeType: 'audio/wav', fileName: 'audio.wav' };
   if (lowerTarget.includes('.webm') || lowerTarget.includes('mime=audio%2fwebm')) return { mimeType: 'audio/webm', fileName: 'audio.webm' };
   if (lowerTarget.includes('.ogg')) return { mimeType: 'audio/ogg', fileName: 'audio.ogg' };
+  if (lowerTarget.includes('.flac')) return { mimeType: 'audio/flac', fileName: 'audio.flac' };
 
   return { mimeType: 'video/mp4', fileName: 'media.mp4' };
 }
@@ -179,12 +216,11 @@ function resampleAudioTo16kHz(
   inputMime: string
 ): Promise<{ buffer: Buffer; mimeType: string; fileName: string }> {
   return new Promise((resolve) => {
-    const isDirectAudio = inputMime.includes('audio/mpeg') || inputMime.includes('audio/mp4') || inputMime.includes('audio/m4a');
-    if (isDirectAudio && inputBuffer.length <= 24 * 1024 * 1024) {
+    if (isGroqDirectAudio(inputMime) && inputBuffer.length <= 24 * 1024 * 1024) {
       return resolve({
         buffer: inputBuffer,
-        mimeType: inputMime.includes('mpeg') ? 'audio/mpeg' : 'audio/mp4',
-        fileName: inputMime.includes('mpeg') ? 'audio.mp3' : 'audio.m4a',
+        mimeType: inputMime,
+        fileName: getFileNameForMime(inputMime),
       });
     }
 
@@ -195,7 +231,7 @@ function resampleAudioTo16kHz(
         return resolve({
           buffer: sliced,
           mimeType: inputMime,
-          fileName: inputMime.includes('audio/') ? 'audio.mp3' : 'media.mp4',
+          fileName: getFileNameForMime(inputMime),
         });
       }
 
@@ -210,7 +246,7 @@ function resampleAudioTo16kHz(
             return resolve({
               buffer: sliced,
               mimeType: inputMime,
-              fileName: 'media.mp4',
+              fileName: getFileNameForMime(inputMime),
             });
           }
           resolve({
@@ -388,6 +424,16 @@ export default async function handler(req: any, res: any) {
 
       // Check if URL is already a direct media file
       if (!directMediaUrl && urlParam) {
+        if (!/^https?:\/\//i.test(urlParam) && !/^[a-zA-Z0-9_-]{11}$/.test(urlParam)) {
+          res.status(200).json({
+            success: false,
+            code: 'STREAM_RESOLVE_FAILED',
+            error: 'Could not resolve a direct media stream from this link. Please ensure video is public or provide a direct media link.',
+            can_fallback_demo: true,
+          });
+          return;
+        }
+
         const isDirectFile =
           /\.(mp4|m4a|mp3|webm|wav|ogg|aac)(\?.*)?$/i.test(urlParam) ||
           urlParam.includes('cdninstagram.com') ||
@@ -437,6 +483,17 @@ export default async function handler(req: any, res: any) {
         const host = req.headers?.host || 'localhost:5173';
         const proto = req.headers?.['x-forwarded-proto'] || 'http';
         directMediaUrl = `${proto}://${host}${directMediaUrl}`;
+      }
+
+      // Check if target is a valid HTTP/HTTPS URL
+      if (!/^https?:\/\//i.test(directMediaUrl)) {
+        res.status(200).json({
+          success: false,
+          code: 'STREAM_RESOLVE_FAILED',
+          error: 'Could not resolve a playable media stream from this link or identifier.',
+          can_fallback_demo: true,
+        });
+        return;
       }
 
       // Check if target is still an unresolved webpage
@@ -505,7 +562,7 @@ export default async function handler(req: any, res: any) {
         return;
       }
 
-      const isHtmlBody = /^\s*<!doctype|^\s*<html|^\s*\{/i.test(mediaBuffer.subarray(0, 100).toString('utf8'));
+      const isHtmlBody = /^\s*(?:<!doctype|<html|<head|<\?xml|<!--|\{)/i.test(mediaBuffer.subarray(0, 100).toString('utf8'));
       if (isHtmlResponse || isHtmlBody) {
         res.status(200).json({
           success: false,
@@ -583,6 +640,16 @@ export default async function handler(req: any, res: any) {
 
     const groqJson = await groqResponse.json();
     const transcript = mapGroqResponseToTranscript(groqJson);
+
+    if (!transcript.items.length) {
+      res.status(200).json({
+        success: false,
+        code: 'NO_SPEECH_DETECTED',
+        error: 'No audible speech or transcript cues were detected in this media file.',
+        can_fallback_demo: true,
+      });
+      return;
+    }
 
     res.status(200).json({
       success: true,

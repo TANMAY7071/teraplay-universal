@@ -99,7 +99,7 @@ export function generateSrtContent(items?: TranscriptItem[] | null): string {
       const endStr = formatSrtTimestamp(Math.max(item.start + 0.1, endVal));
       return `${index + 1}\n${startStr} --> ${endStr}\n${item.text}`;
     })
-    .join('\n\n');
+    .join('\n\n') + '\n';
 }
 
 /**
@@ -111,8 +111,11 @@ export function generateTxtContent(items?: TranscriptItem[] | null, withTimestam
   if (!Array.isArray(items) || items.length === 0) {
     return header + '(No transcript cues available)';
   }
-  const body = items
-    .filter((item): item is TranscriptItem => Boolean(item && typeof item.text === 'string' && item.text.trim().length > 0))
+  const validItems = items.filter((item): item is TranscriptItem => Boolean(item && typeof item.text === 'string' && item.text.trim().length > 0));
+  if (validItems.length === 0) {
+    return header + '(No transcript cues available)';
+  }
+  const body = validItems
     .map((item) => {
       const text = item.text.replace(/\r?\n+/g, ' ').trim();
       if (withTimestamps) {
@@ -166,11 +169,11 @@ export function mapGroqResponseToTranscript(
   if (rawSegments.length > 0) {
     items = rawSegments
       .map((seg: GroqSegment) => {
-        const start = typeof seg.start === 'number' && !isNaN(seg.start) ? Math.max(0, seg.start) : 0;
+        const start = typeof seg.start === 'number' && !isNaN(seg.start) && isFinite(seg.start) ? Math.max(0, seg.start) : 0;
         let duration = 2.5;
-        if (typeof seg.duration === 'number' && !isNaN(seg.duration) && seg.duration > 0) {
+        if (typeof seg.duration === 'number' && !isNaN(seg.duration) && isFinite(seg.duration) && seg.duration > 0) {
           duration = seg.duration;
-        } else if (typeof seg.end === 'number' && !isNaN(seg.end) && seg.end > start) {
+        } else if (typeof seg.end === 'number' && !isNaN(seg.end) && isFinite(seg.end) && seg.end > start) {
           duration = Number((seg.end - start).toFixed(3));
         }
         const text = String(seg.text || '')
@@ -192,7 +195,7 @@ export function mapGroqResponseToTranscript(
 
     if (sentences.length > 1) {
       const totalDur =
-        typeof groqData.duration === 'number' && groqData.duration > 0
+        typeof groqData.duration === 'number' && isFinite(groqData.duration) && groqData.duration > 0
           ? groqData.duration
           : sentences.length * 3;
       const avgDuration = Number((totalDur / sentences.length).toFixed(3));
@@ -206,7 +209,7 @@ export function mapGroqResponseToTranscript(
         {
           start: 0,
           duration:
-            typeof groqData.duration === 'number' && groqData.duration > 0
+            typeof groqData.duration === 'number' && isFinite(groqData.duration) && groqData.duration > 0
               ? Number(groqData.duration.toFixed(3))
               : 3.0,
           text: rawText,
@@ -216,7 +219,7 @@ export function mapGroqResponseToTranscript(
   }
 
   return {
-    language: groqData.language || 'en',
+    language: typeof groqData.language === 'string' && groqData.language.trim() ? groqData.language : 'en',
     count: items.length,
     items,
   };
