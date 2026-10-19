@@ -1486,20 +1486,20 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
     align-items: center;
     justify-content: center;
     align-self: center;
-    height: 22px !important;
-    min-height: 22px !important;
-    max-height: 22px !important;
-    padding: 0 7px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
+    padding: 0 10px !important;
     border-radius: 999px !important;
-    background: rgba(255, 255, 255, 0.12) !important;
-    border: 1px solid rgba(255, 255, 255, 0.22) !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+    background: rgba(255, 255, 255, 0.14) !important;
+    border: 1px solid rgba(255, 255, 255, 0.28) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
     color: #ffffff !important;
-    font-size: 10.5px !important;
+    font-size: 12px !important;
     font-weight: 600 !important;
-    letter-spacing: 0.02em !important;
-    gap: 3px !important;
-    margin: auto 2px auto 6px !important;
+    letter-spacing: 0.01em !important;
+    gap: 4px !important;
+    margin: auto 3px auto 6px !important;
     box-sizing: border-box !important;
     line-height: 1 !important;
     white-space: nowrap;
@@ -1509,16 +1509,16 @@ html[data-theme="light"] .tp-theme-icon-btn:hover {
     transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .tp-btn-paste-inline:active {
-    transform: scale(0.94);
-    background: rgba(255, 255, 255, 0.25) !important;
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.28) !important;
   }
   .tp-root[data-theme="light"] .tp-btn-paste-inline {
-    background: rgba(255, 255, 255, 0.22) !important;
-    border-color: rgba(255, 255, 255, 0.45) !important;
+    background: rgba(255, 255, 255, 0.24) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
     color: #ffffff !important;
   }
   .tp-root[data-theme="light"] .tp-btn-paste-inline:active {
-    background: rgba(255, 255, 255, 0.35) !important;
+    background: rgba(255, 255, 255, 0.38) !important;
   }
   .tp-format-chips {
     margin-top: 14px;

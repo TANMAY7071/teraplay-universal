@@ -1330,7 +1330,7 @@ export default function Index() {
                   className="tp-btn-paste-inline"
                   title="Paste link from clipboard"
                 >
-                  <Clipboard className="w-2.5 h-2.5 text-[#e4f222] shrink-0" />
+                  <Clipboard className="w-3 h-3 text-[#e4f222] shrink-0" />
                   <span>Paste</span>
                 </button>
               </div>
