@@ -63,3 +63,15 @@ verify_*.png
 resources/
 *.exe
 
+
+opencode-skills/
+.claude/
+.cook/
+.tmp/
+COOK.md
+*.pyc
+__pycache__/
+scripts/*_results.json
+scripts/resolved_formats.json
+scripts/speed_experiment.json
+tmp_media/

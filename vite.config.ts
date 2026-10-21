@@ -2,7 +2,6 @@ import { defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
-import { boneyardPlugin } from "boneyard-js/vite";
 
 const apiResolveDevPlugin = (): Plugin => ({
   name: "api-resolve-dev",
@@ -27,7 +26,8 @@ const apiResolveDevPlugin = (): Plugin => ({
               end: () => res.end(),
             };
           };
-          return handler(req as any, res as any);
+          await handler(req as any, res as any);
+          return;
         } catch (err: any) {
           res.statusCode = 500;
           res.setHeader("Content-Type", "application/json");
@@ -53,7 +53,8 @@ const apiResolveDevPlugin = (): Plugin => ({
               end: () => res.end(),
             };
           };
-          return handler(req as any, res as any);
+          await handler(req as any, res as any);
+          return;
         } catch (err: any) {
           res.statusCode = 500;
           res.setHeader("Content-Type", "application/json");
@@ -79,7 +80,8 @@ const apiResolveDevPlugin = (): Plugin => ({
               end: () => res.end(),
             };
           };
-          return handler(req as any, res as any);
+          await handler(req as any, res as any);
+          return;
         } catch (err: any) {
           res.statusCode = 500;
           res.setHeader("Content-Type", "application/json");
@@ -105,7 +107,8 @@ const apiResolveDevPlugin = (): Plugin => ({
               end: () => res.end(),
             };
           };
-          return handler(req as any, res as any);
+          await handler(req as any, res as any);
+          return;
         } catch (err: any) {
           res.statusCode = 500;
           res.setHeader("Content-Type", "application/json");
@@ -129,7 +132,6 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    boneyardPlugin(),
     apiResolveDevPlugin(),
     mode === "development" && componentTagger(),
   ].filter(Boolean),

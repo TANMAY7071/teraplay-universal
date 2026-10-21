@@ -57,17 +57,22 @@ def resolve_terabox(url, share_id):
     if surl.startswith('1'):
         surl = surl[1:]
     
-    api_endpoints = [
-        f"https://www.terabox.app/share/list?shorturl={surl}&root=1",
-        f"https://www.1024tera.com/api/share/list?shorturl={surl}&root=1",
-        f"https://terabox.com/api/share/list?shorturl={surl}&root=1",
-    ]
-    
+    tb_cookie = os.environ.get('TERABOX_COOKIE', '').strip()
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
         'Accept': 'application/json, text/plain, */*',
-        'Referer': 'https://www.terabox.com/',
+        'Referer': 'https://www.terabox.app/',
     }
+    if tb_cookie:
+        headers['Cookie'] = tb_cookie if 'ndus=' in tb_cookie else f"ndus={tb_cookie}"
+
+    api_endpoints = [
+        f"https://www.terabox.app/share/list?app_id=250528&shorturl={surl}&root=1",
+        f"https://www.1024tera.com/api/share/list?app_id=250528&shorturl={surl}&root=1",
+        f"https://terabox.com/api/share/list?shorturl={surl}&root=1",
+    ]
+    
+    file_metadata = None
 
     for ep in api_endpoints:
         try:
@@ -77,26 +82,138 @@ def resolve_terabox(url, share_id):
                     data = json.loads(res.read().decode('utf-8'))
                     if data.get('errno') == 0 and data.get('list'):
                         item = data['list'][0]
-                        dlink = item.get('dlink')
                         filename = item.get('server_filename') or f"TeraBox_Video_{share_id[:8]}.mp4"
                         size_bytes = int(item.get('size') or 0)
                         thumbs = item.get('thumbs') or {}
                         thumbnail = thumbs.get('url3') or thumbs.get('url2') or thumbs.get('url1') or ''
-                        
+                        duration_val = int(item.get('duration') or 0)
+                        fs_id = item.get('fs_id')
+                        uk_val = data.get('uk')
+                        share_id_val = data.get('share_id')
+                        dlink = item.get('dlink')
+
+                        file_metadata = {
+                            "title": filename,
+                            "thumbnail": thumbnail,
+                            "size_bytes": size_bytes,
+                            "duration": duration_val,
+                            "fs_id": fs_id,
+                            "uk": uk_val,
+                            "share_id": share_id_val,
+                            "dlink": dlink
+                        }
+
+                        # If dlink is absent and cookie is provided, attempt /share/download
+                        if not dlink and tb_cookie and share_id_val and uk_val and fs_id:
+                            try:
+                                dl_url = f"https://www.terabox.app/share/download?app_id=250528&shareid={share_id_val}&uk={uk_val}&primaryid={share_id_val}&fid_list=%5B{fs_id}%5D"
+                                req_dl = urllib.request.Request(dl_url, headers=headers)
+                                with urllib.request.urlopen(req_dl, timeout=8) as res_dl:
+                                    dl_data = json.loads(res_dl.read().decode('utf-8'))
+                                    if dl_data.get('dlink'):
+                                        dlink = dl_data.get('dlink')
+                                        file_metadata["dlink"] = dlink
+                            except Exception:
+                                pass
+
                         if dlink:
+                            clean_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', filename)
+                            proxy_url = f"/api/stream-download?url={urllib.parse.quote(dlink)}&filename={clean_name}&source=terabox"
                             return {
                                 "success": True,
                                 "title": filename,
                                 "thumbnail": thumbnail,
-                                "stream_url": dlink,
-                                "download_url": dlink,
+                                "stream_url": proxy_url,
+                                "download_url": proxy_url,
                                 "size": format_size(size_bytes),
-                                "duration": 0,
+                                "duration": duration_val,
                                 "shareId": share_id,
-                                "source": "terabox_official_gateway"
+                                "platform": "terabox",
+                                "source": "terabox_direct_gateway",
+                                "formats": [
+                                    {
+                                        "format_id": "terabox_hd",
+                                        "quality": "Original File Quality",
+                                        "ext": "mp4",
+                                        "filesize": format_size(size_bytes),
+                                        "url": proxy_url,
+                                        "download_url": proxy_url,
+                                        "has_audio": True,
+                                        "has_video": True,
+                                        "is_progressive": True
+                                    }
+                                ]
                             }
+                        break
         except Exception:
             continue
+
+    # Try external mirror scrapers if dlink not yet found
+    mirrors = [
+        f"https://terabox-api.grayhat.workers.dev/api?url={urllib.parse.quote(url)}",
+        f"https://yt-api.site/api/terabox?url={urllib.parse.quote(url)}",
+        f"https://teradl-api.dapuntaratya.com/api?url={urllib.parse.quote(url)}"
+    ]
+    for m in mirrors:
+        try:
+            req = urllib.request.Request(m, headers={'User-Agent': headers['User-Agent'], 'Accept': 'application/json'})
+            with urllib.request.urlopen(req, timeout=6) as res:
+                if res.status == 200:
+                    data = json.loads(res.read().decode('utf-8'))
+                    dlink = data.get('dlink') or data.get('download_url') or data.get('stream_url')
+                    if dlink:
+                        title = data.get('title') or data.get('file_name') or f"TeraBox_{share_id[:8]}.mp4"
+                        clean_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', title)
+                        proxy_url = f"/api/stream-download?url={urllib.parse.quote(dlink)}&filename={clean_name}&source=terabox"
+                        return {
+                            "success": True,
+                            "title": title,
+                            "thumbnail": data.get('thumbnail') or data.get('thumb') or '',
+                            "stream_url": proxy_url,
+                            "download_url": proxy_url,
+                            "size": data.get('size') or "HD Stream",
+                            "duration": 0,
+                            "shareId": share_id,
+                            "platform": "terabox",
+                            "source": "terabox_public_mirror"
+                        }
+        except Exception:
+            continue
+
+    # If we got official metadata but need cookie/microservice for dlink, return honest, structured metadata!
+    if file_metadata:
+        fn = file_metadata["title"]
+        sb = file_metadata["size_bytes"]
+        clean_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', fn)
+        embed_player_url = f"https://www.1024tera.com/sharing/embed?surl={surl}"
+        return {
+            "success": True,
+            "title": fn,
+            "thumbnail": file_metadata["thumbnail"],
+            "stream_url": embed_player_url,
+            "download_url": embed_player_url,
+            "embed_url": embed_player_url,
+            "size": format_size(sb),
+            "duration": file_metadata["duration"],
+            "shareId": share_id,
+            "platform": "terabox",
+            "source": "terabox_metadata_verified",
+            "is_unauthenticated": True,
+            "formats": [
+                {
+                    "format_id": "terabox_web",
+                    "quality": "Direct Web Player",
+                    "ext": "mp4",
+                    "filesize": format_size(sb),
+                    "url": embed_player_url,
+                    "download_url": embed_player_url,
+                    "has_audio": True,
+                    "has_video": True,
+                    "is_progressive": True
+                }
+            ]
+        }
+
     return None
 
 import xml.etree.ElementTree as ET
@@ -799,6 +916,11 @@ def resolve_ytdlp(url):
                 return min(w, h)
             return h or w or 0
 
+        # Format clean title base with youtube_id when present
+        clean_title_base = re.sub(r'[^a-zA-Z0-9_-]', '_', title).strip('_') or 'video'
+        if youtube_id:
+            clean_title_base = f"{clean_title_base}_{youtube_id}"
+
         # 1. Progressive streams (Audio + Video combined in single file)
         progressive = [f for f in raw_formats if f.get('url') and f.get('vcodec') not in ['none', None] and f.get('acodec') not in ['none', None]]
         prog_formats = []
@@ -807,13 +929,18 @@ def resolve_ytdlp(url):
             mapped_h = 360 if abs(h - 360) <= 40 else (720 if abs(h - 720) <= 60 else (480 if abs(h - 480) <= 50 else (1080 if abs(h - 1080) <= 90 else h)))
             sz = f.get('filesize') or f.get('filesize_approx') or (int(f.get('tbr', 0) * 1024 / 8 * duration) if f.get('tbr') and duration else 0)
             q_label = f"{mapped_h}p Standard (Audio + Video)" if mapped_h else "Universal MP4 (Audio + Video)"
+            clean_title = clean_title_base
+            p_url = f.get('url') or ''
+            enc_p = urllib.parse.quote(p_url) if p_url else ''
+            p_dl = f"/api/stream-download?url={enc_p}&filename={clean_title}_{mapped_h}p&ext=mp4" if enc_p else ""
             prog_formats.append({
                 "format_id": str(f.get('format_id')),
                 "quality": q_label,
                 "height": mapped_h,
                 "ext": f.get('ext') or 'mp4',
                 "filesize": format_size(sz),
-                "url": f.get('url'),
+                "url": p_url,
+                "download_url": p_dl,
                 "has_audio": True,
                 "has_video": True,
                 "is_audio_only": False,
@@ -878,13 +1005,25 @@ def resolve_ytdlp(url):
             h = min_h
             sz = best.get('filesize') or best.get('filesize_approx') or (int(best.get('tbr', 0) * 1024 / 8 * duration) if best.get('tbr') and duration else 0)
 
+            clean_title = clean_title_base
+            best_v_url = best.get('url') or ''
+            enc_v = urllib.parse.quote(best_v_url) if best_v_url else ''
+            enc_a = urllib.parse.quote(best_audio_url) if best_audio_url else ''
+            if enc_v and enc_a:
+                v_dl = f"/api/stream-download?url={enc_v}&audio_url={enc_a}&filename={clean_title}_{h}p&ext=mp4"
+            elif enc_v:
+                v_dl = f"/api/stream-download?url={enc_v}&filename={clean_title}_{h}p&ext=mp4"
+            else:
+                v_dl = ""
+
             video_formats.append({
                 "format_id": str(best.get('format_id')),
                 "quality": f"{label} (Audio + Video)" if best_audio_url else f"{label} (Video Stream)",
                 "height": h,
                 "ext": best.get('ext') or 'mp4',
                 "filesize": format_size(sz),
-                "url": best.get('url'),
+                "url": best_v_url,
+                "download_url": v_dl,
                 "audio_url": best_audio_url,
                 "has_audio": bool(best_audio_url),
                 "has_video": True,
@@ -907,13 +1046,18 @@ def resolve_ytdlp(url):
             ]
             for abr, q_label in mp3_tiers:
                 est_bytes = int((abr * 1000 / 8) * duration) if duration else 0
+                clean_title = clean_title_base
+                a_stream_url = best_audio.get('url') or ''
+                enc_a_stream = urllib.parse.quote(a_stream_url) if a_stream_url else ''
+                a_dl = f"/api/stream-download?url={enc_a_stream}&filename={clean_title}_{abr}kbps&ext=mp3" if enc_a_stream else ""
                 audio_formats_list.append({
                     "format_id": f"mp3_{abr}",
                     "quality": q_label,
                     "height": 0,
                     "ext": "mp3",
                     "filesize": format_size(est_bytes) if est_bytes else f"{abr} kbps",
-                    "url": best_audio.get('url'),
+                    "url": a_stream_url,
+                    "download_url": a_dl,
                     "has_audio": True,
                     "has_video": False,
                     "is_audio_only": True,
@@ -922,13 +1066,19 @@ def resolve_ytdlp(url):
 
             a_size = best_audio.get('filesize') or best_audio.get('filesize_approx') or (int(best_audio.get('tbr', 0) * 1024 / 8 * duration) if best_audio.get('tbr') and duration else 0)
             orig_abr = int(best_audio.get('abr') or 128)
+            clean_title = clean_title_base
+            m_url = best_audio.get('url') or ''
+            enc_m = urllib.parse.quote(m_url) if m_url else ''
+            m_ext = best_audio.get('ext') or 'm4a'
+            m_dl = f"/api/stream-download?url={enc_m}&filename={clean_title}_master_{orig_abr}kbps&ext={m_ext}" if enc_m else ""
             audio_formats_list.append({
                 "format_id": str(best_audio.get('format_id')),
-                "quality": f"Master Audio Track ({orig_abr} kbps {best_audio.get('ext', 'm4a').upper()})",
+                "quality": f"Master Audio Track ({orig_abr} kbps {m_ext.upper()})",
                 "height": 0,
-                "ext": best_audio.get('ext') or 'm4a',
+                "ext": m_ext,
                 "filesize": format_size(a_size),
-                "url": best_audio.get('url'),
+                "url": m_url,
+                "download_url": m_dl,
                 "has_audio": True,
                 "has_video": False,
                 "is_audio_only": True,

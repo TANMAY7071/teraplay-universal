@@ -91,6 +91,7 @@ export interface ResolvedMedia {
   thumbnail: string;
   thumbnails?: ThumbnailItem[];
   m3u8_url: string;
+  embed_url?: string;
   fast_download_url: string;
   size: string;
   duration?: number;
@@ -257,6 +258,7 @@ export default function Index() {
   const quickDropdownRef = useRef<HTMLDivElement>(null);
   const [isCoverDropdownOpen, setIsCoverDropdownOpen] = useState(false);
   const [selectedCoverTag, setSelectedCoverTag] = useState<string>('1080p');
+  const [thumbnailSubTab, setThumbnailSubTab] = useState<'cover' | 'scenes'>('cover');
   const coverDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -476,6 +478,7 @@ export default function Index() {
       };
 
       setResolvedVideo(initialYtMedia);
+      setThumbnailSubTab('cover');
       incrementGuestPlays();
       toast.success('YouTube Studio loaded! Extracting media assets...');
 
@@ -570,6 +573,7 @@ export default function Index() {
         thumbnails: data.thumbnails || [],
         m3u8_url: data.m3u8_url || data.fast_download_url || '',
         fast_download_url: data.fast_download_url || data.m3u8_url,
+        embed_url: data.embed_url || (normalized.platform === 'terabox' ? `https://www.1024tera.com/sharing/embed?surl=${(data.shareId || normalized.shareId || '').replace(/^1/, '')}` : undefined),
         size: data.size || 'HD Quality',
         duration: data.duration,
         shareId: data.shareId || normalized.shareId || 'stream',
@@ -586,6 +590,7 @@ export default function Index() {
       });
 
       setActiveSlideIndex(0);
+      setThumbnailSubTab('cover');
       incrementGuestPlays();
       toast.success(isImg ? 'Instagram Media loaded! All slides ready.' : 'Stream loaded! Playing video...');
 
@@ -636,7 +641,7 @@ export default function Index() {
       return [
         {
           format_id: 'direct_stream',
-          quality: 'Direct Stream (Audio + Video)',
+          quality: 'Direct Stream MP4',
           height: 720,
           ext: 'mp4',
           filesize: resolvedVideo.size || 'HD Quality',
@@ -671,26 +676,65 @@ export default function Index() {
     return videoFormats[0] || null;
   }, [videoFormats]);
 
-  const handleDownloadMp4 = () => {
-    if (!resolvedVideo) return;
-    const rawTarget = bestVideo?.download_url || bestVideo?.url || resolvedVideo.fast_download_url || resolvedVideo.m3u8_url;
-    const proxyTarget = rawTarget.startsWith('/api/stream-download')
-      ? rawTarget
-      : `/api/stream-download?url=${encodeURIComponent(rawTarget)}&filename=${encodeURIComponent(resolvedVideo.title.replace(/[^a-zA-Z0-9_-]/g, '_'))}`;
-
-    const link = document.createElement('a');
-    link.href = proxyTarget;
-    link.setAttribute('download', `${resolvedVideo.title.replace(/[^a-zA-Z0-9_-]/g, '_')}.mp4`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Starting MP4 download...');
-  };
-
   const bestAudio = useMemo(
     () => audioFormats.find((f) => f.format_id === 'mp3_320') || audioFormats[0] || null,
     [audioFormats]
   );
+
+  const getFormatDownloadHref = useCallback(
+    (fmt: MediaFormatOption | null | undefined) => {
+      if (!resolvedVideo || !fmt) return '#';
+      const safeTitle = (resolvedVideo.title || 'media').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const resLabel = fmt.height ? `${fmt.height}p` : fmt.is_audio_only ? 'audio' : 'video';
+      const ytId = resolvedVideo.youtube_id || extractYouTubeVideoId(inputUrl);
+      const cleanFilename = ytId ? `${safeTitle}_${ytId}_${resLabel}` : `${safeTitle}_${resLabel}`;
+
+      if (fmt.download_url && fmt.download_url.startsWith('/api/stream-download')) {
+        return fmt.download_url;
+      }
+
+      if (fmt.is_audio_only) {
+        return `/api/stream-download?url=${encodeURIComponent(fmt.url)}&filename=${encodeURIComponent(cleanFilename)}&ext=mp3`;
+      }
+
+      const audioUrl = fmt.audio_url || bestAudio?.url;
+      if (audioUrl && audioUrl !== fmt.url && !fmt.has_audio) {
+        return `/api/stream-download?url=${encodeURIComponent(fmt.url)}&audio_url=${encodeURIComponent(audioUrl)}&filename=${encodeURIComponent(cleanFilename)}&ext=mp4`;
+      }
+
+      return `/api/stream-download?url=${encodeURIComponent(fmt.url)}&filename=${encodeURIComponent(cleanFilename)}&ext=mp4`;
+    },
+    [resolvedVideo, bestAudio]
+  );
+
+  const getFormatDownloadFilename = useCallback(
+    (fmt: MediaFormatOption | null | undefined) => {
+      if (!resolvedVideo || !fmt) return 'media.mp4';
+      const safeTitle = (resolvedVideo.title || 'media').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const resLabel = fmt.height ? `${fmt.height}p` : fmt.is_audio_only ? 'audio' : 'video';
+      const ext = fmt.is_audio_only ? 'mp3' : 'mp4';
+      const ytId = resolvedVideo.youtube_id || extractYouTubeVideoId(inputUrl);
+      return ytId ? `${safeTitle}_${ytId}_${resLabel}.${ext}` : `${safeTitle}_${resLabel}.${ext}`;
+    },
+    [resolvedVideo]
+  );
+
+  const handleDownloadMp4 = () => {
+    if (!resolvedVideo) return;
+    const target = bestVideo || videoFormats[0];
+    const proxyTarget = getFormatDownloadHref(target);
+    const fileName = getFormatDownloadFilename(target);
+
+    const link = document.createElement('a');
+    link.href = proxyTarget;
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Starting high-speed MP4 download...');
+  };
+
+
   const activeFormats = useMemo(
     () => (downloadFormatTab === 'video' ? videoFormats : audioFormats),
     [downloadFormatTab, videoFormats, audioFormats]
@@ -878,6 +922,54 @@ export default function Index() {
       }));
     }
     return coverTiers;
+  }, [resolvedVideo, isTrueCarousel, coverTiers]);
+
+  const timelineScenes = useMemo(() => {
+    if (!resolvedVideo || isTrueCarousel || !resolvedVideo.thumbnails || resolvedVideo.thumbnails.length === 0) {
+      return [];
+    }
+
+    const coverUrlSet = new Set(coverTiers.map((t) => t.url.toLowerCase()));
+    if (resolvedVideo.thumbnail) {
+      coverUrlSet.add(resolvedVideo.thumbnail.toLowerCase());
+    }
+
+    const isCoverUrl = (url: string) => {
+      const lower = url.toLowerCase();
+      if (coverUrlSet.has(lower)) return true;
+      if (/(maxresdefault|hqdefault|sddefault|mqdefault|default|hq720)\.jpg/i.test(lower)) return true;
+      return false;
+    };
+
+    const seen = new Set<string>();
+    const scenes: Array<{
+      label: string;
+      sublabel: string;
+      res: string;
+      url: string;
+      tag: string;
+    }> = [];
+
+    for (const t of resolvedVideo.thumbnails) {
+      if (!t.url) continue;
+      if (isCoverUrl(t.url)) continue;
+      if (seen.has(t.url)) continue;
+      seen.add(t.url);
+
+      if (t.width && t.width < 120) continue;
+
+      const idx = scenes.length + 1;
+      const res = t.resolution || (t.width && t.height ? `${t.width} × ${t.height}` : 'Video Frame');
+      scenes.push({
+        label: `Scene Snapshot #${idx}`,
+        sublabel: t.quality_label || `Timeline Scene ${idx}`,
+        res,
+        url: t.url,
+        tag: `scene_${idx}`,
+      });
+    }
+
+    return scenes;
   }, [resolvedVideo, isTrueCarousel, coverTiers]);
 
   const transcriptItems = useMemo(() => {
@@ -1073,6 +1165,16 @@ export default function Index() {
     if (!thumbnailList.length) return;
     toast.info(`Starting batch download of ${thumbnailList.length} items...`);
     thumbnailList.forEach((item, i) => {
+      setTimeout(() => {
+        handleDownloadThumbnail(item.url, item.tag);
+      }, i * 350);
+    });
+  };
+
+  const handleDownloadAllScenes = () => {
+    if (!timelineScenes.length) return;
+    toast.info(`Starting batch download of ${timelineScenes.length} timeline scenes...`);
+    timelineScenes.forEach((item, i) => {
       setTimeout(() => {
         handleDownloadThumbnail(item.url, item.tag);
       }, i * 350);
@@ -1757,7 +1859,11 @@ export default function Index() {
                 <span>Thumbnails</span>
                 {coverTiers.length > 0 && (
                   <span className="text-[10px] bg-sky-500/15 text-sky-400 px-1.5 sm:px-2 py-0.5 rounded-full border border-sky-500/30 font-mono">
-                    {isTrueCarousel ? `${carouselSlides.length} Slides` : '1080p HD'}
+                    {isTrueCarousel
+                      ? `${carouselSlides.length} Slides`
+                      : timelineScenes.length > 0
+                      ? `${timelineScenes.length + 1} Visuals`
+                      : '1080p HD'}
                   </span>
                 )}
               </button>
@@ -1790,6 +1896,14 @@ export default function Index() {
                           src={`https://www.youtube-nocookie.com/embed/${resolvedVideo.youtube_id}?autoplay=0&rel=0`}
                           title={resolvedVideo.title}
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        />
+                      ) : (resolvedVideo.platform === 'terabox' || isTeraBoxUrl(inputUrl)) ? (
+                        <iframe
+                          className="w-full h-full border-0"
+                          src={resolvedVideo.embed_url || `https://www.1024tera.com/sharing/embed?surl=${(resolvedVideo.shareId || '').replace(/^1/, '')}`}
+                          title={resolvedVideo.title}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
                         />
                       ) : resolvedVideo.platform === 'vimeo' && resolvedVideo.shareId ? (
@@ -1861,7 +1975,7 @@ export default function Index() {
                   </div>
 
                   {/* RIGHT: QUICK DOWNLOAD CARD & ACTIONS (IMAGE 3 REFERENCE) */}
-                  <div className={`${isVerticalMedia ? 'lg:col-span-6 xl:col-span-7' : 'lg:col-span-5'} rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] backdrop-blur-xl p-5 space-y-4 shadow-xl`}>
+                  <div className={`${isVerticalMedia ? 'lg:col-span-6 xl:col-span-7' : 'lg:col-span-5'} rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] backdrop-blur-xl p-5 space-y-4 shadow-xl ${isQuickDropdownOpen ? 'relative z-30' : ''}`}>
                     <div className="flex items-center justify-between">
                       <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-cyan-400 bg-cyan-400/10 border border-cyan-400/25 px-2.5 py-1 rounded-full">
                         <Zap className="w-3.5 h-3.5 fill-current" />
@@ -1913,7 +2027,7 @@ export default function Index() {
                       )}
 
                       {/* Action 2: Split Download Dropdown (Image 3) */}
-                      <div className="relative" ref={quickDropdownRef}>
+                      <div className={`relative ${isQuickDropdownOpen ? 'z-40' : ''}`} ref={quickDropdownRef}>
                         <div className="flex items-stretch rounded-xl shadow-lg shadow-[#e4f222]/15">
                           <a
                             href={isImageMedia ? (carouselSlides[activeSlideIndex]?.url || resolvedVideo.m3u8_url) : (bestVideo?.download_url || bestVideo?.url)}
@@ -1963,7 +2077,7 @@ export default function Index() {
 
                         {/* Dropdown Menu Popover */}
                         {isQuickDropdownOpen && (
-                          <div className="absolute right-0 top-full mt-2 w-full sm:w-[320px] max-h-[360px] overflow-y-auto bg-[var(--tp-paper-elevated)] border border-[var(--tp-border-card)] backdrop-blur-2xl rounded-2xl p-2.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                          <div className="absolute right-0 top-full mt-2 w-full sm:w-[340px] max-h-[min(520px,75vh)] overflow-y-auto bg-white dark:bg-[#090f22] border border-[var(--tp-border-card)] rounded-2xl p-2.5 shadow-2xl shadow-black/60 z-50 animate-in fade-in zoom-in-95 duration-150 scrollbar-thin">
                             <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--tp-muted)] px-3 py-1 flex items-center justify-between">
                               <span>{isImageMedia ? 'Carousel Slides (1080p JPG)' : 'Video Qualities (MP4)'}</span>
                               <span className="text-[9px] text-[#e4f222]">{isImageMedia ? `${carouselSlides.length} Slides` : 'Standard Res'}</span>
@@ -1987,7 +2101,7 @@ export default function Index() {
                                       <ImageIcon className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                                       <span className="font-semibold">Slide {idx + 1} of {carouselSlides.length}</span>
                                     </span>
-                                    <span className="text-[10px] font-mono tabular-nums text-[var(--tp-accent-ink)] bg-[var(--tp-accent)]/15 border border-[var(--tp-accent)]/30 px-1.5 py-0.5 rounded shrink-0">
+                                    <span className="text-[10px] font-mono tabular-nums text-sky-300 dark:text-sky-300 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded shrink-0">
                                       1080p HD
                                     </span>
                                   </a>
@@ -2008,11 +2122,7 @@ export default function Index() {
                                       <Film className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                                       <span className="font-semibold">
                                         {tier}
-                                        {vf.has_audio ? (
-                                          <span className="ml-1.5 text-[10px] text-emerald-400 font-normal">
-                                            (Audio+Video)
-                                          </span>
-                                        ) : (
+                                        {!vf.has_audio && (
                                           <span className="ml-1.5 text-[10px] text-amber-400/90 font-normal">
                                             (Video Only)
                                           </span>
@@ -2024,7 +2134,7 @@ export default function Index() {
                                         )}
                                       </span>
                                     </span>
-                                    <span className="text-[10px] font-mono tabular-nums text-[var(--tp-accent-ink)] bg-[var(--tp-accent)]/15 border border-[var(--tp-accent)]/30 px-1.5 py-0.5 rounded shrink-0">
+                                    <span className="text-[10px] font-mono tabular-nums text-sky-300 dark:text-sky-300 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded shrink-0">
                                       {vf.filesize}
                                     </span>
                                   </a>
@@ -2068,8 +2178,8 @@ export default function Index() {
                       {/* Action 3: Quick 1-Click MP3 Download */}
                       {bestAudio && (
                         <a
-                          href={bestAudio.download_url || bestAudio.url}
-                          download
+                          href={getFormatDownloadHref(bestAudio)}
+                          download={getFormatDownloadFilename(bestAudio)}
                           className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-500 dark:text-amber-300 font-bold text-xs sm:text-sm hover:bg-amber-500/20 active:opacity-90 transition-colors shadow-md"
                         >
                           <Music className="w-4 h-4 fill-current/20" />
@@ -2173,7 +2283,7 @@ export default function Index() {
                       <div className="space-y-0.5">
                         <span className="font-bold text-amber-300">Audio Availability Notice:</span>
                         <p className="text-amber-200/80 leading-relaxed text-[11px]">
-                          Some video streams do not have an audio track attached by the host platform. Choose formats with the <strong>Audio+Video</strong> badge for a complete single file with merged sound.
+                          Some video streams do not have an audio track attached by the host platform. Formats without sound are tagged with the <strong>Video Only</strong> badge.
                         </p>
                       </div>
                     </div>
@@ -2216,17 +2326,11 @@ export default function Index() {
                                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--tp-paper-input)] text-[var(--tp-ink)] border border-[var(--tp-border-subtle)] uppercase font-mono font-bold">
                                         {fmt.ext}
                                       </span>
-                                      {!fmt.is_audio_only && (
-                                        fmt.has_audio ? (
-                                          <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded font-mono font-medium inline-flex items-center gap-1">
-                                            <Volume2 className="w-3 h-3" /> Audio+Video
-                                          </span>
-                                        ) : (
-                                          <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded font-mono font-medium inline-flex items-center gap-1">
-                                            <VolumeX className="w-3 h-3" /> Video Only
-                                          </span>
-                                        )
-                                      )}
+                                      {!fmt.is_audio_only && !fmt.has_audio && (
+                                         <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded font-mono font-medium inline-flex items-center gap-1">
+                                           <VolumeX className="w-3 h-3" /> Video Only
+                                         </span>
+                                       )}
                                     </div>
                                     <div className="text-[10px] text-[var(--tp-muted)] font-mono mt-0.5">
                                       {fmt.is_audio_only
@@ -2234,20 +2338,20 @@ export default function Index() {
                                         : isCinema
                                         ? `Cinema Ultrawide (${fmt.height}p)`
                                         : fmt.has_audio
-                                        ? (fmt.can_mux || fmt.audio_url ? 'Single file with full video + audio merged' : 'Single file with full video + audio')
+                                        ? (fmt.can_mux || fmt.audio_url ? 'Single file with full video' : 'Single file direct MP4')
                                         : 'High-res video stream (video only)'}
                                     </div>
                                   </div>
                                 </div>
-                                <span className="text-[10px] font-mono tabular-nums text-[var(--tp-accent-ink)] bg-[var(--tp-accent)]/15 border border-[var(--tp-accent)]/30 px-2 py-0.5 rounded-md shrink-0 self-start">
+                                <span className="text-[10px] font-mono tabular-nums text-sky-300 dark:text-sky-300 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-md shrink-0 self-start">
                                   {fmt.filesize || 'Direct Stream'}
                                 </span>
                               </div>
 
                               <div className="flex items-center gap-2 pt-1.5 border-t border-[var(--tp-border-subtle)]">
                                 <a
-                                  href={fmt.download_url || fmt.url}
-                                  download
+                                  href={getFormatDownloadHref(fmt)}
+                                  download={getFormatDownloadFilename(fmt)}
                                   className="tp-btn tp-btn-download flex-1 justify-center active:opacity-90"
                                   style={{ height: '36px', fontSize: '12px' }}
                                 >
@@ -2306,17 +2410,11 @@ export default function Index() {
                                             ? fmt.quality
                                             : getStandardResTier(fmt.height, fmt.quality)}
                                         </span>
-                                        {!fmt.is_audio_only && (
-                                          fmt.has_audio ? (
-                                            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-1.5 py-0.5 rounded font-mono font-medium inline-flex items-center gap-1">
-                                              <Volume2 className="w-3 h-3" /> Audio+Video
-                                            </span>
-                                          ) : (
-                                            <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded font-mono font-medium inline-flex items-center gap-1">
-                                              <VolumeX className="w-3 h-3" /> Video Only (Mute)
-                                            </span>
-                                          )
-                                        )}
+                                        {!fmt.is_audio_only && !fmt.has_audio && (
+                                           <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded font-mono font-medium inline-flex items-center gap-1">
+                                             <VolumeX className="w-3 h-3" /> Video Only (Mute)
+                                           </span>
+                                         )}
                                       </div>
                                       <div className="text-[10px] text-[var(--tp-muted)] font-mono">
                                         {fmt.is_audio_only
@@ -2324,7 +2422,7 @@ export default function Index() {
                                           : isCinemaWidescreen(fmt.height)
                                           ? `Cinema Ultrawide (${fmt.height}p) • Direct Stream`
                                           : fmt.has_audio
-                                          ? (fmt.can_mux || fmt.audio_url ? 'Single file with full 1080p/4K video + audio merged' : 'Single file with full video + audio combined')
+                                          ? (fmt.can_mux || fmt.audio_url ? 'Single file with full 1080p/4K video' : 'Single file direct MP4 video')
                                           : 'High-res video stream (no audio track attached by YouTube)'}
                                       </div>
                                     </div>
@@ -2336,15 +2434,15 @@ export default function Index() {
                                   </span>
                                 </td>
                                 <td className="py-3.5 px-4 font-mono tabular-nums">
-                                  <span className="text-[11px] font-mono tabular-nums text-[var(--tp-accent-ink)] bg-[var(--tp-accent)]/15 border border-[var(--tp-accent)]/30 px-2 py-0.5 rounded-md">
+                                  <span className="text-[11px] font-mono tabular-nums text-sky-300 dark:text-sky-300 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-md">
                                     {fmt.filesize || 'Direct Stream'}
                                   </span>
                                 </td>
                                 <td className="py-3.5 px-4 sm:px-6 text-right">
                                   <div className="flex items-center justify-end gap-2">
                                     <a
-                                      href={fmt.download_url || fmt.url}
-                                      download
+                                      href={getFormatDownloadHref(fmt)}
+                                      download={getFormatDownloadFilename(fmt)}
                                       className="tp-btn tp-btn-download active:opacity-90"
                                       style={{ height: '34px', fontSize: '11px', padding: '0 14px' }}
                                     >
@@ -2506,7 +2604,7 @@ export default function Index() {
                           className="pt-2 first:pt-0 flex items-start gap-3 group hover:bg-[var(--tp-paper-input)]/50 p-2 rounded-xl transition-colors"
                         >
                           {showTimestamps && (
-                            <span className="shrink-0 text-xs font-mono font-bold text-[var(--tp-accent-ink)] bg-[var(--tp-accent)]/15 border border-[var(--tp-accent)]/30 px-2 py-0.5 rounded-lg">
+                            <span className="shrink-0 text-xs font-mono font-bold text-sky-300 dark:text-sky-300 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-lg">
                               {formatTime(item.start)}
                             </span>
                           )}
@@ -2635,15 +2733,21 @@ export default function Index() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h3 className="text-base font-bold text-[var(--tp-ink)]">
-                      {isTrueCarousel ? 'Full-Resolution Carousel Slides & Artwork' : 'Full-Resolution Video Cover & Poster'}
+                      {isTrueCarousel
+                        ? 'Full-Resolution Carousel Slides & Artwork'
+                        : thumbnailSubTab === 'scenes'
+                        ? 'Extracted Video Timeline Scenes'
+                        : 'Full-Resolution Video Cover & Poster'}
                     </h3>
                     <p className="text-xs text-[var(--tp-muted)] mt-0.5">
                       {isTrueCarousel
                         ? 'Download high-definition artwork and carousel slides in original lossless quality.'
+                        : thumbnailSubTab === 'scenes'
+                        ? `Extracted ${timelineScenes.length} visual scene snapshots captured throughout the video timeline.`
                         : 'Select your preferred cover quality and download in 1 click.'}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2.5 self-start sm:self-auto">
+                  <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
                     {isTrueCarousel && carouselSlides.length > 1 && (
                       <button
                         type="button"
@@ -2656,14 +2760,67 @@ export default function Index() {
                         <span>Download All ({carouselSlides.length} Slides)</span>
                       </button>
                     )}
+                    {!isTrueCarousel && thumbnailSubTab === 'scenes' && timelineScenes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={handleDownloadAllScenes}
+                        className="tp-btn tp-btn-download flex items-center gap-1.5 shadow-md"
+                        style={{ height: '34px', fontSize: '11px', padding: '0 12px' }}
+                        title="Download all extracted timeline scenes sequentially"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download All Scenes ({timelineScenes.length})</span>
+                      </button>
+                    )}
                     <span className="text-xs font-mono font-semibold text-emerald-500 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg whitespace-nowrap">
-                      {isTrueCarousel ? `${carouselSlides.length} Slides Available` : `${coverTiers.length} Quality Tiers Available`}
+                      {isTrueCarousel
+                        ? `${carouselSlides.length} Slides Available`
+                        : thumbnailSubTab === 'scenes'
+                        ? `${timelineScenes.length} Scenes Available`
+                        : `${coverTiers.length} Quality Tiers Available`}
                     </span>
                   </div>
                 </div>
 
+                {/* Sub-tab Pill Switcher between Official Cover vs Timeline Scenes */}
+                {!isTrueCarousel && timelineScenes.length > 0 && (
+                  <div className="flex items-center gap-1 p-1 bg-[var(--tp-paper-input)] border border-[var(--tp-border-subtle)] rounded-xl w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setThumbnailSubTab('cover')}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                        thumbnailSubTab === 'cover'
+                          ? 'bg-[var(--tp-paper-elevated)] text-[var(--tp-ink)] shadow-sm border border-[var(--tp-border-subtle)] font-bold'
+                          : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)] border border-transparent'
+                      }`}
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 text-[#e4f222]" />
+                      <span>Official Video Cover</span>
+                      <span className="text-[10px] font-mono text-[#e4f222] bg-[#e4f222]/15 px-1.5 py-0.5 rounded-md">
+                        {coverTiers.length} Qualities
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setThumbnailSubTab('scenes')}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                        thumbnailSubTab === 'scenes'
+                          ? 'bg-[var(--tp-paper-elevated)] text-[var(--tp-ink)] shadow-sm border border-[var(--tp-border-subtle)] font-bold'
+                          : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)] border border-transparent'
+                      }`}
+                    >
+                      <Film className="w-3.5 h-3.5 text-sky-400" />
+                      <span>Video Timeline Scenes</span>
+                      <span className="text-[10px] font-mono text-sky-400 bg-sky-400/15 px-1.5 py-0.5 rounded-md">
+                        {timelineScenes.length} Scenes
+                      </span>
+                    </button>
+                  </div>
+                )}
+
                 {!isTrueCarousel ? (
-                  activeCoverTier ? (
+                  thumbnailSubTab === 'cover' ? (
+                    activeCoverTier ? (
                     <div className="rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] backdrop-blur-xl p-4 sm:p-6 shadow-xl space-y-5">
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
                         {/* Artwork Preview */}
@@ -2734,7 +2891,7 @@ export default function Index() {
 
                             {/* Dropdown Menu Popover */}
                             {isCoverDropdownOpen && (
-                              <div className="absolute left-0 right-0 top-full mt-2 w-full bg-[var(--tp-paper-elevated)] border border-[var(--tp-border-card)] backdrop-blur-2xl rounded-2xl p-2.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+                              <div className="absolute left-0 right-0 top-full mt-2 w-full bg-white dark:bg-[#090f22] border border-[var(--tp-border-card)] rounded-2xl p-2.5 shadow-2xl shadow-black/60 z-50 animate-in fade-in zoom-in-95 duration-150">
                                 <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--tp-muted)] px-3 py-1 flex items-center justify-between">
                                   <span>Select Quality</span>
                                   <span className="text-[9px] text-[#e4f222]">Lossless JPG</span>
@@ -2759,7 +2916,7 @@ export default function Index() {
                                         <ImageIcon className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                                         <span>{tier.label}</span>
                                       </span>
-                                      <span className="text-[10px] font-mono tabular-nums text-[var(--tp-accent-ink)] bg-[var(--tp-accent)]/15 border border-[var(--tp-accent)]/30 px-1.5 py-0.5 rounded shrink-0">
+                                      <span className="text-[10px] font-mono tabular-nums text-sky-300 dark:text-sky-300 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded shrink-0">
                                         {tier.res}
                                       </span>
                                     </button>
@@ -2812,6 +2969,69 @@ export default function Index() {
                     </div>
                   )
                 ) : (
+                  /* VIEW: EXTRACTED TIMELINE SCENE SNAPSHOTS */
+                  timelineScenes.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {timelineScenes.map((scene, idx) => (
+                        <div
+                          key={scene.url + idx}
+                          className="group flex flex-col justify-between rounded-2xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-card)] overflow-hidden p-3.5 space-y-3 transition-colors hover:border-[var(--tp-mid)]/40 hover:shadow-xl"
+                        >
+                          <div className="relative aspect-video rounded-xl overflow-hidden bg-black/60 border border-[var(--tp-border-subtle)] flex items-center justify-center">
+                            <img
+                              src={scene.url}
+                              alt={scene.label}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                              loading="lazy"
+                            />
+                            <div className="absolute bottom-2 right-2 bg-black/75 backdrop-blur-md text-[10px] font-mono text-white/90 px-2 py-0.5 rounded-md border border-white/10 shadow-sm pointer-events-none">
+                              {scene.res}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2.5 pt-0.5">
+                            <div className="flex items-center justify-between gap-1.5">
+                              <h4 className="text-xs font-bold text-[var(--tp-ink)] truncate">
+                                {scene.label}
+                              </h4>
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md border text-sky-400 bg-sky-400/15 border-sky-400/30">
+                                Timeline Still
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                              <a
+                                href={scene.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="tp-btn tp-btn-secondary flex items-center justify-center gap-1.5 w-full text-center"
+                                style={{ height: '34px', fontSize: '11px', padding: '0 6px' }}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                                <span className="truncate">Preview</span>
+                              </a>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadThumbnail(scene.url, scene.tag)}
+                                className="tp-btn tp-btn-download flex items-center justify-center gap-1.5 w-full text-center font-medium"
+                                style={{ height: '34px', fontSize: '11px', padding: '0 6px' }}
+                              >
+                                <Download className="w-3.5 h-3.5 shrink-0" />
+                                <span className="truncate">Download JPG</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 border border-[var(--tp-border-card)] rounded-2xl bg-[var(--tp-paper-card)] p-6">
+                      <p className="text-sm text-[var(--tp-muted)]">No timeline scene snapshots available for this video stream.</p>
+                    </div>
+                  )
+                )
+              ) : (
                   /* VIEW 2: MULTI-SLIDE CAROUSEL (INSTAGRAM / TIKTOK PHOTO SETS ONLY) */
                   <div className={`grid ${isVerticalMedia ? 'grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'} gap-4`}>
                     {carouselSlides.map((slide, idx) => (
@@ -2880,6 +3100,14 @@ export default function Index() {
                     src={`https://www.youtube-nocookie.com/embed/${resolvedVideo.youtube_id}?autoplay=1&rel=0`}
                     title={resolvedVideo.title}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                ) : (resolvedVideo.platform === 'terabox' || isTeraBoxUrl(inputUrl)) ? (
+                  <iframe
+                    className="w-full h-full border-0"
+                    src={resolvedVideo.embed_url || `https://www.1024tera.com/sharing/embed?surl=${(resolvedVideo.shareId || '').replace(/^1/, '')}`}
+                    title={resolvedVideo.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
                 ) : resolvedVideo.platform === 'vimeo' && resolvedVideo.shareId ? (

@@ -18,6 +18,7 @@ interface ResolveResponse {
   success: boolean;
   title?: string;
   thumbnail?: string;
+  embed_url?: string;
   thumbnails?: Array<{
     url: string;
     width?: number;
@@ -97,7 +98,7 @@ interface CacheItem {
   expiresAt: number;
 }
 const MEDIA_CACHE = new Map<string, CacheItem>();
-const CACHE_TTL_MS = 60 * 60 * 1000;
+const CACHE_TTL_MS = 2 * 60 * 1000;
 
 function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
   return new Promise((resolve) => {
@@ -137,12 +138,17 @@ function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
           const cleanTitle = (parsed.title || 'video').replace(/[^a-zA-Z0-9_\-]/g, '_');
           const downloadProxy = `/api/stream-download?url=${encodeURIComponent(directMedia)}&filename=${encodeURIComponent(cleanTitle)}&source=${encodeURIComponent(parsed.source || '')}`;
 
-          const mapFormat = (f: any) => ({
-            ...f,
-            download_url: f.url
-              ? `/api/stream-download?url=${encodeURIComponent(f.url)}${f.audio_url ? `&audio_url=${encodeURIComponent(f.audio_url)}` : ''}&filename=${encodeURIComponent(`${cleanTitle}_${f.format_id}`)}&ext=${encodeURIComponent(f.ext || (f.is_audio_only ? 'mp3' : 'mp4'))}&source=${encodeURIComponent(parsed.source || '')}`
-              : f.download_url || '',
-          });
+          const mapFormat = (f: any) => {
+            const ytId = parsed.youtube_id || '';
+            const fileSuffix = ytId ? `${cleanTitle}_${ytId}_${f.format_id}` : `${cleanTitle}_${f.format_id}`;
+            const ytParam = ytId ? `&v=${encodeURIComponent(ytId)}` : '';
+            return {
+              ...f,
+              download_url: f.url
+                ? `/api/stream-download?url=${encodeURIComponent(f.url)}${f.audio_url ? `&audio_url=${encodeURIComponent(f.audio_url)}` : ''}&filename=${encodeURIComponent(fileSuffix)}&ext=${encodeURIComponent(f.ext || (f.is_audio_only ? 'mp3' : 'mp4'))}&source=${encodeURIComponent(parsed.source || '')}${ytParam}`
+                : f.download_url || '',
+            };
+          };
 
           const mappedFormats = Array.isArray(parsed.formats) ? parsed.formats.map(mapFormat) : [];
           const mappedVideoFormats = Array.isArray(parsed.video_formats) ? parsed.video_formats.map(mapFormat) : [];
@@ -162,6 +168,7 @@ function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
             source: parsed.source || 'local_extractor',
             platform: parsed.platform || (parsed.youtube_id ? 'youtube' : 'universal'),
             youtube_id: parsed.youtube_id,
+            embed_url: parsed.embed_url || (parsed.platform === 'terabox' ? (parsed.stream_url?.includes('embed') ? parsed.stream_url : `https://www.1024tera.com/sharing/embed?surl=${(parsed.shareId || '').replace(/^1/, '')}`) : undefined),
             transcript: parsed.transcript || null,
             formats: mappedFormats,
             video_formats: mappedVideoFormats,
@@ -590,47 +597,91 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  // Upstream third-party API integration
+  // Upstream third-party API integration / Local microservice hook
   const upstreamUrl = process.env.TERABOX_API_URL || process.env.EXTRACTOR_API_URL;
   const upstreamKey = process.env.TERABOX_API_KEY || process.env.EXTRACTOR_API_KEY;
 
-  if (upstreamUrl && upstreamKey) {
+  if (upstreamUrl) {
     try {
-      const targetEndpoint = `${upstreamUrl}?url=${encodeURIComponent(queryTarget)}&id=${encodeURIComponent(shareId)}`;
+      const parsedBase = upstreamUrl.trim().replace(/\/$/, '');
+      let targetEndpoint = parsedBase;
+      if (!parsedBase.includes('/resolve') && !parsedBase.includes('/api/')) {
+        targetEndpoint = `${parsedBase}/api/resolve`;
+      }
+      targetEndpoint = `${targetEndpoint}${targetEndpoint.includes('?') ? '&' : '?'}url=${encodeURIComponent(queryTarget)}&id=${encodeURIComponent(shareId)}`;
+
+      const headers: Record<string, string> = {
+        Accept: 'application/json',
+      };
+      if (upstreamKey) {
+        headers['x-rapidapi-key'] = upstreamKey;
+        try {
+          headers['x-rapidapi-host'] = new URL(upstreamUrl).hostname;
+        } catch {}
+      }
+
       const response = await fetch(targetEndpoint, {
         method: 'GET',
-        headers: {
-          'x-rapidapi-key': upstreamKey,
-          'x-rapidapi-host': new URL(upstreamUrl).hostname,
-          'Accept': 'application/json',
-        },
+        headers,
+        signal: AbortSignal.timeout(12000),
       });
 
       if (response.ok) {
-        const data = await response.json();
-        const rawDownload = data.fast_download_url || data.download_url || data.dlink || data.stream_url;
-        const resolved: ResolveResponse = {
-          success: true,
-          title: data.title || data.file_name || `Media Stream [${shareId.substring(0, 8)}]`,
-          thumbnail: data.thumbnail || data.thumb || '',
-          m3u8_url: data.m3u8_url || data.stream_url || data.dlink,
-          fast_download_url: rawDownload?.startsWith('http')
-            ? `/api/stream-download?url=${encodeURIComponent(rawDownload)}&filename=${encodeURIComponent(data.title || 'media')}`
-            : rawDownload,
-          size: data.size || data.file_size || 'Direct Stream',
-          duration: data.duration || 0,
-          shareId,
-          serverTime: new Date().toISOString(),
-          source: 'upstream_api',
-          is_mock: false,
-        };
+        const data = (await response.json()) as any;
+        let directMedia = data.stream_url || data.dlink || data.fast_download_url || data.download_url || data.m3u8_url;
+        let title = data.title || data.file_name || data.server_filename;
+        let thumb = data.thumbnail || data.thumb;
+        let size = data.size || data.file_size;
 
-        MEDIA_CACHE.set(cacheKey, { data: resolved, expiresAt: Date.now() + CACHE_TTL_MS });
-        res.status(200).json(resolved);
-        return;
+        if (Array.isArray(data.list) && data.list[0]) {
+          const item = data.list[0];
+          directMedia = directMedia || item.dlink;
+          title = title || item.server_filename;
+          size = size || (item.size ? `${(item.size / (1024 * 1024)).toFixed(1)} MB` : undefined);
+          if (item.thumbs) {
+            thumb = thumb || item.thumbs.url3 || item.thumbs.url2 || item.thumbs.url1;
+          }
+        }
+
+        if (directMedia) {
+          const cleanTitle = (title || `TeraBox_${shareId.substring(0, 8)}`).replace(/[^a-zA-Z0-9_\-]/g, '_');
+          const proxiedStream = `/api/stream-download?url=${encodeURIComponent(directMedia)}&filename=${encodeURIComponent(cleanTitle)}&source=terabox`;
+
+          const resolved: ResolveResponse = {
+            success: true,
+            title: title || `TeraBox Stream [${shareId.substring(0, 8)}]`,
+            thumbnail: thumb || '',
+            m3u8_url: proxiedStream,
+            fast_download_url: proxiedStream,
+            size: size || 'HD Direct Stream',
+            duration: data.duration || 0,
+            shareId,
+            serverTime: new Date().toISOString(),
+            source: 'terabox_microservice',
+            platform: 'terabox',
+            formats: [
+              {
+                format_id: 'terabox_hd',
+                quality: 'Original Quality (MP4)',
+                ext: 'mp4',
+                filesize: size || 'Direct Stream',
+                url: proxiedStream,
+                download_url: proxiedStream,
+                has_audio: true,
+                has_video: true,
+                is_progressive: true,
+              },
+            ],
+            is_mock: false,
+          };
+
+          MEDIA_CACHE.set(cacheKey, { data: resolved, expiresAt: Date.now() + CACHE_TTL_MS });
+          res.status(200).json(resolved);
+          return;
+        }
       }
     } catch (err: any) {
-      console.warn('Upstream API request failed, falling back to mock stream:', err?.message);
+      console.warn('[TeraBoxMicroservice] Fetch notice:', err?.message);
     }
   }
 

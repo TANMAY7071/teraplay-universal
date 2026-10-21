@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import SEO from "@/components/SEO";
+import { Helmet } from "react-helmet-async";
 
 interface LegalSection {
   heading: string;
@@ -40,7 +40,7 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
 
   return (
     <div className="min-h-screen bg-[#05060a] text-zinc-300">
-      <SEO title={title} description={description} />
+      <Helmet><title>{title} | TeraPlay Universal</title><meta name="description" content={description} /></Helmet>
 
       {/* Accent band */}
       <div className="h-1 w-full bg-gradient-to-r from-[#A855F7] via-primary/60 to-[#06B6D4] opacity-80" aria-hidden="true" />

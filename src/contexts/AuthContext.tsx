@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { syncGuestProgressToAccount } from "@/services/guestSync";
 import type { Session, User } from "@supabase/supabase-js";
 
 export interface UserProfile {
@@ -142,7 +141,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // NOTE: guests are intentionally database-free — their watch history lives
-  // in localStorage only (see services/guestSync.ts) and is batched into the
   // account on sign-in. No anonymous Supabase sessions are created.
 
   useEffect(() => {
@@ -194,21 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         queryClient.clear();
       }
 
-      if (event === "SIGNED_IN" && session?.user) {
-        // "Watch now, sign up later": migrate any guest (localStorage) history
-        // into the account in one batched write. Local data is kept on failure
-        // so the next sign-in retries automatically.
-        syncGuestProgressToAccount(session.user.id)
-          .then((res) => {
-            if (res.episodesSynced > 0 || res.watchlistSynced > 0) {
-              toast.success("Guest history synced to your account!");
-              queryClient.invalidateQueries();
-            }
-          })
-          .catch(() => {});
-        sessionStorage.removeItem("donghua-guest-id-before-login");
-        sessionStorage.removeItem("donghua-guest-id-before-oauth");
-      }
+      
 
       setSession(session);
       setUser(session?.user ?? null);

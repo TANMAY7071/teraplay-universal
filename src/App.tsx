@@ -79,28 +79,10 @@ const App: React.FC = () => {
                       <Route path="/disclaimer" element={<DisclaimerPage />} />
                       <Route path="/contact" element={<ContactPage />} />
 
-                      {/* Pruned Legacy Anime & Admin Routes: Safe Canonical Redirects */}
+                      {/* Legacy Route Redirects */}
                       <Route path="/anime/*" element={<Navigate to="/" replace />} />
                       <Route path="/watch/*" element={<Navigate to="/" replace />} />
-                      <Route path="/watchlater" element={<Navigate to="/" replace />} />
-                      <Route path="/library" element={<Navigate to="/" replace />} />
-                      <Route path="/calendar" element={<Navigate to="/" replace />} />
-                      <Route path="/search" element={<Navigate to="/" replace />} />
-                      <Route path="/browse" element={<Navigate to="/" replace />} />
-                      <Route path="/explore" element={<Navigate to="/" replace />} />
-                      <Route path="/genre/*" element={<Navigate to="/" replace />} />
-                      <Route path="/community" element={<Navigate to="/" replace />} />
-                      <Route path="/sports" element={<Navigate to="/" replace />} />
-                      <Route path="/experiment-ai" element={<Navigate to="/" replace />} />
-                      <Route path="/experimental-ai" element={<Navigate to="/" replace />} />
-                      <Route path="/wiki-api-explorer" element={<Navigate to="/" replace />} />
-                      <Route path="/series/*" element={<Navigate to="/" replace />} />
                       <Route path="/admin/*" element={<Navigate to="/" replace />} />
-                      <Route path="/login" element={<Navigate to="/" replace />} />
-                      <Route path="/register" element={<Navigate to="/" replace />} />
-                      <Route path="/profile" element={<Navigate to="/" replace />} />
-                      <Route path="/onward" element={<Navigate to="/" replace />} />
-                      <Route path="/summit" element={<Navigate to="/" replace />} />
 
                       {/* 404 Catch-All */}
                       <Route path="*" element={<NotFound />} />

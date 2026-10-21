@@ -77,3 +77,10 @@ See [DEPLOYMENT.md](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universa
 1. **Backend**: Deploy `backend/` to Render.com ($0 free tier).
 2. **Frontend**: Deploy repo to Vercel and add `PYTHON_RESOLVER_URL=https://<your-render-url>`.
 3. **Keep Awake**: Ping `https://<your-render-url>/health` via free UptimeRobot every 5 minutes.
+
+---
+
+## 📚 Architecture & Legacy Wisdom
+
+- **[CODEBASE_DESIGN.md](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universal/CODEBASE_DESIGN.md)**: Deep architectural guide in plain language for beginners and senior engineers alike. Details $0 bandwidth invariants, deep module boundaries, and design decisions.
+- **[DONGHUA_LEGACY_WISDOM.md](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universal/DONGHUA_LEGACY_WISDOM.md)**: Preserved techniques from the predecessor Donghua streaming platform (custom Fandom wiki scrapers, zero-config CDN image proxying, metadata federation across AniList/Simkl/TMDB/Trakt, and streaming fallback chains).
