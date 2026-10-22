@@ -300,14 +300,6 @@ async function streamDirectFallback(
           ? process.env.TERABOX_COOKIE
           : `ndus=${process.env.TERABOX_COOKIE}`;
       }
-    } else if (isTeraBox) {
-      upstreamHeaders['Referer'] = 'https://www.terabox.app/';
-      upstreamHeaders['Origin'] = 'https://www.terabox.app';
-      if (process.env.TERABOX_COOKIE) {
-        upstreamHeaders['Cookie'] = process.env.TERABOX_COOKIE.includes('ndus=')
-          ? process.env.TERABOX_COOKIE
-          : `ndus=${process.env.TERABOX_COOKIE}`;
-      }
     }
 
     const mimeMap: Record<string, string> = {

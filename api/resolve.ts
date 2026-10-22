@@ -111,11 +111,19 @@ function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
 
     const pythonBin = fs.existsSync(venvPython) ? venvPython : fallbackPython;
 
-    execFile(pythonBin, [scriptPath, targetUrl], { timeout: 20000 }, (error, stdout, stderr) => {
-      if (error || !stdout) {
+    // 45s ceiling: the TeraBox path can spend 10s on the share page, 10s on
+    // share/list, then retry the legacy gateway. A 20s kill returned no result
+    // and the request fell through to the demo fallback.
+    execFile(pythonBin, [scriptPath, targetUrl], { timeout: 45000 }, (error, stdout, stderr) => {
+      if (!stdout) {
         console.warn('[LocalExtractor] Exec notice:', error?.message || stderr);
         resolve(null);
         return;
+      }
+      // The extractor prints its JSON result and exits non-zero on failure.
+      // That JSON carries the honest error message, so keep it.
+      if (error) {
+        console.warn('[LocalExtractor] Exit notice:', error.message);
       }
       try {
         const rawStdout = stdout.trim();
@@ -136,7 +144,12 @@ function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
         if (parsed.success && (parsed.stream_url || parsed.download_url)) {
           const directMedia = parsed.stream_url || parsed.download_url;
           const cleanTitle = (parsed.title || 'video').replace(/[^a-zA-Z0-9_\-]/g, '_');
-          const downloadProxy = `/api/stream-download?url=${encodeURIComponent(directMedia)}&filename=${encodeURIComponent(cleanTitle)}&source=${encodeURIComponent(parsed.source || '')}`;
+          // When the extractor already returns a proxied (relative) URL — e.g. the audio-mux
+          // player stream — use it as-is; nesting a relative path inside another proxy's
+          // `url=` param would break server-side fetching.
+          const downloadProxy = directMedia.startsWith('/api/')
+            ? directMedia
+            : `/api/stream-download?url=${encodeURIComponent(directMedia)}&filename=${encodeURIComponent(cleanTitle)}&source=${encodeURIComponent(parsed.source || '')}`;
 
           const mapFormat = (f: any) => {
             const ytId = parsed.youtube_id || '';
@@ -168,7 +181,7 @@ function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
             source: parsed.source || 'local_extractor',
             platform: parsed.platform || (parsed.youtube_id ? 'youtube' : 'universal'),
             youtube_id: parsed.youtube_id,
-            embed_url: parsed.embed_url || (parsed.platform === 'terabox' ? (parsed.stream_url?.includes('embed') ? parsed.stream_url : `https://www.1024tera.com/sharing/embed?surl=${(parsed.shareId || '').replace(/^1/, '')}`) : undefined),
+            embed_url: parsed.embed_url || (parsed.platform === 'terabox' && parsed.stream_url?.includes('embed') ? parsed.stream_url : undefined),
             transcript: parsed.transcript || null,
             formats: mappedFormats,
             video_formats: mappedVideoFormats,
@@ -217,7 +230,9 @@ async function runRemoteResolver(targetUrl: string): Promise<ResolveResponse | n
     if (parsed.success && (parsed.stream_url || parsed.download_url)) {
       const directMedia = parsed.stream_url || parsed.download_url;
       const cleanTitle = (parsed.title || 'video').replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const downloadProxy = `/api/stream-download?url=${encodeURIComponent(directMedia)}&filename=${encodeURIComponent(cleanTitle)}&source=${encodeURIComponent(parsed.source || '')}`;
+      const downloadProxy = directMedia.startsWith('/api/')
+        ? directMedia
+        : `/api/stream-download?url=${encodeURIComponent(directMedia)}&filename=${encodeURIComponent(cleanTitle)}&source=${encodeURIComponent(parsed.source || '')}`;
 
       const mapFormat = (f: any) => ({
         ...f,
@@ -603,12 +618,18 @@ export default async function handler(req: any, res: any) {
 
   if (upstreamUrl) {
     try {
+      // Canonicalize obscure/shortlink mirrors (terasharefile.com etc.) onto the
+      // canonical TeraBox domain before delegating — third-party parsers fail on
+      // unknown hostnames. Rebuild the shorturl with its leading "1".
+      const canonicalTarget = /^(https?:\/\/)?([\w-]+\.)*(terabox|1024tera|nephobox|terasharefile|teraboxlink|1024terabox|freeterabox|mirrobox|terashare)/i.test(queryTarget)
+        ? `https://www.terabox.app/s/1${shareId}`
+        : queryTarget;
       const parsedBase = upstreamUrl.trim().replace(/\/$/, '');
       let targetEndpoint = parsedBase;
       if (!parsedBase.includes('/resolve') && !parsedBase.includes('/api/')) {
         targetEndpoint = `${parsedBase}/api/resolve`;
       }
-      targetEndpoint = `${targetEndpoint}${targetEndpoint.includes('?') ? '&' : '?'}url=${encodeURIComponent(queryTarget)}&id=${encodeURIComponent(shareId)}`;
+      targetEndpoint = `${targetEndpoint}${targetEndpoint.includes('?') ? '&' : '?'}url=${encodeURIComponent(canonicalTarget)}&id=${encodeURIComponent(shareId)}`;
 
       const headers: Record<string, string> = {
         Accept: 'application/json',

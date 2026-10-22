@@ -52,11 +52,116 @@ def extract_terabox_share_id(url):
         return clean
     return None
 
+def resolve_terabox_dm_link(url, share_id):
+    """dm.terabox.app direct dlink flow (jsToken + root='1,').
+
+    Verified live 2026-10-22: /share/list on dm.terabox.app returns a REAL
+    steaming dlink when called with a jsToken extracted from the share page,
+    root="1," and browser-like Sec-Fetch headers. The dlink (dm-d.terabox.app)
+    serves video/mp4 with Accept-Ranges and requires the ndus cookie at
+    fetch time — which our /api/stream-download proxy already attaches.
+    """
+    surl = share_id[1:] if share_id.startswith('1') else share_id
+    tb_cookie = os.environ.get('TERABOX_COOKIE', '').strip()
+    if not tb_cookie:
+        return None
+
+    cookie_header = tb_cookie if 'ndus=' in tb_cookie else f"ndus={tb_cookie}"
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'identity',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1',
+        'Cookie': cookie_header,
+    }
+
+    # 1. Share page → jsToken (fn%22... pattern embedded in page HTML)
+    page_url = f"https://dm.terabox.app/sharing/link?surl={surl}&clearCache=1"
+    js_token = ''
+    try:
+        req = urllib.request.Request(page_url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as res:
+            page = res.read().decode('utf-8', 'replace')
+        m = re.search(r'fn%28%22(.*?)%22%29', page)
+        if m:
+            js_token = m.group(1)
+    except Exception:
+        return None
+    if not js_token:
+        return None
+
+    # 2. share/list with jsToken + root="1," → dlink present in list payload
+    params = urllib.parse.urlencode({
+        'app_id': '250528', 'web': '1', 'channel': 'dubox', 'clienttype': '0',
+        'jsToken': js_token, 'page': '1', 'num': '20',
+        'by': 'name', 'order': 'asc', 'shorturl': surl, 'root': '1,',
+    })
+    list_headers = dict(headers, Referer=page_url, Origin='https://dm.terabox.app',
+                        **{'X-Requested-With': 'XMLHttpRequest'})
+    try:
+        req = urllib.request.Request(f"https://dm.terabox.app/share/list?{params}", headers=list_headers)
+        with urllib.request.urlopen(req, timeout=10) as res:
+            data = json.loads(res.read().decode('utf-8'))
+    except Exception:
+        return None
+    if data.get('errno') != 0 or not data.get('list'):
+        return None
+
+    item = data['list'][0]
+    dlink = item.get('dlink')
+    if not dlink:
+        return None
+
+    filename = item.get('server_filename') or f"TeraBox_Video_{surl[:8]}.mp4"
+    size_bytes = int(item.get('size') or 0)
+    thumbs = item.get('thumbs') or {}
+    thumbnail = thumbs.get('url3') or thumbs.get('url2') or thumbs.get('url1') or ''
+    duration_val = int(item.get('duration') or 0)
+    clean_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', filename)
+    proxy_url = f"/api/stream-download?url={urllib.parse.quote(dlink)}&filename={clean_name}&source=terabox"
+
+    return {
+        "success": True,
+        "title": filename,
+        "thumbnail": thumbnail,
+        "stream_url": proxy_url,
+        "download_url": proxy_url,
+        "size": format_size(size_bytes),
+        "duration": duration_val,
+        "shareId": share_id,
+        "platform": "terabox",
+        "source": "terabox_dm_dlink",
+        "formats": [
+            {
+                "format_id": "terabox_hd",
+                "quality": "Original File Quality",
+                "ext": "mp4",
+                "filesize": format_size(size_bytes),
+                "url": proxy_url,
+                "download_url": proxy_url,
+                "has_audio": True,
+                "has_video": True,
+                "is_progressive": True
+            }
+        ]
+    }
+
+
 def resolve_terabox(url, share_id):
     surl = share_id
     if surl.startswith('1'):
         surl = surl[1:]
-    
+
+    # 0. FAST PATH: dm.terabox.app jsToken flow returns real dlink directly
+    dm_result = resolve_terabox_dm_link(url, share_id)
+    if dm_result:
+        return dm_result
+
     tb_cookie = os.environ.get('TERABOX_COOKIE', '').strip()
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
@@ -1085,13 +1190,25 @@ def resolve_ytdlp(url):
                 "is_progressive": False
             })
 
-        # Best playable stream for immediate video player
+        # Best playable stream for immediate video player — it MUST carry the audio track.
+        # Modern DASH sources (e.g. Instagram reels) deliver video-only + audio-only separately;
+        # raw video-only URLs would play silently in the browser. Route through the mux proxy.
         progressive_candidates = [f for f in raw_formats if f.get('url') and f.get('vcodec') not in ['none', None] and f.get('acodec') not in ['none', None]]
-        stream_url = progressive_candidates[-1].get('url') if progressive_candidates else info.get('url')
-        if not stream_url and raw_formats:
-            valid_urls = [f.get('url') for f in raw_formats if f.get('url')]
-            if valid_urls:
-                stream_url = valid_urls[-1]
+        stream_url = progressive_candidates[-1].get('url') if progressive_candidates else None
+        if not stream_url:
+            mux_candidates = [v for v in all_videos if v.get('can_mux') and v.get('url')]
+            if mux_candidates and best_audio_url:
+                top = mux_candidates[0]  # all_videos sorted by height desc → highest tier
+                enc_v = urllib.parse.quote(top.get('url'))
+                enc_a = urllib.parse.quote(best_audio_url)
+                stream_url = f"/api/stream-download?url={enc_v}&audio_url={enc_a}&filename=player_{clean_title_base[:48]}&ext=mp4"
+                print(f"[extractor] no progressive stream; mux-proxy player URL selected ({top.get('height')}p + {best_audio.get('ext')})", file=sys.stderr)
+            else:
+                stream_url = info.get('url')
+                if not stream_url and raw_formats:
+                    valid_urls = [f.get('url') for f in raw_formats if f.get('url')]
+                    if valid_urls:
+                        stream_url = valid_urls[-1]
 
         if not stream_url and is_youtube:
             stream_url = f"https://www.youtube.com/watch?v={youtube_id}"
@@ -1161,12 +1278,14 @@ def extract_media_info(url: str, is_transcript_only: bool = False) -> dict:
         url = f"https://www.youtube.com/watch?v={url}"
 
     # Check TeraBox unless transcript only
+    terabox_attempted = False
     if not is_transcript_only:
         share_id = extract_terabox_share_id(url)
         lower = url.lower()
         is_terabox = any(domain in lower for domain in ['terabox', '1024tera', 'nephobox', 'terashare']) or (share_id and len(share_id) >= 15)
 
         if is_terabox and share_id:
+            terabox_attempted = True
             tb_result = resolve_terabox(url, share_id)
             if tb_result:
                 return tb_result
@@ -1174,6 +1293,13 @@ def extract_media_info(url: str, is_transcript_only: bool = False) -> dict:
     # Universal / Social Media / YouTube resolution via yt-dlp
     try:
         ytdlp_result = resolve_ytdlp(url)
+        if terabox_attempted and not ytdlp_result.get('success'):
+            # yt-dlp reports the mirror's error page ("Unsupported URL: .../error/404.html").
+            # Say what actually happened: the share is gone.
+            return {
+                "success": False,
+                "error": "This TeraBox share link could not be opened. It may have expired, been removed, or be rate limited.",
+            }
         if is_transcript_only:
             if ytdlp_result.get('success') and ytdlp_result.get('transcript'):
                 return {
