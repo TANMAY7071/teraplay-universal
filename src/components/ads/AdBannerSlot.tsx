@@ -42,7 +42,7 @@ export const AdBannerSlot: React.FC<AdBannerSlotProps> = ({
       id={slotId}
       data-ad-slot={slotId}
       data-ad-format={format}
-      className={`relative my-6 rounded-2xl border border-white/5 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-3 text-center overflow-hidden transition-all duration-300 hover:border-white/10 ${className}`}
+      className={`relative my-6 rounded-2xl border border-white/5 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-3 text-center overflow-hidden transition-[border-color] duration-300 hover:border-white/10 ${className}`}
     >
       {/* Discrete label */}
       <div className="flex items-center justify-between pb-2 px-1 text-[10px] uppercase tracking-wider text-slate-500 font-mono">

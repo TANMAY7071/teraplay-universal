@@ -41,9 +41,9 @@ export const SEO_ROUTES: Record<string, SeoRouteConfig> = {
     path: '/terabox-online-player',
     badge: 'HD Web Player',
     h1: 'TeraBox Online Player - Watch Videos in Browser',
-    subheadline: 'Bypass app install popups and throttled speeds. Watch any shared TeraBox video directly in your web browser with Picture-in-Picture and playback speed controls.',
+    subheadline: 'Bypass app install popups and throttled speeds. Watch any shared TeraBox video directly in your web browser with playback speed and quality controls.',
     metaTitle: 'TeraBox Online Player - Watch TeraBox Videos in Browser without App',
-    metaDescription: 'Stream TeraBox shared videos online in your web browser. Fast loading, 1080p playback, Picture-in-Picture support, and zero mandatory app downloads.',
+    metaDescription: 'Stream TeraBox shared videos online in your web browser. Fast loading, 1080p playback, speed and quality controls, and zero mandatory app downloads.',
     keywords: ['terabox online player', 'watch terabox in browser', 'stream terabox video online', 'terabox web player'],
     faqs: [
       {
@@ -52,7 +52,7 @@ export const SEO_ROUTES: Record<string, SeoRouteConfig> = {
       },
       {
         question: 'Can I adjust video speed and toggle fullscreen?',
-        answer: 'Yes. Our player includes speed settings (0.5x to 2x), Picture-in-Picture, mobile landscape rotation, and fullscreen toggles.'
+        answer: 'Yes. Our player includes speed settings (0.5x to 2x), fullscreen, and a video quality selector when the source provides more than one resolution.'
       }
     ]
   },

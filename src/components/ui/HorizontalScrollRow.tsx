@@ -135,7 +135,7 @@ export const HorizontalScrollRow: React.FC<HorizontalScrollRowProps> = ({
         <button
           type="button"
           onClick={() => scrollByAmount("left")}
-          className="hidden md:flex absolute -left-3 top-1/2 -translate-y-1/2 z-30 h-9 w-9 items-center justify-center rounded-full bg-black/85 border border-white/20 text-white shadow-2xl backdrop-blur-md opacity-0 group-hover/scroll-row:opacity-100 transition-all duration-200 hover:scale-110 hover:bg-black hover:border-primary cursor-pointer"
+          className="hidden md:flex absolute -left-3 top-1/2 -translate-y-1/2 z-30 h-9 w-9 items-center justify-center rounded-full bg-black/85 border border-white/20 text-white shadow-2xl backdrop-blur-md opacity-0 group-hover/scroll-row:opacity-100 transition-[opacity,transform,background-color,border-color] duration-200 ease-spring hover:scale-105 motion-safe:active:scale-[0.96] hover:bg-black hover:border-primary cursor-pointer"
           aria-label="Scroll left"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -152,7 +152,7 @@ export const HorizontalScrollRow: React.FC<HorizontalScrollRowProps> = ({
         onWheel={handleWheel}
         className={cn(
           "flex gap-4 overflow-x-auto pt-1.5 pb-4 scrollbar-none select-none cursor-grab active:cursor-grabbing",
-          isMouseDown ? "snap-none cursor-grabbing scroll-auto" : "snap-x snap-mandatory scroll-smooth",
+          isMouseDown ? "snap-none cursor-grabbing scroll-auto" : "snap-x snap-mandatory motion-safe:scroll-smooth",
           className
         )}
         style={{
@@ -169,7 +169,7 @@ export const HorizontalScrollRow: React.FC<HorizontalScrollRowProps> = ({
         <button
           type="button"
           onClick={() => scrollByAmount("right")}
-          className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-30 h-9 w-9 items-center justify-center rounded-full bg-black/85 border border-white/20 text-white shadow-2xl backdrop-blur-md opacity-0 group-hover/scroll-row:opacity-100 transition-all duration-200 hover:scale-110 hover:bg-black hover:border-primary cursor-pointer"
+          className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-30 h-9 w-9 items-center justify-center rounded-full bg-black/85 border border-white/20 text-white shadow-2xl backdrop-blur-md opacity-0 group-hover/scroll-row:opacity-100 transition-[opacity,transform,background-color,border-color] duration-200 ease-spring hover:scale-105 motion-safe:active:scale-[0.96] hover:bg-black hover:border-primary cursor-pointer"
           aria-label="Scroll right"
         >
           <ChevronRight className="h-5 w-5" />

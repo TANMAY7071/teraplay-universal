@@ -1,15 +1,160 @@
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import Hls from "hls.js";
-import { Play, Pause, Volume2, VolumeX, Maximize, Settings, RotateCcw, SkipForward, Tv, MessageSquare } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Play, Pause, Volume2, VolumeX, Maximize, MessageSquare, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** Thin h-1 clickable+draggable bar (mock-style). value: 0-100, white fill. */
+const ThinBar: React.FC<{
+  value: number;
+  onChange: (pct: number) => void;
+  className?: string;
+}> = ({ value, onChange, className }) => {
+  const barRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  const setFromClientX = (clientX: number) => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const rect = bar.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    onChange(ratio * 100);
+  };
+
+  return (
+    <div
+      ref={barRef}
+      className={cn("relative w-full h-1 bg-white/20 rounded-full cursor-pointer", className)}
+      onPointerDown={(e) => {
+        draggingRef.current = true;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        setFromClientX(e.clientX);
+      }}
+      onPointerMove={(e) => {
+        if (draggingRef.current) setFromClientX(e.clientX);
+      }}
+      onPointerUp={(e) => {
+        draggingRef.current = false;
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }}
+      onPointerCancel={() => {
+        draggingRef.current = false;
+      }}
+    >
+      <div
+        className="absolute top-0 left-0 h-full bg-white rounded-full pointer-events-none"
+        style={{ width: `${value}%` }}
+      />
+    </div>
+  );
+};
+
+/** Playback rates offered by the speed menu. */
+const SPEED_OPTIONS = [0.5, 1, 1.5, 2];
+
+/** One selectable rendition of the current video. */
+export interface PlayerQuality {
+  /** Short label shown in the menu, e.g. "1080p". */
+  label: string;
+  /** Playable URL. Must carry audio — use the server-muxed stream, not a raw video-only track. */
+  url: string;
+  height: number;
+}
+
+interface PlayerMenuItem {
+  value: string;
+  label: string;
+}
+
+/**
+ * Single-button control that opens a short option list.
+ *
+ * Replaces the four separate speed buttons with one trigger that fits the
+ * mobile control bar, and doubles as the quality selector when the source
+ * ships more than one rendition. The panel opens upward because the control
+ * bar is pinned to the bottom of the video.
+ */
+const PlayerMenu: React.FC<{
+  items: PlayerMenuItem[];
+  value: string;
+  onSelect: (value: string) => void;
+  trigger: string;
+  title: string;
+  /** Highlight the trigger when the user has moved off the default. */
+  isModified?: boolean;
+}> = ({ items, value, onSelect, trigger, title, isModified = false }) => {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={title}
+        className={cn(
+          "inline-flex items-center justify-center rounded-md h-10 px-2.5 text-sm font-medium transition-colors whitespace-nowrap",
+          isModified
+            ? "bg-[#e4f222] text-black font-bold"
+            : "text-white hover:bg-[#111111d1]"
+        )}
+      >
+        {trigger}
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          aria-label={title}
+          className="absolute bottom-full right-0 mb-2 z-50 min-w-[7rem] overflow-hidden rounded-xl border border-white/10 bg-[#111111f2] py-1 shadow-2xl shadow-black/60 backdrop-blur-md"
+        >
+          {items.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              role="menuitemradio"
+              aria-checked={item.value === value}
+              onClick={() => {
+                onSelect(item.value);
+                setOpen(false);
+              }}
+              className={cn(
+                "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors",
+                item.value === value
+                  ? "text-[#e4f222] font-bold"
+                  : "text-white hover:bg-white/10"
+              )}
+            >
+              <span className="w-3 shrink-0">
+                {item.value === value && <Check className="w-3 h-3" />}
+              </span>
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface DanmakuMessage {
   id: string;
@@ -34,6 +179,8 @@ interface CustomVideoPlayerProps {
   videoUrl: string;
   isYoutubeEmbed?: boolean;
   fallbackUrls?: string[];
+  /** Alternative renditions of the same video, highest first. Rendered as a quality menu when 2+ are supplied. */
+  qualities?: PlayerQuality[];
   poster: string;
   onTimeUpdate?: (currentTime: number, duration: number) => void;
   onEnded?: () => void;
@@ -49,6 +196,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   videoUrl,
   isYoutubeEmbed: isYoutubeEmbedProp,
   fallbackUrls = [],
+  qualities = [],
   poster,
   onTimeUpdate,
   onEnded,
@@ -110,19 +258,26 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     const saved = localStorage.getItem("donghua-player-speed");
     return saved !== null ? parseFloat(saved) : 1;
   });
-  const [showControls, setShowControls] = useState(true);
+  const [showControls, setShowControls] = useState(false);
   const [danmakusEnabled, setDanmakusEnabled] = useState(true);
   const [activeDanmakus, setActiveDanmakus] = useState<DanmakuMessage[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [initialSeekDone, setInitialSeekDone] = useState(false);
+  const [activeQualityIndex, setActiveQualityIndex] = useState(0);
 
   const controlsTimeoutRef = useRef<number | null>(null);
+  const overControlsRef = useRef(false);
   const lastSpawnedRef = useRef<Record<string, boolean>>({});
+  // A quality switch swaps the media source, which reloads the buffer from
+  // byte 0. These carry the playback position and play state across it.
+  const pendingSeekRef = useRef<number | null>(null);
+  const resumeAfterSwapRef = useRef(false);
 
   // Reset failover states when props change
   useEffect(() => {
     setCurrentSrc(videoUrl);
     setFailoverIndex(0);
+    setActiveQualityIndex(0);
   }, [videoUrl]);
 
   // 1. Reset spawning cache when URL or episode changes
@@ -148,6 +303,8 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       console.warn(`Failover triggered! Switching from ${currentSrc} to backup URL: ${nextUrl}`);
       setFailoverIndex(prev => prev + 1);
       setCurrentSrc(nextUrl);
+      // The backup is the primary rendition, so the quality chip follows it.
+      setActiveQualityIndex(0);
     } else {
       console.error("HLS player: All failover options exhausted.");
     }
@@ -272,8 +429,9 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     });
   }, [currentTime, isPlaying, dbComments, danmakusEnabled]);
 
-  // 4. Handle mouse movement to show/hide controls
+  // 4. Handle mouse/touch movement to show/hide controls (hover-only UX)
   const handleMouseMove = () => {
+    if (overControlsRef.current) return; // over the glass bar: never re-arm the hide timer
     setShowControls(true);
     if (controlsTimeoutRef.current) {
       window.clearTimeout(controlsTimeoutRef.current);
@@ -319,7 +477,21 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     const video = videoRef.current;
     if (!video) return;
     setDuration(video.duration);
-    
+
+    // A quality switch already captured the position; restore it and resume.
+    if (pendingSeekRef.current !== null) {
+      const target = pendingSeekRef.current;
+      pendingSeekRef.current = null;
+      const shouldResume = resumeAfterSwapRef.current;
+      resumeAfterSwapRef.current = false;
+      video.currentTime = target;
+      setCurrentTime(target);
+      if (shouldResume) {
+        video.play().catch((err) => console.warn("Resume after quality switch failed:", err));
+      }
+      return;
+    }
+
     // Seek to last progress time if provided and not done yet
     if (initialTime > 0 && !initialSeekDone) {
       video.currentTime = initialTime;
@@ -327,14 +499,6 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       setInitialSeekDone(true);
       console.log(`Seeked player to initial timestamp: ${initialTime}s`);
     }
-  };
-
-  const handleScrub = (val: number[]) => {
-    const video = videoRef.current;
-    if (!video) return;
-    const newTime = (val[0] / 100) * duration;
-    video.currentTime = newTime;
-    setCurrentTime(newTime);
   };
 
   const handleVolumeChange = (val: number[]) => {
@@ -364,11 +528,27 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   };
 
   const handleSpeedChange = (speed: number) => {
-    const video = videoRef.current;
-    if (!video) return;
     setPlaybackSpeed(speed);
-    video.playbackRate = speed;
+    const video = videoRef.current;
+    if (video) video.playbackRate = speed;
     localStorage.setItem("donghua-player-speed", speed.toString());
+  };
+
+  /**
+   * Swap the media source to a different rendition of the same video.
+   *
+   * The new source reloads the buffer from byte 0, so the current position
+   * and play state are captured here and restored in handleLoadedMetadata.
+   */
+  const handleQualityChange = (index: number) => {
+    const target = qualities[index];
+    if (!target || index === activeQualityIndex) return;
+    const video = videoRef.current;
+    pendingSeekRef.current = video ? video.currentTime : currentTime;
+    resumeAfterSwapRef.current = video ? !video.paused && !video.ended : isPlaying;
+    setActiveQualityIndex(index);
+    setFailoverIndex(0);
+    setCurrentSrc(target.url);
   };
 
   const toggleFullscreen = () => {
@@ -397,27 +577,57 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
-  const skipIntro = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.currentTime = 90; // Skip typical 1.5 min intro
-    setCurrentTime(90);
-  };
-
-  // Format seconds to mm:ss
+  // Keyboard shortcuts (native player only): space/k play, arrows seek/volume, m mute, f fullscreen
+  useEffect(() => {
+    if (isIframeEmbed) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      const video = videoRef.current;
+      if (!video) return;
+      switch (e.key) {
+        case " ":
+        case "k":
+          e.preventDefault();
+          handlePlayPause();
+          break;
+        case "ArrowRight":
+          video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 5);
+          break;
+        case "ArrowLeft":
+          video.currentTime = Math.max(0, video.currentTime - 5);
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          handleVolumeChange([Math.min(1, volume + 0.1)]);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          handleVolumeChange([Math.max(0, volume - 0.1)]);
+          break;
+        case "m":
+          toggleMute();
+          break;
+        case "f":
+          toggleFullscreen();
+          break;
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  });
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
     const s = Math.floor(secs % 60);
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  const hasIntro = currentTime > 10 && currentTime < 90;
-
   return (
     <div
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      onMouseLeave={() => isPlaying && setShowControls(false)}
+      onMouseLeave={() => setShowControls(false)}
+      onTouchStart={handleMouseMove}
       className="relative w-full h-full bg-black select-none overflow-hidden group/player"
     >
       {isIframeEmbed ? (
@@ -435,6 +645,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
           onClick={handlePlayPause}
+          onDoubleClick={toggleFullscreen}
           onPlay={() => {
             setIsPlaying(true);
             onPlay?.();
@@ -475,156 +686,121 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         </div>
       )}
 
-      {/* SKIP INTRO FLOATING CHIP */}
-      {!isIframeEmbed && hasIntro && (
+      {/* DANMAKU TOGGLE — only when the episode actually has comments */}
+      {!isIframeEmbed && dbComments.length > 0 && (
         <button
-          onClick={skipIntro}
-          className="absolute bottom-24 right-6 z-25 bg-black/75 hover:bg-primary border border-white/20 hover:border-transparent text-white font-extrabold text-xs sm:text-sm py-2.5 px-5 rounded-xl shadow-2xl backdrop-blur-md flex items-center gap-2 active:opacity-90 transition-colors animate-reveal-up"
+          onClick={() => setDanmakusEnabled(!danmakusEnabled)}
+          className={cn(
+            "absolute top-4 right-4 z-30 rounded-full text-xs font-bold flex items-center gap-1.5 h-8 px-3 border border-white/10 backdrop-blur-md transition-colors transition-opacity duration-300",
+            showControls ? "opacity-100" : "opacity-0 pointer-events-none",
+            danmakusEnabled
+              ? "text-[#e4f222] border-[#e4f222]/30 bg-black/60"
+              : "text-white bg-black/40 hover:bg-[#111111d1]"
+          )}
         >
-          <SkipForward className="w-4 h-4 fill-current" />
-          Skip Intro
+          <MessageSquare className="w-3.5 h-3.5" />
+          <span>Danmaku</span>
         </button>
       )}
 
-      {/* GLASSMORPHIC PLAYER CONTROLS OVERLAY */}
+      {/* FLOATING GLASS CONTROL BAR */}
       {!isIframeEmbed && (
         <div
+          onMouseEnter={() => {
+            overControlsRef.current = true;
+            if (controlsTimeoutRef.current) {
+              window.clearTimeout(controlsTimeoutRef.current);
+              controlsTimeoutRef.current = null;
+            }
+          }}
+          onMouseLeave={() => {
+            overControlsRef.current = false;
+            if (isPlaying) {
+              controlsTimeoutRef.current = window.setTimeout(() => setShowControls(false), 3000);
+            }
+          }}
           className={cn(
-            "absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/35 flex flex-col justify-between p-4 transition-all duration-300 z-20",
+            "absolute bottom-0 left-0 right-0 mx-auto max-w-xl p-4 bg-[#11111198] backdrop-blur-md rounded-2xl transition-opacity duration-300 z-20",
             showControls ? "opacity-100" : "opacity-0 pointer-events-none"
           )}
         >
-          {/* Top Control Bar: Header details */}
+          {/* Row 1: time labels flanking thin seekbar */}
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-white text-sm tabular-nums">{formatTime(currentTime)}</span>
+            <div className="flex-1">
+              <ThinBar
+                value={duration ? (currentTime / duration) * 100 : 0}
+                onChange={(pct) => {
+                  const video = videoRef.current;
+                  if (!video || !duration) return;
+                  const newTime = (pct / 100) * duration;
+                  video.currentTime = newTime;
+                  setCurrentTime(newTime);
+                }}
+              />
+            </div>
+            <span className="text-white text-sm tabular-nums">{formatTime(duration)}</span>
+          </div>
+
+          {/* Row 2: play + volume left, speeds + fullscreen right */}
           <div className="flex items-center justify-between">
-            <div className="flex flex-col text-left"></div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setDanmakusEnabled(!danmakusEnabled)}
-                className={cn(
-                  "rounded-full text-xs font-bold flex items-center gap-1.5 h-8 px-3 border border-white/10 hover:bg-white/10",
-                  danmakusEnabled ? "text-primary border-primary/20 bg-primary/10" : "text-white"
-                )}
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>Danmaku {danmakusEnabled ? "On" : "Off"}</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Central Play/Pause large action overlay (appears on hover) */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div
-              className={cn(
-                "w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white backdrop-blur-md transition-all duration-300 transform scale-90",
-                showControls ? "opacity-40 scale-100" : "opacity-0"
-              )}
-            >
-              {isPlaying ? <Pause className="w-6 h-6 fill-white" /> : <Play className="w-6 h-6 fill-white ml-1" />}
-            </div>
-          </div>
-
-          {/* Bottom Control Bar */}
-          <div className="space-y-4">
-            {/* Progress Timeline */}
-            <div className="flex items-center gap-3 w-full">
-              <span className="text-[10px] sm:text-xs font-mono text-white/70 min-w-[35px] text-right">
-                {formatTime(currentTime)}
-              </span>
-              
-              <div className="flex-1">
-                <Slider
-                  value={[duration ? (currentTime / duration) * 100 : 0]}
-                  onValueChange={handleScrub}
-                  max={100}
-                  step={0.1}
-                  className="cursor-pointer py-2 [&_.relative]:bg-white/20 [&_.absolute]:bg-primary"
-                />
-              </div>
-
-              <span className="text-[10px] sm:text-xs font-mono text-white/70 min-w-[35px]">
-                {formatTime(duration)}
-              </span>
-            </div>
-
-            {/* Controls button row */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {/* Play Pause */}
+            <div className="flex items-center gap-4">
+              <div tabIndex={0}>
                 <button
                   onClick={handlePlayPause}
-                  className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white shadow transition-all duration-200"
+                  className="inline-flex items-center justify-center rounded-md h-10 w-10 text-white hover:bg-[#111111d1] hover:text-white transition-colors"
+                  title={isPlaying ? "Pause (space)" : "Play (space)"}
                 >
-                  {isPlaying ? <Pause className="w-4.5 h-4.5 fill-white" /> : <Play className="w-4.5 h-4.5 fill-white ml-0.5" />}
+                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                 </button>
-
-                {/* Skip 10s */}
-                <button
-                  onClick={() => {
-                    if (videoRef.current) videoRef.current.currentTime = Math.max(0, currentTime - 10);
-                  }}
-                  className="h-8 w-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition-colors"
-                  title="Back 10s"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </button>
-
-                {/* Volume */}
-                <div className="flex items-center gap-2 group/vol">
+              </div>
+              <div className="flex items-center gap-x-1">
+                <div tabIndex={0}>
                   <button
                     onClick={toggleMute}
-                    className="h-8 w-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+                    className="inline-flex items-center justify-center rounded-md h-10 w-10 text-white hover:bg-[#111111d1] hover:text-white transition-colors"
+                    title="Mute (m)"
                   >
-                    {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                    {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                   </button>
-                  <div className="w-16 sm:w-20 transition-all duration-300">
-                    <Slider
-                      value={[isMuted ? 0 : volume]}
-                      onValueChange={handleVolumeChange}
-                      max={1}
-                      step={0.05}
-                      className="cursor-pointer [&_.relative]:bg-white/20 [&_.absolute]:bg-white"
-                    />
-                  </div>
+                </div>
+                <div className="w-24 max-sm:w-16">
+                  <ThinBar
+                    value={(isMuted ? 0 : volume) * 100}
+                    onChange={(pct) => handleVolumeChange([pct / 100])}
+                  />
                 </div>
               </div>
+            </div>
 
-              <div className="flex items-center gap-3">
-                {/* Speed Controller */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 rounded-full text-white/80 hover:text-white hover:bg-white/10 text-xs font-bold px-2.5"
-                    >
-                      <span>{playbackSpeed}x</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-popover border-white/10 rounded-xl">
-                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => (
-                      <DropdownMenuItem
-                        key={speed}
-                        onClick={() => handleSpeedChange(speed)}
-                        className={cn(
-                          "text-xs font-semibold cursor-pointer",
-                          playbackSpeed === speed && "text-primary bg-primary/5"
-                        )}
-                      >
-                        {speed === 1 ? "Normal (1x)" : `${speed}x`}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+            <div className="flex items-center gap-2">
+              <PlayerMenu
+                items={SPEED_OPTIONS.map((s) => ({ value: String(s), label: `${s}x` }))}
+                value={String(playbackSpeed)}
+                onSelect={(v) => handleSpeedChange(parseFloat(v))}
+                trigger={`${playbackSpeed}x`}
+                title="Playback speed"
+                isModified={playbackSpeed !== 1}
+              />
 
-                {/* Fullscreen */}
+              {qualities.length > 1 && (
+                <PlayerMenu
+                  items={qualities.map((q, i) => ({ value: String(i), label: q.label }))}
+                  value={String(activeQualityIndex)}
+                  onSelect={(v) => handleQualityChange(parseInt(v, 10))}
+                  trigger={qualities[activeQualityIndex]?.label ?? "Auto"}
+                  title="Video quality"
+                  isModified={activeQualityIndex !== 0}
+                />
+              )}
+
+              <div tabIndex={0} className="hidden sm:block">
                 <button
                   onClick={toggleFullscreen}
-                  className="h-8 w-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition-colors"
-                  title="Fullscreen"
+                  className="inline-flex items-center justify-center rounded-md h-10 w-10 text-white hover:bg-[#111111d1] hover:text-white transition-colors"
+                  title="Fullscreen (f)"
                 >
-                  <Maximize className="w-4 h-4" />
+                  <Maximize className="w-5 h-5" />
                 </button>
               </div>
             </div>

@@ -1,8 +1,14 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
+  // Hover styles only apply on hover-capable pointers, so a tap on touch
+  // never leaves a control stuck in its hover state.
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   content: [
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -102,14 +108,19 @@ export default {
         'slide-up': {
           '0%': { transform: 'translateY(100%)' },
           '100%': { transform: 'translateY(0)' }
+        },
+        'caret-blink': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0' }
         }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
-        'accordion-up': 'accordion-up 0.2s ease-out',
-        'fade-in': 'fade-in 0.6s ease-out',
+        'accordion-up': 'accordion-up 0.2s ease-in',
+        'fade-in': 'fade-in 0.3s ease-out',
         'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
-        'slide-up': 'slide-up 0.5s ease-out'
+        'slide-up': 'slide-up 0.3s ease-out',
+        'caret-blink': 'caret-blink 1s ease-in-out infinite'
       },
       backgroundImage: {
         'gradient-hero': 'var(--gradient-hero)',
@@ -118,5 +129,17 @@ export default {
       }
     }
   },
-  plugins: [tailwindcssAnimate],
+  plugins: [
+    tailwindcssAnimate,
+    // CSS-spring approximation for overshoot-and-settle motion (physics-spring-for-overshoot).
+    // Named utility avoids the ambiguous `ease-[...]` class, which collides with
+    // tailwindcss-animate's own `ease` utility (transition- vs animation-timing-function).
+    plugin(({ addUtilities }) => {
+      addUtilities({
+        '.ease-spring': {
+          transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+        },
+      });
+    }),
+  ],
 } satisfies Config;

@@ -25,6 +25,7 @@ import {
   SlidersHorizontal,
   Info,
   AlertCircle,
+  AlertTriangle,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -76,6 +77,7 @@ export interface MediaFormatOption {
   has_audio: boolean;
   has_video: boolean;
   is_audio_only?: boolean;
+  is_progressive?: boolean;
 }
 
 export interface ThumbnailItem {
@@ -573,7 +575,7 @@ export default function Index() {
         thumbnails: data.thumbnails || [],
         m3u8_url: data.m3u8_url || data.fast_download_url || '',
         fast_download_url: data.fast_download_url || data.m3u8_url,
-        embed_url: data.embed_url || (normalized.platform === 'terabox' ? `https://www.1024tera.com/sharing/embed?surl=${(data.shareId || normalized.shareId || '').replace(/^1/, '')}` : undefined),
+        embed_url: data.embed_url || (data.m3u8_url?.includes('embed') && normalized.platform === 'terabox' ? data.m3u8_url : undefined),
         size: data.size || 'HD Quality',
         duration: data.duration,
         shareId: data.shareId || normalized.shareId || 'stream',
@@ -592,7 +594,11 @@ export default function Index() {
       setActiveSlideIndex(0);
       setThumbnailSubTab('cover');
       incrementGuestPlays();
-      toast.success(isImg ? 'Instagram Media loaded! All slides ready.' : 'Stream loaded! Playing video...');
+      if (data.is_mock) {
+        toast.warning('Extraction failed. Playing the demo sample stream, not your link.');
+      } else {
+        toast.success(isImg ? 'Instagram Media loaded! All slides ready.' : 'Stream loaded! Playing video...');
+      }
 
       setTimeout(() => {
         const el = document.getElementById('player-viewport');
@@ -655,6 +661,27 @@ export default function Index() {
       ];
     }
     return [...list].sort((a, b) => (b.height || 0) - (a.height || 0));
+  }, [resolvedVideo]);
+
+  // Renditions the player can switch between during playback.
+  //
+  // Instagram reels resolve to separate DASH video-only tracks (1080/720/360).
+  // Their `download_url` is the server-muxed audio+video stream — the only
+  // form that plays with sound, since the raw `url` track is video-only.
+  const playerQualities = useMemo(() => {
+    const muxed = resolvedVideo?.video_formats || [];
+    const progressive = (resolvedVideo?.formats || []).filter(
+      (f) => f.is_progressive && f.has_audio && f.has_video
+    );
+    const list = muxed.length ? muxed : progressive;
+    return list
+      .filter((f) => (f.height || 0) > 0 && !!f.download_url)
+      .sort((a, b) => (b.height || 0) - (a.height || 0))
+      .map((f) => ({
+        label: `${f.height}p`,
+        url: f.download_url as string,
+        height: f.height as number,
+      }));
   }, [resolvedVideo]);
 
   const audioFormats = useMemo(() => {
@@ -1311,14 +1338,14 @@ export default function Index() {
           <img
             src="/assets/bg-day.png"
             alt=""
-            fetchPriority="high"
+            fetchpriority="high"
             decoding="async"
             className="tp-hero-sky-img tp-hero-sky-day"
           />
           <img
             src="/assets/bg-night.png"
             alt=""
-            fetchPriority="high"
+            fetchpriority="high"
             decoding="async"
             className="tp-hero-sky-img tp-hero-sky-night"
           />
@@ -1618,7 +1645,7 @@ export default function Index() {
           </div>
 
           {activeChip === 'WhatsApp' && (
-            <div className="mt-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-xs flex items-start gap-3 animate-in fade-in duration-150">
+            <div className="mt-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-200 text-xs flex items-start gap-3 animate-in fade-in duration-150 ease-out">
               <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <span className="font-semibold text-white">How WhatsApp media downloads work:</span>
@@ -1686,7 +1713,7 @@ export default function Index() {
           ========================================================================= */}
       <div className="tp-wrap">
         {resolveError && !resolvedVideo && (
-          <section id="error-viewport" className="w-full my-6 animate-in fade-in zoom-in-95 duration-200">
+          <section id="error-viewport" className="w-full my-6 animate-in fade-in zoom-in-95 duration-200 ease-out">
             <div className="rounded-2xl border border-amber-500/30 bg-[var(--tp-paper-elevated)] backdrop-blur-xl p-6 sm:p-8 space-y-4 shadow-xl">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
@@ -1769,9 +1796,15 @@ export default function Index() {
                         <span className="text-[var(--tp-muted)]">•</span>
                         <span className="font-mono whitespace-nowrap">{resolvedVideo.size || 'HD Quality'}</span>
                         <span className="text-[var(--tp-muted)]">•</span>
-                        <span className="text-emerald-400 flex items-center gap-1 whitespace-nowrap">
-                          <ShieldCheck className="w-3 h-3 shrink-0" /> Active
-                        </span>
+                        {resolvedVideo.is_mock ? (
+                          <span className="text-amber-400 flex items-center gap-1 whitespace-nowrap">
+                            <AlertTriangle className="w-3 h-3 shrink-0" /> Demo sample
+                          </span>
+                        ) : (
+                          <span className="text-emerald-400 flex items-center gap-1 whitespace-nowrap">
+                            <ShieldCheck className="w-3 h-3 shrink-0" /> Active
+                          </span>
+                        )}
                       </>
                     )}
                   </div>
@@ -1899,13 +1932,24 @@ export default function Index() {
                           allowFullScreen
                         />
                       ) : (resolvedVideo.platform === 'terabox' || isTeraBoxUrl(inputUrl)) ? (
-                        <iframe
-                          className="w-full h-full border-0"
-                          src={resolvedVideo.embed_url || `https://www.1024tera.com/sharing/embed?surl=${(resolvedVideo.shareId || '').replace(/^1/, '')}`}
-                          title={resolvedVideo.title}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
+                        resolvedVideo.m3u8_url && resolvedVideo.m3u8_url.includes('/api/stream-download') ? (
+                          <CustomVideoPlayer
+                            videoUrl={resolvedVideo.m3u8_url}
+                            poster={resolvedVideo.thumbnail}
+                            fallbackUrls={[resolvedVideo.fast_download_url]}
+                            qualities={playerQualities}
+                            animeTitle={resolvedVideo.title}
+                            episodeNumber={1}
+                          />
+                        ) : (
+                          <iframe
+                            className="w-full h-full border-0"
+                            src={resolvedVideo.embed_url || `https://www.1024tera.com/sharing/embed?surl=${(resolvedVideo.shareId || '').replace(/^1/, '')}`}
+                            title={resolvedVideo.title}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        )
                       ) : resolvedVideo.platform === 'vimeo' && resolvedVideo.shareId ? (
                         <iframe
                           className="w-full h-full"
@@ -1919,7 +1963,7 @@ export default function Index() {
                           <img
                             src={carouselSlides[activeSlideIndex]?.url || resolvedVideo.thumbnail || resolvedVideo.m3u8_url}
                             alt={resolvedVideo.title}
-                            className="w-full h-full object-contain transition-all duration-300"
+                            className="w-full h-full object-contain transition-opacity duration-300"
                           />
                           {carouselSlides.length > 1 && (
                             <>
@@ -1952,6 +1996,7 @@ export default function Index() {
                           videoUrl={resolvedVideo.m3u8_url || resolvedVideo.fast_download_url}
                           poster={resolvedVideo.thumbnail}
                           fallbackUrls={[resolvedVideo.fast_download_url]}
+                          qualities={playerQualities}
                           animeTitle={resolvedVideo.title}
                           episodeNumber={1}
                         />
@@ -2070,14 +2115,14 @@ export default function Index() {
                         {/* Backdrop overlay: closes dropdown when clicking anywhere outside */}
                         {isQuickDropdownOpen && (
                           <div
-                            className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[1px]"
+                            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]"
                             onClick={() => setIsQuickDropdownOpen(false)}
                           />
                         )}
 
                         {/* Dropdown Menu Popover */}
                         {isQuickDropdownOpen && (
-                          <div className="absolute right-0 top-full mt-2 w-full sm:w-[340px] max-h-[min(520px,75vh)] overflow-y-auto bg-white dark:bg-[#090f22] border border-[var(--tp-border-card)] rounded-2xl p-2.5 shadow-2xl shadow-black/60 z-50 animate-in fade-in zoom-in-95 duration-150 scrollbar-thin">
+                          <div className="absolute right-0 top-full mt-2 w-full sm:w-[340px] max-h-[min(520px,75vh)] overflow-y-auto overscroll-contain bg-white dark:bg-[#090f22] border border-[var(--tp-border-card)] rounded-2xl p-2.5 shadow-2xl shadow-black/60 z-50 scrollbar-thin">
                             <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--tp-muted)] px-3 py-1 flex items-center justify-between">
                               <span>{isImageMedia ? 'Carousel Slides (1080p JPG)' : 'Video Qualities (MP4)'}</span>
                               <span className="text-[9px] text-[#e4f222]">{isImageMedia ? `${carouselSlides.length} Slides` : 'Standard Res'}</span>
@@ -2596,7 +2641,7 @@ export default function Index() {
                     <span className="text-[11px] text-[var(--tp-muted)]">1-click subtitle export</span>
                   </div>
 
-                  <div className="max-h-[500px] overflow-y-auto p-3 sm:p-4 space-y-2 divide-y divide-[var(--tp-border-subtle)]">
+                  <div className="max-h-[500px] overflow-y-auto overscroll-contain p-3 sm:p-4 space-y-2 divide-y divide-[var(--tp-border-subtle)]">
                     {transcriptItems.length > 0 ? (
                       transcriptItems.map((item, idx) => (
                         <div
@@ -2788,7 +2833,7 @@ export default function Index() {
                     <button
                       type="button"
                       onClick={() => setThumbnailSubTab('cover')}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
                         thumbnailSubTab === 'cover'
                           ? 'bg-[var(--tp-paper-elevated)] text-[var(--tp-ink)] shadow-sm border border-[var(--tp-border-subtle)] font-bold'
                           : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)] border border-transparent'
@@ -2803,7 +2848,7 @@ export default function Index() {
                     <button
                       type="button"
                       onClick={() => setThumbnailSubTab('scenes')}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
                         thumbnailSubTab === 'scenes'
                           ? 'bg-[var(--tp-paper-elevated)] text-[var(--tp-ink)] shadow-sm border border-[var(--tp-border-subtle)] font-bold'
                           : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)] border border-transparent'
@@ -2829,7 +2874,7 @@ export default function Index() {
                             <img
                               src={activeCoverTier.url}
                               alt={`${resolvedVideo.title} cover`}
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                              className="w-full h-full object-cover transition-transform duration-300 ease-spring group-hover:scale-[1.03]"
                               loading="lazy"
                               onError={(e) => {
                                 if (resolvedVideo.youtube_id && !activeCoverTier.url.includes('hqdefault.jpg')) {
@@ -2891,7 +2936,7 @@ export default function Index() {
 
                             {/* Dropdown Menu Popover */}
                             {isCoverDropdownOpen && (
-                              <div className="absolute left-0 right-0 top-full mt-2 w-full bg-white dark:bg-[#090f22] border border-[var(--tp-border-card)] rounded-2xl p-2.5 shadow-2xl shadow-black/60 z-50 animate-in fade-in zoom-in-95 duration-150">
+                              <div className="absolute left-0 right-0 top-full mt-2 w-full bg-white dark:bg-[#090f22] border border-[var(--tp-border-card)] rounded-2xl p-2.5 shadow-2xl shadow-black/60 z-50">
                                 <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--tp-muted)] px-3 py-1 flex items-center justify-between">
                                   <span>Select Quality</span>
                                   <span className="text-[9px] text-[#e4f222]">Lossless JPG</span>
@@ -2981,7 +3026,7 @@ export default function Index() {
                             <img
                               src={scene.url}
                               alt={scene.label}
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                              className="w-full h-full object-cover transition-transform duration-300 ease-spring group-hover:scale-[1.03]"
                               loading="lazy"
                             />
                             <div className="absolute bottom-2 right-2 bg-black/75 backdrop-blur-md text-[10px] font-mono text-white/90 px-2 py-0.5 rounded-md border border-white/10 shadow-sm pointer-events-none">
@@ -3043,7 +3088,7 @@ export default function Index() {
                           <img
                             src={slide.url}
                             alt={`Slide ${idx + 1}`}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-102"
+                            className="w-full h-full object-cover transition-transform duration-300 ease-spring group-hover:scale-[1.03]"
                             loading="lazy"
                           />
                           <div className="absolute bottom-2 right-2 bg-black/75 backdrop-blur-md text-[10px] font-mono text-white/90 px-2 py-0.5 rounded-md border border-white/10 shadow-sm pointer-events-none">
@@ -3103,13 +3148,24 @@ export default function Index() {
                     allowFullScreen
                   />
                 ) : (resolvedVideo.platform === 'terabox' || isTeraBoxUrl(inputUrl)) ? (
-                  <iframe
-                    className="w-full h-full border-0"
-                    src={resolvedVideo.embed_url || `https://www.1024tera.com/sharing/embed?surl=${(resolvedVideo.shareId || '').replace(/^1/, '')}`}
-                    title={resolvedVideo.title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
+                  resolvedVideo.m3u8_url && resolvedVideo.m3u8_url.includes('/api/stream-download') ? (
+                    <CustomVideoPlayer
+                      videoUrl={resolvedVideo.m3u8_url}
+                      poster={resolvedVideo.thumbnail}
+                      fallbackUrls={[resolvedVideo.fast_download_url]}
+                      qualities={playerQualities}
+                      animeTitle={resolvedVideo.title}
+                      episodeNumber={1}
+                    />
+                  ) : (
+                    <iframe
+                      className="w-full h-full border-0"
+                      src={resolvedVideo.embed_url || `https://www.1024tera.com/sharing/embed?surl=${(resolvedVideo.shareId || '').replace(/^1/, '')}`}
+                      title={resolvedVideo.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  )
                 ) : resolvedVideo.platform === 'vimeo' && resolvedVideo.shareId ? (
                   <iframe
                     className="w-full h-full"
@@ -3123,7 +3179,7 @@ export default function Index() {
                     <img
                       src={carouselSlides[activeSlideIndex]?.url || resolvedVideo.thumbnail || resolvedVideo.m3u8_url}
                       alt={resolvedVideo.title}
-                      className="w-full h-full object-contain transition-all duration-300"
+                      className="w-full h-full object-contain transition-opacity duration-300"
                     />
                     {carouselSlides.length > 1 && (
                       <>
@@ -3156,6 +3212,7 @@ export default function Index() {
                     videoUrl={resolvedVideo.m3u8_url || resolvedVideo.fast_download_url}
                     poster={resolvedVideo.thumbnail}
                     fallbackUrls={[resolvedVideo.fast_download_url]}
+                    qualities={playerQualities}
                     animeTitle={resolvedVideo.title}
                     episodeNumber={1}
                   />

@@ -25,7 +25,7 @@ function cn(...inputs: (string | undefined | null | false | Record<string, boole
 
 const springs = {
   fast: { type: "spring" as const, duration: 0.08, bounce: 0 },
-  moderate: { type: "spring" as const, duration: 0.16, bounce: 0.15 },
+  moderate: { type: "spring" as const, duration: 0.16, bounce: 0 },
 };
 
 const shape = {
@@ -177,7 +177,7 @@ Select.displayName = "Select";
 
 const triggerVariants = cva(
   ["group inline-flex items-center justify-between gap-2 outline-none cursor-pointer",
-   "text-[12px] font-black h-10 px-4 min-w-[110px]", "transition-all duration-200",
+   "text-[12px] font-black h-10 px-4 min-w-[110px]", "transition-colors duration-200",
    "disabled:opacity-50 disabled:pointer-events-none", "focus-visible:ring-1 focus-visible:ring-primary/40"],
   {
     variants: {
@@ -288,8 +288,8 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
 
     useEffect(() => {
       if (!open || !triggerRect) return;
-      let outer: number; let inner: number;
-      outer = requestAnimationFrame(() => {
+      let inner: number;
+      const outer = requestAnimationFrame(() => {
         inner = requestAnimationFrame(() => {
           measureItems();
           const container = containerRef.current;
@@ -378,31 +378,29 @@ const SelectContent = forwardRef<HTMLDivElement, SelectContentProps>(
             onBlur={(e) => { if (containerRef.current?.contains(e.relatedTarget as Node)) return; setFocusedIndex(null); setActiveIndex(null); }}
             onKeyDown={handleKeyDown}
             className={cn(`relative flex flex-col gap-0.5 overflow-y-auto overscroll-contain ${shape.container} bg-[#0e0f15] shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 p-1 select-none outline-none z-[1000]`, className)}
-            initial={{ opacity: 0, y: openUpward ? 4 : -4, scaleY: 0.96 }}
-            animate={{ opacity: 1, y: 0, scaleY: 1 }}
-            transition={springs.fast}
+            initial={false}
             style={{ transformOrigin: openUpward ? "bottom center" : "top center", maxHeight: maxHeightStyle }}
           >
             <AnimatePresence>
               {checkedRect && (
                 <motion.div className={`absolute ${shape.bg} bg-primary/20 border border-primary/30 pointer-events-none`} initial={false}
                   animate={{ top: checkedRect.top, left: checkedRect.left, width: checkedRect.width, height: checkedRect.height, opacity: isHoveringOther ? 0.6 : 1 }}
-                  exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ ...springs.moderate, opacity: { duration: 0.08 } }} />
+                  exit={{ opacity: 0, transition: { duration: 0.12, ease: "easeIn" } }} transition={{ ...springs.moderate, opacity: { duration: 0.08 } }} />
               )}
             </AnimatePresence>
             <AnimatePresence>
               {activeRect && (
                 <motion.div key={sessionRef.current} className={`absolute ${shape.bg} bg-white/10 pointer-events-none`}
-                  initial={{ opacity: 0, top: checkedRect?.top ?? activeRect.top, left: checkedRect?.left ?? activeRect.left, width: checkedRect?.width ?? activeRect.width, height: checkedRect?.height ?? activeRect.height }}
+                  initial={false}
                   animate={{ opacity: 1, top: activeRect.top, left: activeRect.left, width: activeRect.width, height: activeRect.height }}
-                  exit={{ opacity: 0, transition: { duration: 0.06 } }} transition={{ ...springs.fast, opacity: { duration: 0.08 } }} />
+                  exit={{ opacity: 0, transition: { duration: 0.06, ease: "easeIn" } }} transition={{ ...springs.fast, opacity: { duration: 0.08 } }} />
               )}
             </AnimatePresence>
             <AnimatePresence>
               {focusRect && (
                 <motion.div className={`absolute ${shape.focusRing} pointer-events-none z-20 border border-primary`} initial={false}
                   animate={{ left: focusRect.left - 2, top: focusRect.top - 2, width: focusRect.width + 4, height: focusRect.height + 4 }}
-                  exit={{ opacity: 0, transition: { duration: 0.06 } }} transition={{ ...springs.fast, opacity: { duration: 0.08 } }} />
+                  exit={{ opacity: 0, transition: { duration: 0.06, ease: "easeIn" } }} transition={{ ...springs.fast, opacity: { duration: 0.08 } }} />
               )}
             </AnimatePresence>
             {children}

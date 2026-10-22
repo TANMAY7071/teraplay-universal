@@ -16,7 +16,7 @@ html.light {
 
 html:has(.tp-root) {
   background-color: var(--tp-paper, #060b18);
-  transition: background-color 0.3s ease;
+  transition: background-color var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 html:has(.tp-root[data-theme="light"]),
@@ -201,7 +201,7 @@ body::-webkit-scrollbar,
   text-rendering: optimizeLegibility;
   line-height: 1.4;
   letter-spacing: -0.006em;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color var(--motion-duration-surface) ease, color var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 /* Base resets inside .tp-root */
@@ -261,7 +261,7 @@ body::-webkit-scrollbar,
   padding: 0 clamp(24px, 4.6vw, 56px);
   box-sizing: border-box;
   color: #fff;
-  transition: background-color 0.25s, color 0.25s, box-shadow 0.25s;
+  transition: background-color var(--motion-duration-surface), color var(--motion-duration-surface), box-shadow var(--motion-duration-surface), scale var(--motion-duration-press) ease;
 }
 
 .tp-brand {
@@ -286,7 +286,7 @@ body::-webkit-scrollbar,
 }
 
 .tp-brand .tp-svg {
-  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform var(--motion-duration-transform) var(--motion-spring), scale var(--motion-duration-press) ease;
 }
 
 .tp-brand:hover .tp-svg {
@@ -310,7 +310,7 @@ body::-webkit-scrollbar,
   padding: 6px 10px;
   border-radius: 6px;
   color: #ffffff;
-  transition: background-color 0.25s;
+  transition: background-color var(--motion-duration-surface), scale var(--motion-duration-press) ease;
   cursor: default;
   white-space: nowrap;
   pointer-events: auto;
@@ -353,7 +353,7 @@ body::-webkit-scrollbar,
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
-  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  transition: background-color var(--motion-duration-surface), border-color var(--motion-duration-surface), box-shadow var(--motion-duration-surface), scale var(--motion-duration-press) ease;
 }
 
 .tp-theme-btn:hover {
@@ -363,6 +363,7 @@ body::-webkit-scrollbar,
 
 .tp-theme-btn:active {
   opacity: 0.85;
+  scale: 0.98;
 }
 
 .tp-theme-icon-btn {
@@ -383,7 +384,7 @@ body::-webkit-scrollbar,
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-theme-icon-btn:hover {
@@ -393,6 +394,7 @@ body::-webkit-scrollbar,
 
 .tp-theme-icon-btn:active {
   opacity: 0.85;
+  scale: 0.98;
 }
 
 .tp-root[data-theme="light"] .tp-theme-icon-btn {
@@ -424,7 +426,7 @@ body::-webkit-scrollbar,
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: #bac5dc;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, color var(--motion-duration-surface) ease, box-shadow var(--motion-duration-surface) ease, opacity var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-btn-theme:hover {
@@ -473,7 +475,7 @@ body::-webkit-scrollbar,
   -webkit-user-select: none;
   user-select: none;
   cursor: pointer;
-  transition: background-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: background-color var(--motion-duration-surface) ease, box-shadow var(--motion-duration-surface) ease, opacity var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-btn-nav-accent:hover {
@@ -493,7 +495,7 @@ body::-webkit-scrollbar,
   height: 10px;
   margin-left: 2px;
   opacity: 0.85;
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease;
+  transition: transform var(--motion-duration-transform) cubic-bezier(0.2, 0.8, 0.2, 1), opacity var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-btn-nav-accent:hover .tp-btn-arrow,
@@ -571,8 +573,7 @@ body::-webkit-scrollbar,
   opacity: 0;
   visibility: hidden;
   /* Direct Flip with Flash Mitigation: Instant/micro 140ms snap prevents muddy desaturated overlap */
-  transition: opacity 0.14s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.14s ease-out;
-  will-change: opacity;
+  transition: opacity var(--motion-duration-surface) cubic-bezier(0.16, 1, 0.3, 1), visibility var(--motion-duration-surface) ease-out, scale var(--motion-duration-press) ease;
 }
 
 /* Dark Mode (Default): Instant clean display */
@@ -614,7 +615,7 @@ body::-webkit-scrollbar,
     rgba(6, 11, 24, 0.08) 25%, 
     transparent 50%
   );
-  transition: background 0.14s ease-out;
+  transition: background var(--motion-duration-surface) ease-out, scale var(--motion-duration-press) ease;
 }
 
 .tp-root[data-theme="light"] .tp-hero-sky-overlay {
@@ -629,6 +630,25 @@ body::-webkit-scrollbar,
   .tp-hero-sky-img,
   .tp-hero-sky-overlay {
     transition: none !important;
+  }
+
+  /* The rise is movement plus blur. Reduced motion keeps every block in place
+     and lets the opacity fade carry the entrance. */
+  .tp-hero-badge,
+  .tp-title-ch,
+  .tp-headline-line,
+  .tp-hero-subheadline,
+  .tp-tagline,
+  .tp-player-card {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  /* The FAQ answer slides in. Reduced motion fades it in place. */
+  .tp-faq-inner p {
+    transform: none !important;
   }
 }
 
@@ -650,7 +670,7 @@ body::-webkit-scrollbar,
   box-shadow: 0 4px 18px rgba(6, 23, 74, 0.2);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  animation: tp-rise-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: tp-fade-in 0.4s var(--motion-ease-out) both;
 }
 
 .tp-title {
@@ -668,8 +688,8 @@ body::-webkit-scrollbar,
 
 .tp-title-ch {
   display: inline-block;
-  animation: tp-rise-in 1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--i) * 55ms + 120ms);
+  animation: tp-rise-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i) * 30ms + 100ms);
 }
 
 .tp-hero-headline {
@@ -690,7 +710,7 @@ body::-webkit-scrollbar,
 
 .tp-headline-line {
   display: block;
-  animation: tp-rise-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: tp-rise-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .tp-headline-white {
@@ -716,7 +736,7 @@ body::-webkit-scrollbar,
   line-height: 1.38;
   padding: 0 16px;
   text-shadow: 0 2px 20px rgba(6, 23, 74, 0.5);
-  animation: tp-rise-in 1s cubic-bezier(0.2, 0.8, 0.2, 1) both 0.32s;
+  animation: tp-fade-in 0.4s var(--motion-ease-out) both 0.45s;
 }
 
 .tp-tagline {
@@ -729,7 +749,7 @@ body::-webkit-scrollbar,
   text-align: center;
   line-height: 1.25;
   text-shadow: 0 2px 20px rgba(6, 23, 74, 0.5);
-  animation: tp-rise-in 1s cubic-bezier(0.2, 0.8, 0.2, 1) both 0.35s;
+  animation: tp-fade-in 0.4s var(--motion-ease-out) both 0.55s;
 }
 
 @keyframes tp-rise-in {
@@ -745,6 +765,16 @@ body::-webkit-scrollbar,
   }
 }
 
+/* Subordinate elements fade only — the hero keeps ONE prominent focal motion. */
+@keyframes tp-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* =========================================================================
    INPUT BOX & RESOLVER DOCK (ELEGANT FROSTED GLASS OVER RADIANT BLUE)
    ========================================================================= */
@@ -754,7 +784,7 @@ body::-webkit-scrollbar,
   margin: 36px auto 0;
   position: relative;
   z-index: 10;
-  animation: tp-rise-in 1s cubic-bezier(0.2, 0.8, 0.2, 1) both 0.45s;
+  animation: tp-fade-in 0.4s var(--motion-ease-out) both 0.65s;
 }
 
 .tp-input-card {
@@ -770,7 +800,7 @@ body::-webkit-scrollbar,
   display: flex;
   flex-direction: column;
   gap: 8px;
-  transition: border-color 0.25s, box-shadow 0.25s, background-color 0.25s;
+  transition: border-color var(--motion-duration-surface), box-shadow var(--motion-duration-surface), background-color var(--motion-duration-surface), scale var(--motion-duration-press) ease;
 }
 
 .tp-input-card:focus-within {
@@ -798,7 +828,7 @@ body::-webkit-scrollbar,
   min-width: 0;
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, box-shadow var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-input-field-wrap:focus-within {
@@ -864,7 +894,7 @@ body::-webkit-scrollbar,
   cursor: pointer;
   flex-shrink: 0;
   margin-right: 4px;
-  transition: color 0.15s, background-color 0.15s;
+  transition: color var(--motion-duration-surface), background-color var(--motion-duration-surface), scale var(--motion-duration-press) ease;
 }
 
 .tp-clear-btn:hover {
@@ -886,16 +916,13 @@ body::-webkit-scrollbar,
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
-  transition: background-color 0.15s ease,
-              border-color 0.15s ease,
-              box-shadow 0.15s ease,
-              color 0.15s ease,
-              opacity 0.15s ease;
+  transition: background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, box-shadow var(--motion-duration-surface) ease, color var(--motion-duration-surface) ease, opacity var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-btn:active {
   opacity: 0.88;
   filter: brightness(0.96);
+  scale: 0.98;
 }
 
 /* Unified Apple-Style Inline Paste Capsule Pill */
@@ -928,7 +955,7 @@ body::-webkit-scrollbar,
   user-select: none;
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, box-shadow var(--motion-duration-surface) ease, opacity var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-btn-paste-inline:hover {
@@ -940,6 +967,7 @@ body::-webkit-scrollbar,
 .tp-btn-paste-inline:active {
   background: rgba(255, 255, 255, 0.35);
   opacity: 0.85;
+  scale: 0.98;
 }
 
 .tp-root[data-theme="light"] .tp-btn-paste-inline {
@@ -1016,7 +1044,7 @@ body::-webkit-scrollbar,
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, color var(--motion-duration-surface) ease, box-shadow var(--motion-duration-surface) ease, opacity var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
   cursor: pointer;
 }
 
@@ -1127,7 +1155,7 @@ body::-webkit-scrollbar,
   border: 1px solid transparent;
   color: rgba(255, 255, 255, 0.9);
   text-shadow: 0 1px 10px rgba(6, 23, 74, 0.4);
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, color var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-root[data-theme="light"] .tp-guest-meta {
@@ -1156,8 +1184,8 @@ body::-webkit-scrollbar,
   box-shadow: var(--tp-card-shadow);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  animation: tp-rise-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  animation: tp-rise-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, box-shadow var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-player-header {
@@ -1210,7 +1238,7 @@ body::-webkit-scrollbar,
   display: flex;
   flex-direction: column;
   gap: 10px;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition: border-color var(--motion-duration-surface) ease, background-color var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-mobile-format-card:active {
@@ -1290,10 +1318,7 @@ body::-webkit-scrollbar,
   box-shadow: var(--tp-card-shadow);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
-              background-color 0.25s ease,
-              border-color 0.25s ease,
-              box-shadow 0.25s ease;
+  transition: transform var(--motion-duration-transform) cubic-bezier(0.2, 0.8, 0.2, 1), background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, box-shadow var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-feature-card:hover {
@@ -1310,7 +1335,7 @@ body::-webkit-scrollbar,
 
 .tp-mark-g {
   transform-origin: 34px 34px;
-  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform var(--motion-duration-transform) var(--motion-spring), scale var(--motion-duration-press) ease;
 }
 
 .tp-feature-card:hover .tp-mark[data-kind="arrow"] .tp-mark-g {
@@ -1366,7 +1391,7 @@ body::-webkit-scrollbar,
   background: var(--tp-paper-input);
   border: 1px solid var(--tp-border-subtle);
   color: var(--tp-ink);
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, color var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-platform-tab:hover {
@@ -1474,7 +1499,7 @@ body::-webkit-scrollbar,
   color: var(--tp-text-dim);
   font-family: var(--font-family-mono);
   font-size: 12px;
-  transition: border-color 0.2s, background-color 0.2s;
+  transition: border-color var(--motion-duration-surface), background-color var(--motion-duration-surface), scale var(--motion-duration-press) ease;
 }
 
 .tp-domain-pill:hover {
@@ -1533,7 +1558,7 @@ body::-webkit-scrollbar,
   color: var(--tp-ink);
   letter-spacing: -0.015em;
   text-align: left;
-  transition: color 0.2s;
+  transition: color var(--motion-duration-surface), scale var(--motion-duration-press) ease;
 }
 
 .tp-faq-btn:hover {
@@ -1557,7 +1582,7 @@ body::-webkit-scrollbar,
   height: 2px;
   border-radius: 1px;
   background: var(--tp-mid);
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform var(--motion-duration-transform) cubic-bezier(0.16, 1, 0.3, 1), scale var(--motion-duration-press) ease;
 }
 
 .tp-faq-icon::after {
@@ -1571,8 +1596,7 @@ body::-webkit-scrollbar,
 .tp-faq-ans {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: grid-template-rows;
+  transition: grid-template-rows var(--motion-duration-surface) cubic-bezier(0.16, 1, 0.3, 1), scale var(--motion-duration-press) ease;
 }
 
 .tp-faq-item[data-open="true"] .tp-faq-ans {
@@ -1591,14 +1615,13 @@ body::-webkit-scrollbar,
   color: var(--tp-muted);
   opacity: 0;
   transform: translateY(-5px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  will-change: opacity, transform;
+  transition: opacity var(--motion-duration-surface) ease, transform var(--motion-duration-transform) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-faq-item[data-open="true"] .tp-faq-inner p {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 0.28s ease-out 0.04s, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) 0.04s;
+  transition: opacity var(--motion-duration-surface) ease-out 0.04s, transform var(--motion-duration-transform) cubic-bezier(0.16, 1, 0.3, 1) var(--motion-duration-surface), scale var(--motion-duration-press) ease;
 }
 
 /* =========================================================================
@@ -1670,7 +1693,7 @@ body::-webkit-scrollbar,
 
 .tp-foot-col-links a {
   color: var(--tp-muted);
-  transition: color 0.2s, transform 0.2s;
+  transition: color var(--motion-duration-surface), transform var(--motion-duration-transform), scale var(--motion-duration-press) ease;
   display: inline-block;
 }
 
@@ -1878,7 +1901,7 @@ body::-webkit-scrollbar,
     -webkit-user-select: none;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
-    transition: background-color 0.15s ease, opacity 0.15s ease;
+    transition: background-color var(--motion-duration-surface) ease, opacity var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
   }
   .tp-btn-paste-inline:active {
     background: rgba(255, 255, 255, 0.28) !important;
@@ -1931,13 +1954,8 @@ body::-webkit-scrollbar,
 .tp-root .tp-btn-theme:active,
 .tp-root .tp-theme-icon-btn:active,
 .tp-root .tp-chip:active {
-  transform: none !important;
+  scale: 0.98;
 }
 
-.tp-root .tp-btn-primary:hover:not(:disabled),
-.tp-root .tp-btn-paste-inline:hover,
-.tp-root .tp-theme-btn:hover,
-.tp-root .tp-theme-icon-btn:hover,
-.tp-root .tp-chip:hover {
-  transform: none !important;
-}
+/* Hover feedback may scale subtly — no button declares a hover transform,
+   so nothing shifts neighbouring layout. */
