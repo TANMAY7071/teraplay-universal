@@ -1,10 +1,10 @@
 # TeraPlay Universal Media Dock: $0 Production Deployment Guide
 
-This guide details how to deploy the entire TeraPlay Universal Media Dock to production for **$0 / month** using Vercel (Edge Frontend) and Render.com (Python Resolver Microservice running `yt-dlp` across all 1,751 platforms).
+Deploy TeraPlay Universal Media Dock to production for **$0 / month**: Vercel for the edge frontend, Render.com for the Python resolver microservice (`yt-dlp` across 1,751 platforms).
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 [ User Browser ]
@@ -25,7 +25,7 @@ This guide details how to deploy the entire TeraPlay Universal Media Dock to pro
 
 ---
 
-## 🚀 Step 1: Deploy Python Microservice to Render.com (Free)
+## Step 1: Deploy the Python microservice to Render.com (free tier)
 
 1. Push your repository to GitHub.
 2. Go to **[Render.com](https://render.com/)** and create a free account.
@@ -44,29 +44,29 @@ This guide details how to deploy the entire TeraPlay Universal Media Dock to pro
 
 > [!TIP]
 > **Keep Render Awake 24/7 for Free**:
-> Free Render services sleep after 15 minutes of inactivity. Set up a free monitor at **[UptimeRobot.com](https://uptimerobot.com/)** to ping `https://teraplay-resolver-api.onrender.com/health` every 5 minutes. Your service will remain warm and respond instantly!
+> Free Render services sleep after 15 minutes of inactivity. Set up a free monitor at **[UptimeRobot.com](https://uptimerobot.com/)** to ping `https://teraplay-resolver-api.onrender.com/health` every 5 minutes. Your service stays warm.
 
 ---
 
-## 🌐 Step 2: Deploy Frontend to Vercel (Free)
+## Step 2: Deploy the frontend to Vercel (free tier)
 
 1. Go to **[Vercel.com](https://vercel.com/)** and connect your GitHub repository.
 2. In the project settings, navigate to **Environment Variables** and add:
    - **Key**: `PYTHON_RESOLVER_URL`
    - **Value**: `https://teraplay-resolver-api.onrender.com` (your Render URL from Step 1)
 3. Click **Deploy**.
-4. Your site is live on Vercel with automatic SSL and global edge CDN caching!
+4. The site goes live on Vercel with automatic SSL and edge CDN caching.
 
 ---
 
-## 💰 Step 3: Monetization Setup (Start Earning)
+## Step 3: Monetization setup
 
 1. Register as a publisher on **[Monetag](https://monetag.com/)** or **[Adsterra](https://adsterra.com/)**.
 2. Add your Vercel domain and obtain ad script tags:
    - **Top Banner**: `728x90` leaderboard
    - **Content Banner**: `300x250` medium rectangle
    - **Footer Banner**: Responsive multi-tag
-3. Paste the tags into [`src/components/ads/AdBannerSlot.tsx`](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universal/src/components/ads/AdBannerSlot.tsx):
+3. Paste the tags into [`src/components/ads/AdBannerSlot.tsx`](src/components/ads/AdBannerSlot.tsx):
    ```tsx
    // Replace placeholder inside AdBannerSlot with your ad network script
    ```
@@ -74,7 +74,7 @@ This guide details how to deploy the entire TeraPlay Universal Media Dock to pro
 
 ---
 
-## 💻 Local Development Workflow
+## Local development workflow
 
 Run both services locally during development:
 

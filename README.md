@@ -1,26 +1,26 @@
 # TeraPlay Universal Media & Creator Dock
 
-A high-performance, $0-budget universal media resolver and creator toolkit supporting **1,751+ platforms** enabled by `yt-dlp` (YouTube, TeraBox, TikTok, Instagram, Facebook, Bilibili, Dailymotion, Snapchat, LinkedIn, Vimeo, Twitter/X, and more).
+A $0-budget universal media resolver and creator toolkit. Paste a link from YouTube, TeraBox, TikTok, Instagram, Facebook, Bilibili, Dailymotion, Snapchat, LinkedIn, Vimeo, Twitter/X, or any of the 1,751+ platforms `yt-dlp` supports.
 
 Provides in-browser video streaming, multi-tier thumbnail downloads, progressive MP4 downloads with audio, high-bitrate MP3/M4A audio extraction, SubRip `.srt` and `.txt` transcript exports, and monetization slots.
 
 ---
 
-## ⚡ Key Capabilities
+## Key capabilities
 
-- **Zero-Click Auto-Detection**: Paste any URL directly into the dock. The engine automatically detects the platform without requiring chip selection.
-- **Universal Downloads**:
-  - **Video MP4**: 1080p, 720p, 480p, 360p (automatically selects progressive audio+video tracks so downloads are never silent).
-  - **Audio MP3 & M4A**: 320 kbps (High Quality), 256 kbps, 192 kbps, 128 kbps, and original master audio streams.
-  - **Multi-Resolution Thumbnails**: High-resolution cover images dynamically extracted for any platform.
-  - **Transcripts & Subtitles**: Searchable timestamped cues, 1-click clipboard copy, and SubRip `.srt` or `.txt` downloads.
-- **Embedded & Custom Streaming**: In-browser inline player supporting YouTube/Vimeo embeds and HLS/direct MP4 streams.
-- **Honest WhatsApp Handling**: Explicitly surfaces guidance explaining WhatsApp's end-to-end encryption (E2EE) and instructs users to paste the original video links shared inside chats.
-- **$0 Production Ready**: Split edge architecture (Vercel CDN frontend + Render.com free-tier Python microservice) with zero operating cost.
+- Zero-click auto-detection: paste any URL into the dock. The engine identifies the platform on its own, no chip selection.
+- Universal downloads:
+  - Video MP4: 1080p, 720p, 480p, 360p. Downloads pick progressive audio+video tracks, so a file is never silent.
+  - Audio MP3 and M4A: 320 kbps (High Quality), 256 kbps, 192 kbps, 128 kbps, and original master audio streams.
+  - Multi-resolution thumbnails: high-resolution cover images extracted for any platform.
+  - Transcripts and subtitles: searchable timestamped cues, 1-click clipboard copy, SubRip `.srt` or `.txt` downloads.
+- Embedded and custom streaming: in-browser inline player for YouTube/Vimeo embeds and HLS/direct MP4 streams.
+- Honest WhatsApp handling: the dock surfaces guidance explaining WhatsApp's end-to-end encryption (E2EE) and tells users to paste the original link shared in chat.
+- $0 production ready: split edge architecture (Vercel CDN frontend + Render.com free-tier Python microservice), zero operating cost.
 
 ---
 
-## 📂 Project Structure
+## Project structure
 
 ```
 teraplay-universal/
@@ -49,7 +49,7 @@ teraplay-universal/
 
 ---
 
-## 🛠️ Quickstart
+## Quickstart
 
 ### Prerequisites
 - Node.js 18+ (tested on Node.js v22)
@@ -71,16 +71,16 @@ Visit `http://localhost:5173` to test the universal dock with any video link.
 
 ---
 
-## 🚀 $0 Production Deployment
+## $0 production deployment
 
-See [DEPLOYMENT.md](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universal/DEPLOYMENT.md) for full instructions:
+See [DEPLOYMENT.md](DEPLOYMENT.md) for full instructions:
 1. **Backend**: Deploy `backend/` to Render.com ($0 free tier).
 2. **Frontend**: Deploy repo to Vercel and add `PYTHON_RESOLVER_URL=https://<your-render-url>`.
 3. **Keep Awake**: Ping `https://<your-render-url>/health` via free UptimeRobot every 5 minutes.
 
 ---
 
-## 📚 Architecture & Legacy Wisdom
+## Architecture and legacy wisdom
 
-- **[CODEBASE_DESIGN.md](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universal/CODEBASE_DESIGN.md)**: Deep architectural guide in plain language for beginners and senior engineers alike. Details $0 bandwidth invariants, deep module boundaries, and design decisions.
-- **[DONGHUA_LEGACY_WISDOM.md](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universal/DONGHUA_LEGACY_WISDOM.md)**: Preserved techniques from the predecessor Donghua streaming platform (custom Fandom wiki scrapers, zero-config CDN image proxying, metadata federation across AniList/Simkl/TMDB/Trakt, and streaming fallback chains).
+- [CODEBASE_DESIGN.md](CODEBASE_DESIGN.md): Deep architectural guide in plain language for beginners and senior engineers alike. Details $0 bandwidth invariants, deep module boundaries, and design decisions.
+- [DONGHUA_LEGACY_WISDOM.md](DONGHUA_LEGACY_WISDOM.md): Preserved techniques from the predecessor Donghua streaming platform (custom Fandom wiki scrapers, zero-config CDN image proxying, metadata federation across AniList/Simkl/TMDB/Trakt, and streaming fallback chains).

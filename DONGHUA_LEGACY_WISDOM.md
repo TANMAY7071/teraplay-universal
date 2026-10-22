@@ -83,7 +83,7 @@ The platform federated metadata across multiple providers with graceful fallback
 ## 5. What Was Transferred to TeraPlay Universal
 Many of the hardest-won lessons from the Donghua platform became foundational pillars of TeraPlay Universal:
 1. **Client-First Execution**: In-browser SubRip `.srt` conversion, client blob downloading, and direct CDN streaming.
-2. **Multi-Source URL Parsing**: The robust URL normalization patterns used for mirror resolution evolved into `src/lib/urlNormalizer.ts`.
+2. **Multi-Source URL Parsing**: The URL normalization patterns used for mirror resolution evolved into `src/lib/urlNormalizer.ts`.
 3. **Apple HIG Visual Aesthetics**: The dark mode design tokens, glassmorphism card elevation, and responsive mobile-first typography.
 4. **HLS Video Engine**: `CustomVideoPlayer.tsx` was retained and enhanced to stream TeraBox m3u8 files directly in the browser without third-party app requirements.
 

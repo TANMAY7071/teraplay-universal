@@ -75,11 +75,11 @@ Normally on the internet:
 
 | Module | Location | Purpose | Key Guarantees |
 |---|---|---|---|
-| **URL Normalizer** | [`src/lib/urlNormalizer.ts`](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universal/src/lib/urlNormalizer.ts) | Parses and validates incoming media URLs | Handles 12+ TeraBox mirror domains, YouTube Shorts/Live/Embeds, Instagram reels, TikTok, Vimeo, and direct MP4/M3U8 streams. |
-| **Universal Media Dock** | [`src/pages/Index.tsx`](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universal/src/pages/Index.tsx) | Primary application interface | Studio tabs (Downloads, Transcripts, Thumbnails, Player), mobile touch format cards, and split download dropdowns. |
-| **In-Browser Video Player** | [`src/components/video/CustomVideoPlayer.tsx`](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universal/src/components/video/CustomVideoPlayer.tsx) | HTML5 & HLS playback engine | Direct `.m3u8` streaming for TeraBox links with automatic fallback to native video on iOS. |
-| **Transcription Engine** | [`src/lib/transcription.ts`](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universal/src/lib/transcription.ts) & `api/transcribe.ts` | Speech-to-Text & Subtitles | Converts audio into timestamped cues and formats standard SubRip `.srt` files with boundary clipping. |
-| **Monetization Engine** | [`src/components/ads/AdBannerSlot.tsx`](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universal/src/components/ads/AdBannerSlot.tsx) | Dynamic ad injection | Contextual HTML script injection for Monetag, Adsterra, and AdSense with automatic ad-blocker fallback state. |
+| **URL Normalizer** | [`src/lib/urlNormalizer.ts`](src/lib/urlNormalizer.ts) | Parses and validates incoming media URLs | Handles 12+ TeraBox mirror domains, YouTube Shorts/Live/Embeds, Instagram reels, TikTok, Vimeo, and direct MP4/M3U8 streams. |
+| **Universal Media Dock** | [`src/pages/Index.tsx`](src/pages/Index.tsx) | Primary application interface | Studio tabs (Downloads, Transcripts, Thumbnails, Player), mobile touch format cards, and split download dropdowns. |
+| **In-Browser Video Player** | [`src/components/video/CustomVideoPlayer.tsx`](src/components/video/CustomVideoPlayer.tsx) | HTML5 & HLS playback engine | Direct `.m3u8` streaming for TeraBox links with automatic fallback to native video on iOS. |
+| **Transcription Engine** | [`src/lib/transcription.ts`](src/lib/transcription.ts) & `api/transcribe.ts` | Speech-to-Text & Subtitles | Converts audio into timestamped cues and formats standard SubRip `.srt` files with boundary clipping. |
+| **Monetization Engine** | [`src/components/ads/AdBannerSlot.tsx`](src/components/ads/AdBannerSlot.tsx) | Dynamic ad injection | Contextual HTML script injection for Monetag, Adsterra, and AdSense with automatic ad-blocker fallback state. |
 | **Legal & Compliance** | `src/pages/Dmca.tsx`, `Privacy.tsx`, `Terms.tsx` | Ad network approval & SEO | Mandatory legal pages ensuring fast verification by major ad networks. |
 
 ---
@@ -88,8 +88,8 @@ Normally on the internet:
 
 ### Decision 1: Transition from Donghua Streaming to Universal Media Dock
 - **Context**: The codebase was originally cloned from a custom-built Donghua (Chinese anime) streaming site featuring fandom scrapers, AniList/TMDB metadata synchronization, character wikis, cultivation ranks, and anime CMS admin panels.
-- **The Pivot**: The user pivoted the platform into **TeraPlay Universal** — a $0-budget universal media dock where users paste any video link to stream and download it with ads.
-- **Action**: Preserved the Donghua architecture in [`DONGHUA_LEGACY_WISDOM.md`](file:///c:/Users/ASUS/Desktop/my%20website/teraplay-universal/DONGHUA_LEGACY_WISDOM.md) and purged all dead anime CMS routes, obsolete fandom scrapers, and unused dependencies to make the repository lightweight, fast, and maintainable.
+- **The Pivot**: The user pivoted the platform into **TeraPlay Universal**, a $0-budget universal media dock where users paste any video link to stream and download it with ads.
+- **Action**: Preserved the Donghua architecture in [`DONGHUA_LEGACY_WISDOM.md`](DONGHUA_LEGACY_WISDOM.md) and purged all dead anime CMS routes, obsolete fandom scrapers, and unused dependencies to make the repository lightweight, fast, and maintainable.
 
 ### Decision 2: Mobile Touch-First UI Overhaul
 - **Context**: On screens `< 450px`, the 4-column downloads `<table>` pushed download buttons off-screen, studio navigation tabs crushed into each other, and redundant buttons cluttered the mobile view.

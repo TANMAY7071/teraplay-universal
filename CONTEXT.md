@@ -1,6 +1,6 @@
 # TeraPlay Universal Media & Creator Dock
 
-A lightweight, high-performance web application engineered for content creators and everyday video streamers. Built with React 18, TypeScript, Vite, Tailwind CSS, Lucide icons, and serverless edge functions.
+A web app for content creators who pull video, thumbnails, and transcripts off other sites. React 18, TypeScript, Vite, Tailwind CSS, Lucide icons, serverless edge functions.
 
 ## Core Capabilities
 
@@ -19,11 +19,11 @@ A lightweight, high-performance web application engineered for content creators 
 
 ### 3. Monetization & Ad Network Integration
 - **Placement**: Discrete ad slots (`AdBannerSlot.tsx`) mounted at top leaderboard, mid-content, and bottom positions.
-- **Dynamic Execution**: Supports contextual HTML and script injection (`createContextualFragment`) for Monetag, Adsterra, and Google AdSense networks.
+- **Dynamic Execution**: Injects contextual HTML and scripts (`createContextualFragment`) for Monetag, Adsterra, and Google AdSense networks.
 
 ### 4. Legal Compliance & SEO Architecture
-- **Compliance**: Dedicated legal pages (`/dmca`, `/privacy`, `/terms`, `/disclaimer`, `/contact`) to ensure instant ad network approval.
-- **SEO Landing Routes**: Targeted canonical entry routes in `src/App.tsx` and `src/data/seoRoutes.ts` with structured Schema.org JSON-LD metadata.
+- **Compliance**: Legal pages at `/dmca`, `/privacy`, `/terms`, `/disclaimer`, and `/contact`. Ad networks require all of them before approval.
+- **SEO Landing Routes**: Canonical entry routes in `src/App.tsx` and `src/data/seoRoutes.ts` with Schema.org JSON-LD metadata.
 
 ## Architectural Invariants
 
