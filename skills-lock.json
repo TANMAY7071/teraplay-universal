@@ -13,6 +13,12 @@
       "skillPath": "skills/accessibility/SKILL.md",
       "computedHash": "ebfa09617a2ac4fd64afd73267726b787145a8d14294df3f8802b462c91594ab"
     },
+    "anti-slop": {
+      "source": "elithrar/dotfiles",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/anti-slop/SKILL.md",
+      "computedHash": "426f84f4cb0245ac72970ab7856518fbbd06f3b45ba1f9eef82ceef27d305d0c"
+    },
     "archify": {
       "source": "tt-a1i/archify",
       "sourceType": "github",
@@ -101,7 +107,7 @@
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
       "skillPath": "skills/taste-skill/SKILL.md",
-      "computedHash": "41463de84d80d8839b1e9fc8ddfd140578443d095b53710d1f331dbab3079712"
+      "computedHash": "65049e1890f5fedf8f8e1144848f07bcda788e51c22bac78afbd073aeb486725"
     },
     "design-taste-frontend-v1": {
       "source": "Leonxlnx/taste-skill",
