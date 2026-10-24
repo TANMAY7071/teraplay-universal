@@ -46,6 +46,7 @@ const TERABOX_DOMAINS = [
   '4funbox.com',
   'terabox.fun',
   'terafileshare.com',
+  'terasharefile.com',
   'teraboxclub.com',
   'boxterabox.com',
 ];

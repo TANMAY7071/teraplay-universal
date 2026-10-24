@@ -1745,6 +1745,10 @@ export default function Index() {
             <span>Timestamped .SRT Subtitles</span>
             <span className="tp-trust-dot" aria-hidden="true">•</span>
             <span>1080p Cover Art</span>
+            <span className="tp-trust-dot" aria-hidden="true">•</span>
+            <a href="/document-downloader" style={{ color: 'inherit', textDecoration: 'underline' }}>
+              Document & Book Downloader
+            </a>
           </div>
         </div>
       </section>
@@ -3455,6 +3459,7 @@ export default function Index() {
               >
                 Vimeo & Bilibili Hub
               </a>
+              <a href="/document-downloader">Document & Book Downloader</a>
             </div>
           </div>
 
