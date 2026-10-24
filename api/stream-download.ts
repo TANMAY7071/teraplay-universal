@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { Readable } from 'stream';
-import { spawn, execSync } from 'child_process';
+import { spawn, execFileSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -39,21 +39,7 @@ function getFfmpegPath(): string | null {
     return cachedSystemFfmpeg;
   }
 
-  // 1. Check Python's bundled imageio_ffmpeg
-  try {
-    const pyExe = execSync(`${resolvePythonBin()} -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())"`, {
-      stdio: 'pipe',
-      encoding: 'utf-8',
-    })
-      .trim()
-      .split(/\r?\n/)[0];
-    if (pyExe && fs.existsSync(pyExe)) {
-      cachedSystemFfmpeg = pyExe;
-      return pyExe;
-    }
-  } catch {}
-
-  // 2. Check virtual environment binaries
+  // 1. Check virtual environment binaries (imageio-ffmpeg layout)
   const venvBase = path.resolve(process.cwd(), '.venv');
   const candidates = [
     path.join(venvBase, 'Lib', 'site-packages', 'imageio_ffmpeg', 'binaries'),
@@ -74,8 +60,8 @@ function getFfmpegPath(): string | null {
 
   // 3. Check system PATH
   try {
-    const cmd = process.platform === 'win32' ? 'where ffmpeg' : 'which ffmpeg';
-    const found = execSync(cmd, { stdio: 'pipe', encoding: 'utf-8' }).trim().split(/\r?\n/)[0];
+    const cmd = process.platform === 'win32' ? 'where' : 'which';
+    const found = execFileSync(cmd, ['ffmpeg'], { stdio: 'pipe', encoding: 'utf-8' }).trim().split(/\r?\n/)[0];
     if (found && fs.existsSync(found)) {
       cachedSystemFfmpeg = found;
       return found;
