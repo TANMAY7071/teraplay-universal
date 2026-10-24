@@ -59,7 +59,7 @@ Current verified project state. Every claim traceable to `BASELINE_REALITY.md` o
 | :--- | :--- | :--- |
 | Auth (email, Google, anonymous, guest→permanent merge) | Working | `AuthContext.tsx`, `supabase_schema.sql` |
 | Watch progress sync (localStorage ↔ Supabase) | Working | `progress.ts`, `useAnimeQueries.ts` |
-| Comments + Danmaku overlay | Working | `comments.ts`, `CommentSection.tsx` |
+| Comments | Working | `comments.ts`, `CommentSection.tsx` |
 | Watchlist (local + DB) | Working | `watchlist.ts` |
 | Cultivation rank gamification | Working | `AuthContext.tsx`, profile page |
 | Admin CMS (21 pages) | Working | `src/pages/admin/` |

@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import Hls from "hls.js";
-import { Play, Pause, Volume2, VolumeX, Maximize, MessageSquare, Check } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Maximize, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Thin h-1 clickable+draggable bar (mock-style). value: 0-100, white fill. */
@@ -156,18 +156,10 @@ const PlayerMenu: React.FC<{
   );
 };
 
-interface DanmakuMessage {
-  id: string;
-  text: string;
-  color?: string;
-  top: number; // percentage from top
-  time: number; // timestamp in seconds
-}
-
 const getYoutubeEmbedUrl = (url: string) => {
   if (!url) return "";
   if (url.includes("/embed/")) return url;
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
   if (match && match[2].length === 11) {
     return `https://www.youtube.com/embed/${match[2]}`;
@@ -186,7 +178,6 @@ interface CustomVideoPlayerProps {
   onEnded?: () => void;
   onPlay?: () => void;
   onPause?: () => void;
-  dbComments?: any[];
   animeTitle?: string;
   episodeNumber?: number;
   initialTime?: number;
@@ -202,7 +193,6 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   onEnded,
   onPlay,
   onPause,
-  dbComments = [],
   animeTitle = "Donghua",
   episodeNumber = 1,
   initialTime = 0,
@@ -211,7 +201,6 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   
   const [currentSrc, setCurrentSrc] = useState(videoUrl);
-  const [failoverIndex, setFailoverIndex] = useState(0);
 
   const isIframeEmbed = isYoutubeEmbedProp || (
     currentSrc?.includes("dailymotion.com") || 
@@ -259,31 +248,36 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     return saved !== null ? parseFloat(saved) : 1;
   });
   const [showControls, setShowControls] = useState(false);
-  const [danmakusEnabled, setDanmakusEnabled] = useState(true);
-  const [activeDanmakus, setActiveDanmakus] = useState<DanmakuMessage[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [initialSeekDone, setInitialSeekDone] = useState(false);
   const [activeQualityIndex, setActiveQualityIndex] = useState(0);
 
   const controlsTimeoutRef = useRef<number | null>(null);
   const overControlsRef = useRef(false);
-  const lastSpawnedRef = useRef<Record<string, boolean>>({});
+  // True while the pointer is anywhere over the player. The keyboard
+  // shortcuts only apply then, or while the player holds focus.
+  const pointerOverRef = useRef(false);
   // A quality switch swaps the media source, which reloads the buffer from
   // byte 0. These carry the playback position and play state across it.
   const pendingSeekRef = useRef<number | null>(null);
   const resumeAfterSwapRef = useRef(false);
+  // Failover bookkeeping. One media error can reach the handler twice (the
+  // React error prop and the native media event), and a candidate that equals
+  // the current source cannot recover anything.
+  const failoverTriggeredRef = useRef(false);
+  const triedFallbacksRef = useRef<string[]>([]);
+  const [failoverExhausted, setFailoverExhausted] = useState(false);
 
   // Reset failover states when props change
   useEffect(() => {
     setCurrentSrc(videoUrl);
-    setFailoverIndex(0);
     setActiveQualityIndex(0);
+    triedFallbacksRef.current = [];
+    setFailoverExhausted(false);
   }, [videoUrl]);
 
-  // 1. Reset spawning cache when URL or episode changes
+  // 1. Reset the initial seek when the URL or episode changes
   useEffect(() => {
-    lastSpawnedRef.current = {};
-    setActiveDanmakus([]);
     setInitialSeekDone(false);
   }, [currentSrc, episodeNumber]);
 
@@ -297,29 +291,43 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     }
   }, [currentSrc, volume, playbackSpeed, isMuted]);
 
-  const triggerFailover = () => {
-    if (fallbackUrls && failoverIndex < fallbackUrls.length) {
-      const nextUrl = fallbackUrls[failoverIndex];
-      console.warn(`Failover triggered! Switching from ${currentSrc} to backup URL: ${nextUrl}`);
-      setFailoverIndex(prev => prev + 1);
-      setCurrentSrc(nextUrl);
-      // The backup is the primary rendition, so the quality chip follows it.
-      setActiveQualityIndex(0);
-    } else {
-      console.error("HLS player: All failover options exhausted.");
-    }
-  };
+  const triggerFailover = useCallback(() => {
+    // A single error reaches this twice: once through the React error prop and
+    // once through the native media event. One failure must advance the list by
+    // one entry, not two.
+    if (failoverTriggeredRef.current) return;
 
-  // 2. Initialize Hls.js dynamically for HLS streams (.m3u8)
+    const nextUrl = fallbackUrls.find(
+      (u) => u && u !== currentSrc && !triedFallbacksRef.current.includes(u)
+    );
+
+    if (!nextUrl) {
+      console.error("[HLS player] All failover options exhausted.");
+      setFailoverExhausted(true);
+      return;
+    }
+
+    triedFallbacksRef.current.push(nextUrl);
+    failoverTriggeredRef.current = true;
+    console.warn(`Failover triggered! Switching from ${currentSrc} to backup URL: ${nextUrl}`);
+    setCurrentSrc(nextUrl);
+    // The backup is the primary rendition, so the quality chip follows it.
+    setActiveQualityIndex(0);
+  }, [fallbackUrls, currentSrc]);
+
+  // 2. Initialize hls.js for HLS streams (.m3u8)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     setIsPlaying(false);
     setCurrentTime(0);
+    setDuration(0);
+    // A new source gets a fresh set of failover candidates.
+    failoverTriggeredRef.current = false;
 
     const isHls = currentSrc?.includes(".m3u8") || false;
-    let hlsInstance: any = null;
+    let hlsInstance: Hls | null = null;
 
     const handleNativeError = () => {
       console.warn("Native HLS video error, triggering failover...");
@@ -327,58 +335,35 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     };
 
     if (isHls) {
-      // Dynamic import of Hls.js to avoid building issues
-      const loadHls = async () => {
-        if (Hls || (window as any).Hls) {
-          initHls(Hls || (window as any).Hls);
-          return;
-        }
+      if (Hls.isSupported()) {
+        hlsInstance = new Hls({
+          maxBufferSize: 30 * 1024 * 1024,
+          maxBufferLength: 30,
+          enableWorker: true,
+        });
+        hlsInstance.loadSource(currentSrc);
+        hlsInstance.attachMedia(video);
 
-        const script = document.createElement("script");
-        script.src = "https://cdn.jsdelivr.net/npm/hls.js@latest";
-        script.async = true;
-        script.onload = () => {
-          if ((window as any).Hls) {
-            initHls((window as any).Hls);
+        hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
+          if (!data.fatal) return;
+          console.warn(`HLS fatal error: type = ${data.type}, details = ${data.details}`);
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            hlsInstance?.destroy();
+            hlsInstance = null;
+            triggerFailover();
+          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            hlsInstance?.recoverMediaError();
+          } else {
+            hlsInstance?.destroy();
+            hlsInstance = null;
+            triggerFailover();
           }
-        };
-        document.body.appendChild(script);
-      };
-
-      const initHls = (HlsClass: any) => {
-        if (HlsClass.isSupported()) {
-          hlsInstance = new HlsClass({
-            maxBufferSize: 30 * 1024 * 1024,
-            maxBufferLength: 30,
-            enableWorker: true
-          });
-          hlsInstance.loadSource(currentSrc);
-          hlsInstance.attachMedia(video);
-          
-          hlsInstance.on(HlsClass.Events.ERROR, (event: any, data: any) => {
-            if (data.fatal) {
-              console.warn(`HLS fatal error: type = ${data.type}, details = ${data.details}`);
-              if (data.type === HlsClass.ErrorTypes.NETWORK_ERROR) {
-                hlsInstance.destroy();
-                hlsInstance = null;
-                triggerFailover();
-              } else if (data.type === HlsClass.ErrorTypes.MEDIA_ERROR) {
-                hlsInstance.recoverMediaError();
-              } else {
-                hlsInstance.destroy();
-                hlsInstance = null;
-                triggerFailover();
-              }
-            }
-          });
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          // Native HLS support (Safari)
-          video.src = currentSrc;
-          video.addEventListener("error", handleNativeError);
-        }
-      };
-
-      loadHls();
+        });
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        // Native HLS support (Safari)
+        video.src = currentSrc;
+        video.addEventListener("error", handleNativeError);
+      }
     } else {
       video.src = currentSrc;
     }
@@ -389,47 +374,9 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       }
       video.removeEventListener("error", handleNativeError);
     };
-  }, [currentSrc]);
+  }, [currentSrc, triggerFailover]);
 
-  // 3. Spawns Danmaku comments based on video playback timestamp
-  useEffect(() => {
-    if (!danmakusEnabled || !isPlaying) return;
-
-    // Filter comments that align with the current second
-    const currentSecond = Math.floor(currentTime);
-    dbComments.forEach((comment) => {
-      // Spawn criteria: comment has content, within current second, and not spawned yet
-      const key = `${comment.id}-${currentSecond}`;
-      if (
-        comment.content &&
-        !lastSpawnedRef.current[key] &&
-        Math.abs((comment.timestamp_seconds || 0) - currentSecond) <= 1
-      ) {
-        lastSpawnedRef.current[key] = true;
-        
-        // Setup lanes (0 to 4 lanes to avoid overlapping)
-        const lane = Math.floor(Math.random() * 5);
-        const topOffset = 8 + lane * 15; // 8%, 23%, 38%, 53%, 68% height
-
-        const newDanmaku: DanmakuMessage = {
-          id: `${comment.id}-${Date.now()}`,
-          text: comment.content,
-          color: comment.danmaku_color || "#FFFFFF",
-          top: topOffset,
-          time: currentTime,
-        };
-
-        setActiveDanmakus((prev) => [...prev, newDanmaku]);
-
-        // Clean up danmaku after 7 seconds (finished animating)
-        setTimeout(() => {
-          setActiveDanmakus((prev) => prev.filter((d) => d.id !== newDanmaku.id));
-        }, 7000);
-      }
-    });
-  }, [currentTime, isPlaying, dbComments, danmakusEnabled]);
-
-  // 4. Handle mouse/touch movement to show/hide controls (hover-only UX)
+  // 3. Handle mouse/touch movement to show/hide controls (hover-only UX)
   const handleMouseMove = () => {
     if (overControlsRef.current) return; // over the glass bar: never re-arm the hide timer
     setShowControls(true);
@@ -501,7 +448,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     }
   };
 
-  const handleVolumeChange = (val: number[]) => {
+  const handleVolumeChange = useCallback((val: number[]) => {
     const video = videoRef.current;
     if (!video) return;
     const newVolume = val[0];
@@ -511,9 +458,9 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     video.muted = newVolume === 0;
     localStorage.setItem("donghua-player-volume", newVolume.toString());
     localStorage.setItem("donghua-player-muted", (newVolume === 0).toString());
-  };
+  }, []);
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
     const muteState = !isMuted;
@@ -525,7 +472,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       video.volume = 0.5;
       localStorage.setItem("donghua-player-volume", "0.5");
     }
-  };
+  }, [isMuted, volume]);
 
   const handleSpeedChange = (speed: number) => {
     setPlaybackSpeed(speed);
@@ -534,6 +481,17 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     localStorage.setItem("donghua-player-speed", speed.toString());
   };
 
+  // Deduplicate incoming qualities so the player menu never shows duplicate resolution tags
+  const distinctQualities = useMemo(() => {
+    const seen = new Set<string>();
+    return qualities.filter((q) => {
+      const key = q.label || `${q.height}p`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [qualities]);
+
   /**
    * Swap the media source to a different rendition of the same video.
    *
@@ -541,17 +499,16 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
    * and play state are captured here and restored in handleLoadedMetadata.
    */
   const handleQualityChange = (index: number) => {
-    const target = qualities[index];
+    const target = distinctQualities[index];
     if (!target || index === activeQualityIndex) return;
     const video = videoRef.current;
     pendingSeekRef.current = video ? video.currentTime : currentTime;
     resumeAfterSwapRef.current = video ? !video.paused && !video.ended : isPlaying;
     setActiveQualityIndex(index);
-    setFailoverIndex(0);
     setCurrentSrc(target.url);
   };
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
 
@@ -566,7 +523,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         setIsFullscreen(false);
       });
     }
-  };
+  }, []);
 
   // Sync fullscreen change with ESC key
   useEffect(() => {
@@ -580,42 +537,68 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   // Keyboard shortcuts (native player only): space/k play, arrows seek/volume, m mute, f fullscreen
   useEffect(() => {
     if (isIframeEmbed) return;
+
+    // Space and the arrow keys belong to whatever control has focus. The
+    // player only takes them while the pointer is over it or it holds focus.
+    const isInteractiveTarget = (el: HTMLElement | null) =>
+      !!el &&
+      (el.tagName === "INPUT" ||
+        el.tagName === "TEXTAREA" ||
+        el.isContentEditable ||
+        !!el.closest(
+          "button, a, select, [role='tab'], [role='menuitem'], [role='menuitemradio'], [role='slider']"
+        ));
+
+    const playerIsActive = () =>
+      pointerOverRef.current || !!containerRef.current?.contains(document.activeElement);
+
     const onKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
       const video = videoRef.current;
       if (!video) return;
+
       switch (e.key) {
         case " ":
         case "k":
+          if (isInteractiveTarget(target) || !playerIsActive()) return;
           e.preventDefault();
-          handlePlayPause();
+          if (video.paused) {
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
           break;
         case "ArrowRight":
+          if (isInteractiveTarget(target) || !playerIsActive()) return;
           video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 5);
           break;
         case "ArrowLeft":
+          if (isInteractiveTarget(target) || !playerIsActive()) return;
           video.currentTime = Math.max(0, video.currentTime - 5);
           break;
         case "ArrowUp":
+          if (isInteractiveTarget(target) || !playerIsActive()) return;
           e.preventDefault();
-          handleVolumeChange([Math.min(1, volume + 0.1)]);
+          handleVolumeChange([Math.min(1, video.volume + 0.1)]);
           break;
         case "ArrowDown":
+          if (isInteractiveTarget(target) || !playerIsActive()) return;
           e.preventDefault();
-          handleVolumeChange([Math.max(0, volume - 0.1)]);
+          handleVolumeChange([Math.max(0, video.volume - 0.1)]);
           break;
         case "m":
+          e.preventDefault();
           toggleMute();
           break;
         case "f":
+          e.preventDefault();
           toggleFullscreen();
           break;
       }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  });
+  }, [isIframeEmbed, handleVolumeChange, toggleMute, toggleFullscreen]);
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
     const s = Math.floor(secs % 60);
@@ -626,7 +609,13 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     <div
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      onMouseLeave={() => setShowControls(false)}
+      onMouseEnter={() => {
+        pointerOverRef.current = true;
+      }}
+      onMouseLeave={() => {
+        pointerOverRef.current = false;
+        setShowControls(false);
+      }}
       onTouchStart={handleMouseMove}
       className="relative w-full h-full bg-black select-none overflow-hidden group/player"
     >
@@ -664,43 +653,9 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
           }}
           className="w-full h-full object-contain cursor-pointer"
           playsInline
+          tabIndex={0}
+          aria-label={animeTitle}
         />
-      )}
-
-      {/* DANMAKU OVERLAY TRACKS */}
-      {!isIframeEmbed && danmakusEnabled && (
-        <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
-          {activeDanmakus.map((d) => (
-            <div
-              key={d.id}
-              className="absolute text-sm sm:text-base font-bold whitespace-nowrap drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] animate-danmaku-move"
-              style={{
-                top: `${d.top}%`,
-                color: d.color,
-                right: "-100%", // starts offscreen
-              }}
-            >
-              {d.text}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* DANMAKU TOGGLE — only when the episode actually has comments */}
-      {!isIframeEmbed && dbComments.length > 0 && (
-        <button
-          onClick={() => setDanmakusEnabled(!danmakusEnabled)}
-          className={cn(
-            "absolute top-4 right-4 z-30 rounded-full text-xs font-bold flex items-center gap-1.5 h-8 px-3 border border-white/10 backdrop-blur-md transition-colors transition-opacity duration-300",
-            showControls ? "opacity-100" : "opacity-0 pointer-events-none",
-            danmakusEnabled
-              ? "text-[#e4f222] border-[#e4f222]/30 bg-black/60"
-              : "text-white bg-black/40 hover:bg-[#111111d1]"
-          )}
-        >
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span>Danmaku</span>
-        </button>
       )}
 
       {/* FLOATING GLASS CONTROL BAR */}
@@ -724,6 +679,13 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
             showControls ? "opacity-100" : "opacity-0 pointer-events-none"
           )}
         >
+          {/* Every source failed: say so instead of leaving a black box. */}
+          {failoverExhausted && (
+            <p className="mb-2 text-center text-xs font-semibold text-red-400">
+              Every source for this link failed. The video could not be loaded.
+            </p>
+          )}
+
           {/* Row 1: time labels flanking thin seekbar */}
           <div className="flex items-center gap-2 mb-2">
             <span className="text-white text-sm tabular-nums">{formatTime(currentTime)}</span>
@@ -783,12 +745,12 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 isModified={playbackSpeed !== 1}
               />
 
-              {qualities.length > 1 && (
+              {distinctQualities.length > 1 && (
                 <PlayerMenu
-                  items={qualities.map((q, i) => ({ value: String(i), label: q.label }))}
+                  items={distinctQualities.map((q, i) => ({ value: String(i), label: q.label }))}
                   value={String(activeQualityIndex)}
                   onSelect={(v) => handleQualityChange(parseInt(v, 10))}
-                  trigger={qualities[activeQualityIndex]?.label ?? "Auto"}
+                  trigger={distinctQualities[activeQualityIndex]?.label ?? "Auto"}
                   title="Video quality"
                   isModified={activeQualityIndex !== 0}
                 />

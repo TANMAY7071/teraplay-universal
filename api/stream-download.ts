@@ -4,8 +4,18 @@ import { spawn, execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import { assertPublicHttpUrl, isCookieAllowedHost, sanitizeExtension } from './_guard.ts';
 
 let cachedSystemFfmpeg: string | null | undefined = undefined;
+
+/**
+ * Node's Readable.fromWeb expects a node:stream/web ReadableStream, but a
+ * fetch response body is typed as the global web ReadableStream. They are the
+ * same object at runtime, so the cast bridges the two type declarations.
+ */
+function toNodeReadable(body: NonNullable<Response['body']>) {
+  return Readable.fromWeb(body as unknown as import('node:stream/web').ReadableStream);
+}
 
 function safePipe(source: any, dest: any) {
   source.on('error', (err: any) => {
@@ -31,7 +41,7 @@ function getFfmpegPath(): string | null {
 
   // 1. Check Python's bundled imageio_ffmpeg
   try {
-    const pyExe = execSync('python -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())"', {
+    const pyExe = execSync(`${resolvePythonBin()} -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())"`, {
       stdio: 'pipe',
       encoding: 'utf-8',
     })
@@ -77,9 +87,26 @@ function getFfmpegPath(): string | null {
 }
 
 /**
- * Temp directory for accelerated downloads
+ * Resolve the Python interpreter the way the other handlers do: the project
+ * virtualenv first, then the platform default. On Linux the binary is
+ * "python3", so a bare "python" never starts on Vercel.
  */
-const MEDIA_CACHE_DIR = path.resolve(process.cwd(), 'tmp_media');
+function resolvePythonBin(): string {
+  const isWin = process.platform === 'win32';
+  const venvPython = isWin
+    ? path.resolve(process.cwd(), '.venv', 'Scripts', 'python.exe')
+    : path.resolve(process.cwd(), '.venv', 'bin', 'python');
+  if (fs.existsSync(venvPython)) return venvPython;
+  return isWin ? 'python' : 'python3';
+}
+
+/**
+ * Temp directory for accelerated downloads.
+ *
+ * The Vercel function filesystem is read-only outside /tmp, so a directory
+ * under process.cwd() can never be created there and every later read fails.
+ */
+const MEDIA_CACHE_DIR = path.join(os.tmpdir(), 'teraplay-media-cache');
 try {
   if (!fs.existsSync(MEDIA_CACHE_DIR)) {
     fs.mkdirSync(MEDIA_CACHE_DIR, { recursive: true });
@@ -127,7 +154,7 @@ async function runAcceleratedYtdl(
     }
 
     return new Promise<{ filePath: string; size: number } | null>((resolve) => {
-      const child = spawn('python', [scriptPath, videoUrl, fmtSpec, MEDIA_CACHE_DIR, ext], {
+      const child = spawn(resolvePythonBin(), [scriptPath, videoUrl, fmtSpec, MEDIA_CACHE_DIR, ext], {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
 
@@ -158,7 +185,7 @@ async function runAcceleratedYtdl(
           }
 
           // Fallback regex search for JSON output with success: true
-          const jsonMatch = stdout.match(/\{[^{}]*\"success\"\s*:\s*true[^{}]*\}/);
+          const jsonMatch = stdout.match(/\{[^{}]*"success"\s*:\s*true[^{}]*\}/);
           if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0]);
             if (parsed.success && parsed.file_path && fs.existsSync(parsed.file_path)) {
@@ -205,13 +232,21 @@ async function streamParallelChunks(
   let nextChunkToWrite = 0;
   const chunkBuffers = new Map<number, Buffer>();
   let isAborted = false;
+  const controller = new AbortController();
+  const deadline = Date.now() + 5 * 60 * 1000;
+  const MAX_CHUNK_BYTES = 8 * 1024 * 1024;
 
   res.on('close', () => {
     isAborted = true;
+    controller.abort();
   });
 
   async function fetchWorker() {
     while (!isAborted && nextChunkToFetch < totalChunks) {
+      if (Date.now() > deadline) {
+        console.warn('[StreamDownload] Chunk streaming hit its deadline.');
+        return;
+      }
       if (chunkBuffers.size >= concurrency * 2) {
         await new Promise((r) => setTimeout(r, 40));
         continue;
@@ -219,37 +254,59 @@ async function streamParallelChunks(
       const chunkIdx = nextChunkToFetch++;
       const start = chunkIdx * chunkSize;
       const end = Math.min(start + chunkSize - 1, totalLength - 1);
+      let attempt = 0;
 
-      try {
-        const resp = await fetch(targetUrl, {
-          headers: {
-            ...upstreamHeaders,
-            Range: `bytes=${start}-${end}`,
-          },
-        });
-        if (!resp.ok && resp.status !== 206) {
-          throw new Error(`Chunk ${chunkIdx} failed with HTTP ${resp.status}`);
-        }
-        const ab = await resp.arrayBuffer();
-        if (isAborted) return;
-        chunkBuffers.set(chunkIdx, Buffer.from(ab));
-        drainOrderedChunks();
-      } catch {
-        if (!isAborted) {
-          nextChunkToFetch = Math.min(nextChunkToFetch, chunkIdx);
-          await new Promise((r) => setTimeout(r, 200));
+      while (attempt < 3 && !isAborted) {
+        try {
+          const resp = await fetch(targetUrl, {
+            headers: {
+              ...upstreamHeaders,
+              Range: `bytes=${start}-${end}`,
+            },
+            signal: controller.signal,
+          });
+          if (!resp.ok && resp.status !== 206) {
+            throw new Error(`Chunk ${chunkIdx} failed with HTTP ${resp.status}`);
+          }
+          const ab = await resp.arrayBuffer();
+          if (ab.byteLength > MAX_CHUNK_BYTES) {
+            throw new Error(`Chunk ${chunkIdx} returned more than the allowed size.`);
+          }
+          if (isAborted) return;
+          chunkBuffers.set(chunkIdx, Buffer.from(ab));
+          await drainOrderedChunks();
+          break;
+        } catch (err: any) {
+          attempt += 1;
+          if (attempt >= 3 || isAborted) {
+            console.warn('[StreamDownload] Chunk', chunkIdx, 'gave up:', err?.message);
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 200 * attempt));
         }
       }
     }
   }
 
-  function drainOrderedChunks() {
+  async function drainOrderedChunks() {
     while (chunkBuffers.has(nextChunkToWrite)) {
       if (isAborted) return;
       const buf = chunkBuffers.get(nextChunkToWrite)!;
       chunkBuffers.delete(nextChunkToWrite);
-      res.write(buf);
       nextChunkToWrite++;
+      if (!res.write(buf)) {
+        // Respect backpressure so a slow client cannot make the server buffer
+        // the whole file in memory.
+        await new Promise<void>((resolve) => {
+          const done = () => {
+            res.off('drain', done);
+            res.off('close', done);
+            resolve();
+          };
+          res.once('drain', done);
+          res.once('close', done);
+        });
+      }
       if (nextChunkToWrite === totalChunks) {
         res.end();
       }
@@ -258,6 +315,20 @@ async function streamParallelChunks(
 
   const workers = Array.from({ length: concurrency }, () => fetchWorker());
   await Promise.all(workers);
+
+  if (!isAborted && nextChunkToWrite < totalChunks) {
+    console.warn(
+      '[StreamDownload] Chunk stream ended early:',
+      nextChunkToWrite,
+      'of',
+      totalChunks
+    );
+    if (!res.headersSent) {
+      res.status(502).json({ success: false, error: 'Upstream media stream ended early.' });
+    } else {
+      res.end();
+    }
+  }
 }
 
 async function streamDirectFallback(
@@ -279,12 +350,25 @@ async function streamDirectFallback(
       Accept: '*/*',
     };
 
+    // The host decides TeraBox behaviour. "source" is caller-controlled, so it
+    // must never decide where a secret cookie goes.
+    const targetHost = (() => {
+      try {
+        return new URL(targetUrl).hostname.toLowerCase();
+      } catch {
+        return '';
+      }
+    })();
     const isTeraBox =
-      targetUrl.includes('terabox') ||
-      targetUrl.includes('1024tera') ||
-      targetUrl.includes('baidupcs') ||
-      targetUrl.includes('nephobox') ||
-      source === 'terabox';
+      targetHost.includes('terabox') ||
+      targetHost.includes('1024tera') ||
+      targetHost.includes('baidupcs') ||
+      targetHost.includes('nephobox') ||
+      targetHost.includes('terashare');
+    const isBilibili =
+      targetHost.includes('bilibili') ||
+      targetHost.includes('b23.tv') ||
+      targetHost.includes('bilivideo');
 
     if (isInstagram) {
       upstreamHeaders['Referer'] = 'https://www.instagram.com/';
@@ -295,11 +379,16 @@ async function streamDirectFallback(
     } else if (isTeraBox) {
       upstreamHeaders['Referer'] = 'https://www.terabox.app/';
       upstreamHeaders['Origin'] = 'https://www.terabox.app';
-      if (process.env.TERABOX_COOKIE) {
+      // The cookie is a live account session. It goes to the TeraBox family
+      // only, never to whatever host the caller put in the url parameter.
+      if (process.env.TERABOX_COOKIE && isCookieAllowedHost(targetHost)) {
         upstreamHeaders['Cookie'] = process.env.TERABOX_COOKIE.includes('ndus=')
           ? process.env.TERABOX_COOKIE
           : `ndus=${process.env.TERABOX_COOKIE}`;
       }
+    } else if (isBilibili) {
+      // bilibili DASH CDN nodes 412 requests without a bilibili.com referer.
+      upstreamHeaders['Referer'] = 'https://www.bilibili.com/';
     }
 
     const mimeMap: Record<string, string> = {
@@ -324,8 +413,9 @@ async function streamDirectFallback(
 
       if (!upstreamResponse.ok && upstreamResponse.status !== 206) {
         if (!res.headersSent) {
-          res.writeHead(302, { Location: targetUrl });
-          res.end();
+          // A 302 to the caller's URL is an open redirect, and it reports an
+          // upstream failure as a successful navigation. Return the failure.
+          res.status(502).json({ success: false, error: 'Upstream media fetch failed.' });
         }
         return;
       }
@@ -344,8 +434,7 @@ async function streamDirectFallback(
       res.setHeader('Cache-Control', 'public, max-age=3600');
 
       if (upstreamResponse.body) {
-        // @ts-ignore
-        const nodeStream = Readable.fromWeb(upstreamResponse.body);
+        const nodeStream = toNodeReadable(upstreamResponse.body);
         safePipe(nodeStream, res);
       } else {
         res.end();
@@ -370,6 +459,9 @@ async function streamDirectFallback(
           if (parts[1]) totalLength = parseInt(parts[1], 10) || 0;
         }
       }
+      // The probe body is never read. Cancelling it releases the upstream
+      // socket instead of holding one open per request.
+      await probeRes.body?.cancel();
     } catch {}
 
     res.setHeader('Accept-Ranges', 'bytes');
@@ -398,8 +490,7 @@ async function streamDirectFallback(
 
     if (!upstreamResponse.ok && upstreamResponse.status !== 206) {
       if (!res.headersSent) {
-        res.writeHead(302, { Location: targetUrl });
-        res.end();
+        res.status(502).json({ success: false, error: 'Upstream media fetch failed.' });
       }
       return;
     }
@@ -408,23 +499,15 @@ async function streamDirectFallback(
     if (cl) res.setHeader('Content-Length', cl);
 
     if (upstreamResponse.body) {
-      // @ts-ignore
-      const nodeStream = Readable.fromWeb(upstreamResponse.body);
+      const nodeStream = toNodeReadable(upstreamResponse.body);
       safePipe(nodeStream, res);
     } else {
       res.end();
     }
   } catch (err: any) {
     console.error('[StreamDownload] Fallback proxy error:', err?.message);
-    try {
-      if (!res.headersSent) {
-        res.writeHead(302, { Location: targetUrl });
-        res.end();
-      }
-    } catch {
-      if (!res.headersSent) {
-        res.status(500).json({ success: false, error: 'Failed to stream video download' });
-      }
+    if (!res.headersSent) {
+      res.status(502).json({ success: false, error: 'Upstream media fetch failed.' });
     }
   }
 }
@@ -449,14 +532,32 @@ export default async function handler(req: any, res: any) {
   const targetUrl = (url as string || '').trim();
   const targetAudioUrl = ((audio_url || audioUrl) as string || '').trim();
 
-  if (!targetUrl || !targetUrl.startsWith('http')) {
+  if (!targetUrl) {
     res.status(400).json({ success: false, error: 'Invalid or missing url query parameter.' });
     return;
   }
 
-  const requestedExt = ((ext as string) || '').toLowerCase().replace(/^\./, '');
+  // The url parameter is caller-controlled and this handler fetches it. Vet it
+  // before anything reaches the network, so the endpoint cannot be used to
+  // reach loopback services or the cloud metadata address.
+  try {
+    await assertPublicHttpUrl(targetUrl);
+  } catch (err: any) {
+    res.status(400).json({ success: false, error: err?.message || 'Invalid url query parameter.' });
+    return;
+  }
+  if (targetAudioUrl) {
+    try {
+      await assertPublicHttpUrl(targetAudioUrl);
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err?.message || 'Invalid audio_url query parameter.' });
+      return;
+    }
+  }
+
+  const requestedExt = sanitizeExtension(ext as string);
   const cleanFilename = ((filename as string) || 'media')
-    .replace(/[^a-zA-Z0-9_\-\.]/g, '_')
+    .replace(/[^a-zA-Z0-9_.-]/g, '_')
     .trim() || 'media';
 
   const baseName = cleanFilename.replace(/\.(mp4|mp3|m4a|webm|mkv|jpg|jpeg|png|webp)$/i, '');
@@ -626,8 +727,7 @@ export default async function handler(req: any, res: any) {
           res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
           res.setHeader('Content-Type', 'video/mp4');
           res.setHeader('Cache-Control', 'public, max-age=3600');
-          // @ts-ignore
-          const nodeStream = Readable.fromWeb(remoteRes.body);
+          const nodeStream = toNodeReadable(remoteRes.body);
           safePipe(nodeStream, res);
           return;
         }

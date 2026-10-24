@@ -14,5 +14,4 @@ User-agent: *
 Allow: /
 Disallow: /admin
 
-# CHANGE ME: update the host after attaching your custom domain in Vercel.
-Sitemap: https://donghuastream.vercel.app/sitemap.xml
+Sitemap: https://teraplay.app/sitemap.xml

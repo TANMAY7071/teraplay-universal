@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 
 interface AdBannerSlotProps {
@@ -15,14 +15,44 @@ export const AdBannerSlot: React.FC<AdBannerSlotProps> = ({
   customHtml,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  // True once a publisher creative is actually in the slot. Until then the
+  // slot says so, rather than claiming an ad that is not there.
+  const [hasCreative, setHasCreative] = useState(false);
 
   useEffect(() => {
-    if (customHtml && containerRef.current) {
-      containerRef.current.innerHTML = '';
-      const range = document.createRange();
-      const fragment = range.createContextualFragment(customHtml);
-      containerRef.current.appendChild(fragment);
+    const container = containerRef.current;
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!customHtml || !customHtml.trim()) {
+      setHasCreative(false);
+      return;
     }
+
+    const range = document.createRange();
+    const fragment = range.createContextualFragment(customHtml);
+    container.appendChild(fragment);
+
+    // A fragment built from a string does not run its scripts. Every script
+    // element has to be re-created for the publisher tag to load.
+    const scripts = Array.from(container.querySelectorAll('script'));
+    scripts.forEach((oldScript) => {
+      const fresh = document.createElement('script');
+      for (const attr of Array.from(oldScript.attributes)) {
+        fresh.setAttribute(attr.name, attr.value);
+      }
+      fresh.text = oldScript.text;
+      oldScript.parentNode?.replaceChild(fresh, oldScript);
+    });
+
+    setHasCreative(scripts.length > 0 || container.children.length > 0);
+
+    // The injected creative carries publisher counters and queued state.
+    // Clear it when the slot changes or unmounts.
+    return () => {
+      container.innerHTML = '';
+    };
   }, [customHtml]);
 
   const getFormatClasses = () => {
@@ -48,9 +78,11 @@ export const AdBannerSlot: React.FC<AdBannerSlotProps> = ({
       <div className="flex items-center justify-between pb-2 px-1 text-[10px] uppercase tracking-wider text-slate-500 font-mono">
         <span className="flex items-center gap-1">
           <Sparkles className="w-3 h-3 text-[#e4f222]/50" />
-          Sponsored
+          {hasCreative ? 'Sponsored' : 'Ad Slot'}
         </span>
-        <span className="text-slate-600">Adsterra / Monetag Network</span>
+        <span className="text-slate-600">
+          {hasCreative ? 'Adsterra / Monetag Network' : 'No publisher tag configured'}
+        </span>
       </div>
 
       {/* Ad content container */}

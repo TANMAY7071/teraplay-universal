@@ -153,6 +153,8 @@ body::-webkit-scrollbar,
   --tp-text-dim: #bac5dc;
   --tp-accent: #e4f222;
   --tp-accent-ink: #0c0e13;
+  --tp-audio: #fbbf24;
+  --tp-audio-ink: #231502;
   --tp-tint: #0f1d44;
   --tp-glyph-light: #dbe6ff;
   --tp-glyph-dark: #3a6be0;
@@ -176,6 +178,8 @@ body::-webkit-scrollbar,
   --tp-text-dim: #384052;
   --tp-accent: #d8e50b;
   --tp-accent-ink: #0c0e13;
+  --tp-audio: #f59e0b;
+  --tp-audio-ink: #231502;
   --tp-tint: #e9f0fd;
   --tp-glyph-light: #204bb6;
   --tp-glyph-dark: #3a6be0;
@@ -639,6 +643,10 @@ body::-webkit-scrollbar,
   .tp-headline-line,
   .tp-hero-subheadline,
   .tp-tagline,
+  .tp-resolver-dock,
+  .tp-format-chips,
+  .tp-trust-sub,
+  .tp-guest-meta,
   .tp-player-card {
     animation: none !important;
     opacity: 1 !important;
@@ -716,13 +724,13 @@ body::-webkit-scrollbar,
 .tp-headline-white {
   color: #ffffff;
   text-shadow: 0 6px 36px rgba(6, 23, 74, 0.45);
-  animation-delay: 100ms;
+  animation-delay: 0ms;
 }
 
 .tp-headline-accent {
   color: #C6F432;
   text-shadow: 0 4px 30px rgba(198, 244, 50, 0.32), 0 8px 36px rgba(6, 23, 74, 0.45);
-  animation-delay: 200ms;
+  animation-delay: 120ms;
 }
 
 .tp-hero-subheadline {
@@ -736,7 +744,7 @@ body::-webkit-scrollbar,
   line-height: 1.38;
   padding: 0 16px;
   text-shadow: 0 2px 20px rgba(6, 23, 74, 0.5);
-  animation: tp-fade-in 0.4s var(--motion-ease-out) both 0.45s;
+  animation: tp-settle-in 0.3s var(--motion-ease-out) both 0.3s;
 }
 
 .tp-tagline {
@@ -749,7 +757,19 @@ body::-webkit-scrollbar,
   text-align: center;
   line-height: 1.25;
   text-shadow: 0 2px 20px rgba(6, 23, 74, 0.5);
-  animation: tp-fade-in 0.4s var(--motion-ease-out) both 0.55s;
+  animation: tp-settle-in 0.3s var(--motion-ease-out) both 0.46s;
+}
+
+/* Subordinate motion: short travel, no blur. The hero keeps one focal rise. */
+@keyframes tp-settle-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes tp-rise-in {
@@ -784,26 +804,43 @@ body::-webkit-scrollbar,
   margin: 36px auto 0;
   position: relative;
   z-index: 10;
-  animation: tp-fade-in 0.4s var(--motion-ease-out) both 0.65s;
+  animation: tp-settle-in 0.3s var(--motion-ease-out) both 0.4s;
 }
 
 .tp-input-card {
   position: relative;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.38);
-  box-shadow: 0 24px 60px -12px rgba(6, 23, 74, 0.28),
-              inset 0 1px 0 rgba(255, 255, 255, 0.45);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(16, 28, 64, 0.75) 0%, rgba(6, 12, 32, 0.88) 100%);
+  border: 1px solid rgba(169, 195, 243, 0.22);
+  border-top: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.7),
+              inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  transition: border-color var(--motion-duration-surface), box-shadow var(--motion-duration-surface), background-color var(--motion-duration-surface), scale var(--motion-duration-press) ease;
+  transition: border-color var(--motion-duration-surface), box-shadow var(--motion-duration-surface), background var(--motion-duration-surface), scale var(--motion-duration-press) ease;
 }
 
 .tp-input-card:focus-within {
+  border-color: rgba(169, 195, 243, 0.5);
+  border-top-color: rgba(255, 255, 255, 0.65);
+  background: linear-gradient(180deg, rgba(22, 38, 84, 0.82) 0%, rgba(8, 16, 42, 0.94) 100%);
+  box-shadow: 0 30px 80px -10px rgba(0, 0, 0, 0.8),
+              0 0 24px -4px rgba(38, 89, 217, 0.4),
+              inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+.tp-root[data-theme="light"] .tp-input-card {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow: 0 24px 60px -12px rgba(6, 23, 74, 0.28),
+              inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.tp-root[data-theme="light"] .tp-input-card:focus-within {
   border-color: rgba(255, 255, 255, 0.65);
   background: rgba(255, 255, 255, 0.2);
   box-shadow: 0 30px 80px -10px rgba(6, 23, 74, 0.35),
@@ -820,9 +857,10 @@ body::-webkit-scrollbar,
   flex: 1;
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  background: rgba(4, 9, 26, 0.75);
+  border: 1px solid rgba(169, 195, 243, 0.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   padding: 3px 6px 3px 12px;
   min-width: 0;
@@ -832,22 +870,25 @@ body::-webkit-scrollbar,
 }
 
 .tp-input-field-wrap:focus-within {
-  background: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  background: rgba(6, 12, 34, 0.92);
+  border-color: rgba(38, 89, 217, 0.7);
+  border-top-color: rgba(169, 195, 243, 0.6);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5),
+              0 0 0 1px rgba(38, 89, 217, 0.45),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 /* Light Theme: Maintain pure translucent glassmorphism, NEVER solid white */
 .tp-root[data-theme="light"] .tp-input-field-wrap {
   background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.38);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
 .tp-root[data-theme="light"] .tp-input-field-wrap:focus-within {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.23);
+  border-color: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .tp-url-input {
@@ -936,10 +977,11 @@ body::-webkit-scrollbar,
   max-height: 30px;
   padding: 0 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  color: #ffffff;
+  background: linear-gradient(180deg, rgba(38, 89, 217, 0.28) 0%, rgba(14, 25, 58, 0.58) 100%);
+  border: 1px solid rgba(169, 195, 243, 0.24);
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  color: #e2ebfd;
   font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -953,26 +995,29 @@ body::-webkit-scrollbar,
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  transition: background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, box-shadow var(--motion-duration-surface) ease, opacity var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  transition: background var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, box-shadow var(--motion-duration-surface) ease, opacity var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
 }
 
 .tp-btn-paste-inline:hover {
-  background: rgba(255, 255, 255, 0.28);
-  border-color: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  background: linear-gradient(180deg, rgba(38, 89, 217, 0.48) 0%, rgba(18, 35, 80, 0.78) 100%);
+  border-color: rgba(169, 195, 243, 0.45);
+  border-top-color: rgba(255, 255, 255, 0.55);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .tp-btn-paste-inline:active {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(38, 89, 217, 0.6);
   opacity: 0.85;
   scale: 0.98;
 }
 
 .tp-root[data-theme="light"] .tp-btn-paste-inline {
   background: rgba(255, 255, 255, 0.24);
-  border-color: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   color: #ffffff;
 }
 
@@ -1015,6 +1060,7 @@ body::-webkit-scrollbar,
   padding: 6px 4px 12px;
   margin-bottom: -4px;
   max-width: 100%;
+  animation: tp-fade-in 0.3s var(--motion-ease-out) both 0.5s;
 }
 
 .tp-format-chips::-webkit-scrollbar {
@@ -1026,41 +1072,104 @@ body::-webkit-scrollbar,
   white-space: nowrap;
 }
 
-.tp-chip {
+.tp-chip,
+.tp-root[data-theme="dark"] .tp-chip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 34px;
+  height: 35px;
   padding: 0 14px;
-  border-radius: 9px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
   font-family: var(--font-family-sans);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #ffffff;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+  background: linear-gradient(180deg, rgba(18, 32, 74, 0.65) 0%, rgba(7, 14, 36, 0.82) 100%);
+  border: 1px solid rgba(169, 195, 243, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.32);
+  color: #e2ebfd;
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.14),
+    0 3px 10px -2px rgba(0, 0, 0, 0.45),
+    0 1px 2px rgba(0, 0, 0, 0.25);
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
-  transition: background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, color var(--motion-duration-surface) ease, box-shadow var(--motion-duration-surface) ease, opacity var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
+  transition: background var(--motion-duration-surface) ease,
+              border-color var(--motion-duration-surface) ease,
+              color var(--motion-duration-surface) ease,
+              box-shadow var(--motion-duration-surface) ease,
+              opacity var(--motion-duration-surface) ease,
+              scale var(--motion-duration-press) ease;
   cursor: pointer;
 }
 
-.tp-chip:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.32);
+.tp-chip:hover,
+.tp-root[data-theme="dark"] .tp-chip:hover {
+  background: linear-gradient(180deg, rgba(28, 52, 116, 0.78) 0%, rgba(12, 22, 54, 0.9) 100%);
+  border-color: rgba(169, 195, 243, 0.4);
+  border-top-color: rgba(255, 255, 255, 0.58);
   color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
+    0 6px 18px -2px rgba(0, 0, 0, 0.6),
+    0 0 12px rgba(38, 89, 217, 0.25);
 }
 
+.tp-chip:active,
+.tp-root[data-theme="dark"] .tp-chip:active {
+  opacity: 0.92;
+  scale: 0.98;
+}
+
+/* Mouse clicks must not paint a UA focus box on top of the glass rings.
+   Keyboard users keep a real ring through :focus-visible. */
+.tp-chip:focus {
+  outline: none;
+}
+
+.tp-chip:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
+
+/* ACTIVE CHIP: APPLE DEEP COBALT GLASS (DARK MODE) */
+.tp-chip[data-active="true"],
+.tp-root[data-theme="dark"] .tp-chip[data-active="true"] {
+  background: linear-gradient(180deg, #2659d9 0%, #123bb0 100%);
+  border: 1px solid rgba(169, 195, 243, 0.55);
+  border-top: 1px solid rgba(255, 255, 255, 0.85);
+  color: #ffffff;
+  font-weight: 600;
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+    0 4px 18px -2px rgba(6, 23, 74, 0.7),
+    0 0 18px rgba(38, 89, 217, 0.45);
+}
+
+.tp-chip[data-active="true"]:hover,
+.tp-root[data-theme="dark"] .tp-chip[data-active="true"]:hover {
+  background: linear-gradient(180deg, #3065e8 0%, #1742be 100%);
+  border-top-color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+    0 6px 22px -2px rgba(6, 23, 74, 0.8),
+    0 0 22px rgba(38, 89, 217, 0.55);
+}
+
+/* Light Theme: Retain refined high-contrast Apple light mode */
 .tp-root[data-theme="light"] .tp-chip {
   background: rgba(255, 255, 255, 0.22);
   border: 1px solid rgba(255, 255, 255, 0.42);
   color: #ffffff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
 }
 
 .tp-root[data-theme="light"] .tp-chip:hover {
@@ -1069,33 +1178,14 @@ body::-webkit-scrollbar,
   color: #ffffff;
 }
 
-.tp-chip:active {
-  opacity: 0.85;
-}
-
-.tp-chip[data-active="true"] {
-  background: linear-gradient(180deg, #ffffff 0%, #e2eafc 100%);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-top-color: #ffffff;
-  color: #0c101c;
-  font-weight: 600;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-  box-shadow:
-    inset 0 1px 0 0 #ffffff,
-    inset 0 -1px 0 0 rgba(0, 0, 0, 0.15),
-    0 4px 12px -2px rgba(0, 0, 0, 0.4),
-    0 2px 4px -1px rgba(0, 0, 0, 0.2);
-}
-
 .tp-root[data-theme="light"] .tp-chip[data-active="true"] {
   background: linear-gradient(180deg, #182854 0%, #0c1538 100%);
   border: 1px solid rgba(255, 255, 255, 0.28);
   border-top-color: rgba(255, 255, 255, 0.55);
   color: #ffffff;
   font-weight: 600;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
   box-shadow:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.45),
     inset 0 -1px 0 0 rgba(0, 0, 0, 0.35),
@@ -1125,11 +1215,18 @@ body::-webkit-scrollbar,
   font-weight: 400;
   color: rgba(255, 255, 255, 0.78);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  animation: tp-fade-in 0.3s var(--motion-ease-out) both 0.58s;
 }
 
 .tp-root[data-theme="light"] .tp-trust-sub {
   color: #4b5568;
   text-shadow: none;
+}
+
+@media (max-width: 768px) {
+  .tp-trust-sub {
+    display: none !important;
+  }
 }
 
 .tp-trust-dot {
@@ -1139,7 +1236,7 @@ body::-webkit-scrollbar,
 
 /* Guest Plays Banner: Rigid geometry baseline prevents vertical layout shifts on auth/reset */
 .tp-guest-meta {
-  margin: 12px auto 0;
+  margin: 18px auto 0;
   display: flex;
   width: fit-content;
   max-width: 100%;
@@ -1156,6 +1253,7 @@ body::-webkit-scrollbar,
   color: rgba(255, 255, 255, 0.9);
   text-shadow: 0 1px 10px rgba(6, 23, 74, 0.4);
   transition: background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, color var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
+  animation: tp-fade-in 0.3s var(--motion-ease-out) both 0.64s;
 }
 
 .tp-root[data-theme="light"] .tp-guest-meta {
@@ -1173,24 +1271,27 @@ body::-webkit-scrollbar,
 }
 
 /* =========================================================================
-   RESOLVED PLAYER VIEWPORT (CLEAN ELEVATED CARD)
+   RESOLVED PLAYER VIEWPORT (HAIRLINE SHELL, NO CARD)
    ========================================================================= */
+/* The shell is the page, not a container sitting on the page: no fill, no
+   border, no radius, no shadow. Header, tab bar and action footer carry the
+   structure as single hairlines instead. */
 .tp-player-card {
   margin: 20px 0 60px;
-  border-radius: 16px;
+  border-radius: 0;
   overflow: hidden;
-  background: var(--tp-paper-card);
-  border: 1px solid var(--tp-border-card);
-  box-shadow: var(--tp-card-shadow);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   animation: tp-rise-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  transition: background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, box-shadow var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
+  transition: background-color var(--motion-duration-surface) ease;
 }
 
 .tp-player-header {
   padding: 16px 20px;
-  background: var(--tp-paper-elevated);
+  background: transparent;
   border-bottom: 1px solid var(--tp-border-subtle);
   display: flex;
   flex-wrap: wrap;
@@ -1228,17 +1329,20 @@ body::-webkit-scrollbar,
   display: none;
 }
 
+/* Mobile format rows follow the desktop table: hairline separators, no card. */
 .tp-mobile-format-card {
-  background: var(--tp-paper-card);
-  border: 1px solid var(--tp-border-card);
-  border-radius: 14px;
-  padding: 12px 14px;
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 14px 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  transition: border-color var(--motion-duration-surface) ease, background-color var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
+  transition: background-color var(--motion-duration-surface) ease;
+}
+
+.tp-mobile-format-card + .tp-mobile-format-card {
+  border-top: 1px solid var(--tp-border-subtle);
 }
 
 .tp-mobile-format-card:active {
@@ -1247,7 +1351,7 @@ body::-webkit-scrollbar,
 
 .tp-player-actions {
   padding: 14px 20px;
-  background: var(--tp-paper-elevated);
+  background: transparent;
   border-top: 1px solid var(--tp-border-subtle);
   display: flex;
   flex-wrap: wrap;
@@ -1265,6 +1369,48 @@ body::-webkit-scrollbar,
 
 .tp-btn-download:hover {
   box-shadow: 0 4px 16px rgba(228, 242, 34, 0.35);
+}
+
+/* The accent glow reads as a smudge on white paper, so light theme keeps a
+   tight neutral shadow instead. */
+.tp-root[data-theme="light"] .tp-btn-download,
+.tp-root[data-theme="light"] .tp-btn-download:hover {
+  box-shadow: 0 1px 2px rgba(12, 16, 28, 0.14);
+}
+
+/* Audio sits one step below the yellow primary in the dock. It drops the fill
+   entirely: ink-weight text with a chevron reads as a disclosure row, so the
+   panel keeps exactly one solid shape (the video CTA). The Music icon and the
+   "MP3" label carry the audio/video split, so amber never has to fight the
+   accent yellow for attention. */
+.tp-btn-download-audio {
+  background: var(--tp-accent);
+  color: var(--tp-accent-ink);
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(228, 242, 34, 0.22);
+}
+
+.tp-btn-download-audio:hover {
+  box-shadow: 0 4px 16px rgba(228, 242, 34, 0.35);
+}
+
+.tp-root[data-theme="light"] .tp-btn-download-audio,
+.tp-root[data-theme="light"] .tp-btn-download-audio:hover {
+  box-shadow: 0 1px 2px rgba(12, 16, 28, 0.14);
+}
+
+/* Icon-only controls do not need an outline to be found: they sit next to a
+   labelled action and disappear into the page at rest. */
+.tp-btn-ghost {
+  background: transparent;
+  border: 0;
+  color: var(--tp-muted);
+  font-weight: 500;
+}
+
+.tp-btn-ghost:hover {
+  background: var(--tp-paper-input);
+  color: var(--tp-ink);
 }
 
 .tp-btn-secondary {
@@ -1310,51 +1456,81 @@ body::-webkit-scrollbar,
   margin-top: 48px;
 }
 
+/* Borderless columns: hairline rules carry the structure, not card boxes. */
 .tp-feature-card {
-  background: var(--tp-paper-card);
-  border: 1px solid var(--tp-border-card);
-  border-radius: 12px;
-  padding: 32px 28px;
-  box-shadow: var(--tp-card-shadow);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  transition: transform var(--motion-duration-transform) cubic-bezier(0.2, 0.8, 0.2, 1), background-color var(--motion-duration-surface) ease, border-color var(--motion-duration-surface) ease, box-shadow var(--motion-duration-surface) ease, scale var(--motion-duration-press) ease;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transition: transform var(--motion-duration-transform) cubic-bezier(0.2, 0.8, 0.2, 1), scale var(--motion-duration-press) ease;
 }
 
 .tp-feature-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(38, 89, 217, 0.45);
-  box-shadow: 0 20px 45px -12px rgba(38, 89, 217, 0.25);
+  transform: translateY(-3px);
+}
+
+.tp-feature-idx {
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--tp-muted);
+  margin-bottom: 20px;
+}
+
+@media (min-width: 861px) {
+  .tp-feature-card + .tp-feature-card {
+    border-left: 1px solid var(--tp-border-subtle);
+    padding-left: clamp(24px, 3.5vw, 44px);
+  }
+}
+
+@media (max-width: 860px) {
+  .tp-feature-card + .tp-feature-card {
+    border-top: 1px solid var(--tp-border-subtle);
+    padding-top: 28px;
+  }
 }
 
 .tp-feature-mark {
-  width: 68px;
-  height: 68px;
-  margin-bottom: 24px;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 20px;
 }
 
-.tp-mark-g {
-  transform-origin: 34px 34px;
-  transition: transform var(--motion-duration-transform) var(--motion-spring), scale var(--motion-duration-press) ease;
+/* Lucide glyphs carry the feature meaning; blue reads on both dark and light paper. */
+.tp-mark-lucide {
+  color: var(--tp-mid);
+  transform-origin: center;
+  transition: transform var(--motion-duration-transform) var(--motion-spring), color var(--motion-duration-surface);
 }
 
-.tp-feature-card:hover .tp-mark[data-kind="arrow"] .tp-mark-g {
-  transform: translate(4px, -4px);
+.tp-feature-card:hover .tp-mark-lucide {
+  transform: translateY(-3px) scale(1.06);
+  color: var(--tp-accent);
 }
 
-.tp-feature-card:hover .tp-mark[data-kind="ring"] .tp-mark-g {
-  transform: rotate(180deg) scale(1.05);
-}
-
-.tp-feature-card:hover .tp-mark[data-kind="plus"] .tp-mark-g {
-  transform: rotate(90deg);
+/* Light paper loses the yellow accent for strokes, so keep the royal blue there. */
+.tp-root[data-theme="light"] .tp-feature-card:hover .tp-mark-lucide {
+  color: var(--tp-mid);
 }
 
 .tp-feature-title {
-  font-size: 19px;
+  font-size: 22px;
   font-weight: 600;
   color: var(--tp-ink);
-  letter-spacing: -0.015em;
+  letter-spacing: -0.022em;
+  line-height: 1.25;
+}
+
+/* Reserve two lines so body copy starts on one baseline across the columns. */
+@media (min-width: 861px) {
+  .tp-feature-title {
+    min-height: calc(2 * 1.25em);
+  }
 }
 
 .tp-feature-text {
@@ -1420,22 +1596,22 @@ body::-webkit-scrollbar,
    STATS BAND (DEEP NAVY / ROYAL BLUE ACCENT WITH FROSTED GLASS ELEVATION)
    ========================================================================= */
 .tp-stats-band {
-  margin: 50px 0;
-  border-radius: 16px;
-  padding: clamp(38px, 5.5vw, 60px) 30px;
-  background: radial-gradient(ellipse 70% 80% at 85% 50%, rgba(38, 89, 217, 0.35) 0%, transparent 100%),
-              linear-gradient(160deg, rgba(14, 25, 56, 0.9) 0%, rgba(9, 16, 38, 0.95) 100%);
-  border: 1px solid var(--tp-border-card);
-  box-shadow: var(--tp-card-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  color: #ffffff;
+  margin: 56px 0;
+  border-radius: 0;
+  padding: clamp(34px, 4.5vw, 48px) 0;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--tp-border-card);
+  border-bottom: 1px solid var(--tp-border-card);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--tp-ink);
 }
 
 .tp-root[data-theme="light"] .tp-stats-band {
-  background: radial-gradient(ellipse 70% 80% at 85% 50%, #2659d9 0%, transparent 100%),
-              linear-gradient(160deg, #06174a 0%, #152651 100%);
-  box-shadow: 0 24px 60px -15px rgba(6, 23, 74, 0.25);
+  background: none;
+  box-shadow: none;
 }
 
 /* =========================================================================
@@ -1445,15 +1621,15 @@ body::-webkit-scrollbar,
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 28px;
   text-align: left;
-  padding: clamp(24px, 4vw, 36px);
-  border-radius: 16px;
-  background: var(--tp-paper-elevated);
-  border: 1px solid var(--tp-border-card);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  box-shadow: var(--tp-card-shadow);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
   margin-bottom: 40px;
 }
 
@@ -1481,29 +1657,30 @@ body::-webkit-scrollbar,
 }
 
 .tp-seo-card-status h3 {
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--tp-ink);
-  margin-bottom: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tp-muted);
+  margin-bottom: 14px;
 }
 
 .tp-domain-pill {
-  padding: 8px 12px;
-  border-radius: 6px;
-  background: var(--tp-paper-input);
-  border: 1px solid var(--tp-border-subtle);
+  padding: 5px 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   color: var(--tp-text-dim);
   font-family: var(--font-family-mono);
-  font-size: 12px;
-  transition: border-color var(--motion-duration-surface), background-color var(--motion-duration-surface), scale var(--motion-duration-press) ease;
+  font-size: 12.5px;
+  transition: color var(--motion-duration-surface);
 }
 
 .tp-domain-pill:hover {
-  border-color: rgba(38, 89, 217, 0.4);
+  color: var(--tp-ink);
 }
 
 .tp-stats-grid {
@@ -1521,10 +1698,17 @@ body::-webkit-scrollbar,
   line-height: 1;
 }
 
+/* Yellow loses contrast on the light paper, so the numbers take the royal blue. */
+.tp-root[data-theme="light"] .tp-stat-val {
+  color: var(--tp-mid);
+}
+
 .tp-stat-lbl {
-  margin-top: 10px;
-  font-size: 13.5px;
-  color: #dbe6ff;
+  margin-top: 12px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tp-muted);
   font-weight: 500;
 }
 
@@ -1621,7 +1805,9 @@ body::-webkit-scrollbar,
 .tp-faq-item[data-open="true"] .tp-faq-inner p {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity var(--motion-duration-surface) ease-out 0.04s, transform var(--motion-duration-transform) cubic-bezier(0.16, 1, 0.3, 1) var(--motion-duration-surface), scale var(--motion-duration-press) ease;
+  /* The settle must overlap the box opening. Delaying it to 0.2s made the text
+     wait until grid-template-rows finished, so it dropped after the pause. */
+  transition: opacity var(--motion-duration-surface) ease-out 0.04s, transform var(--motion-duration-transform) cubic-bezier(0.16, 1, 0.3, 1) 0.04s, scale var(--motion-duration-press) ease;
 }
 
 /* =========================================================================

@@ -5,9 +5,11 @@ TeraPlay Universal Media & Creator Dock. A $0-budget web platform providing YouT
 
 ## Development & Test Commands
 - **Dev Server**: `npm run dev` (starts Vite dev server at `http://localhost:5173`)
-- **Production Build**: `npm run build` (runs TypeScript compiler and Vite production build)
-- **Automated Tests**: `node tests/universal-dock.test.mjs` (verifies YouTube URL normalization, TeraBox mirrors, direct streams, time formatting, and SubRip SRT generation)
-- **Linter**: `npx eslint src/pages/Index.tsx src/App.tsx src/lib/urlNormalizer.ts src/components/ads/AdBannerSlot.tsx`
+- **Typecheck**: `npm run typecheck` (runs `tsc` over `src/` via `tsconfig.app.json` and over `api/` via `tsconfig.api.json`)
+- **Production Build**: `npm run build` (runs the typecheck, then the Vite production build)
+- **Automated Tests**: `npm test` (runs `node tests/universal-dock.test.mjs`, verifying YouTube URL normalization, TeraBox mirrors, direct streams, time formatting, and SubRip SRT generation)
+- **Linter**: `npm run lint` (runs ESLint over the whole repo, skipping vendored and generated directories)
+- **Full Gate**: `npm run verify` (lint, typecheck, build, then tests)
 
 ## Core Codebase Conventions
 - **Client-First Execution**: Perform downloads and conversions in-browser whenever possible to avoid backend proxy bandwidth.
@@ -50,3 +52,17 @@ Domain terms stay. "Progressive muxed stream", "SubRip timestamp", and "yt-dlp e
 | Rules while drafting new copy | `anti-ai-slop-writing` |
 
 Pick one per pass. They disagree on structure and punctuation. `anti-slop` wins for edits because it protects voice, `deslop` wins when the user asks for a rewrite, `humanizer` wins when the user asks for a score or a report.
+
+## Skills Policy
+
+Skills are advisory. The conventions in this file win whenever a skill conflicts with them.
+
+- Default to the `ponytail` skill on every coding task: smallest change that fully solves it, standard library before custom code, no speculative abstraction. The user can override by naming another approach.
+- Name the skill you want. "use the code-reviewer skill on src/lib/urlNormalizer.ts" beats letting several match on their own, because overlapping skills disagree about file layout, naming, and error handling.
+- This is a client-first Vite SPA. Do not add server frameworks, ORMs, queues, Docker, or Kubernetes unless the task asks for them.
+- React here runs on React 18 with react-router 6. No Next.js, no App Router, no Server Components, no `use client`. The `react-expert` and `nextjs-developer` skills describe those patterns, so they do not apply.
+- TypeScript runs with `strict: false` and `noImplicitAny: false`. `no-explicit-any` is a warning because the resolver parses untyped yt-dlp, Simkl, and Trakt payloads. Do not rewrite `any` into generic chains unless the task asks for it.
+- `api/` is covered by `tsconfig.api.json`, so `npm run typecheck` reaches the Vercel functions.
+- Run `npm run verify` before committing.
+- If a diff touches more files than the task, the skill over-applied. Revert and retry with an explicit file list.
+- Aggressive rewrites in these files break working behavior, so leave them alone unless the task names them: `src/components/video/CustomVideoPlayer.tsx`, `src/pages/Index.tsx`, `api/resolve.ts`, `api/stream-download.ts`.

@@ -33,6 +33,16 @@ interface AuthContextType {
 
 const isMockMode = import.meta.env.DEV && (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes("placeholder-id"));
 
+// Mock sessions are dev-only sandbox state. Tokens are random per login so no
+// static credential string exists in source.
+const buildMockSession = (user: any) => ({
+  access_token: crypto.randomUUID(),
+  token_type: "bearer",
+  expires_in: 3600,
+  refresh_token: crypto.randomUUID(),
+  user,
+}) as any;
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -247,13 +257,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         preferences: {},
         created_at: new Date().toISOString(),
       };
-      const mockSession = {
-        access_token: "mock-token",
-        token_type: "bearer",
-        expires_in: 3600,
-        refresh_token: "mock-refresh",
-        user: mockUser,
-      } as any;
+      const mockSession = buildMockSession(mockUser);
       localStorage.setItem("donghua-mock-session", JSON.stringify({ session: mockSession, user: mockUser, profile: mockProfile }));
       setSession(mockSession);
       setUser(mockUser);
@@ -263,14 +267,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        throw error;
-      }
-    } catch (err: any) {
-      // Re-throw auth and network failures alike — no silent fallback session.
-      throw err;
+    // Auth and network failures propagate to the caller. No silent fallback session.
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      throw error;
     }
   };
 
@@ -303,13 +303,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       preferences: {},
       created_at: new Date().toISOString(),
     };
-    const mockSession = {
-      access_token: "mock-token",
-      token_type: "bearer",
-      expires_in: 3600,
-      refresh_token: "mock-refresh",
-      user: mockUser,
-    } as any;
+    const mockSession = buildMockSession(mockUser);
     localStorage.setItem("donghua-mock-session", JSON.stringify({ session: mockSession, user: mockUser, profile: mockProfile }));
     setSession(mockSession);
     setUser(mockUser);
@@ -340,13 +334,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         preferences: {},
         created_at: new Date().toISOString(),
       };
-      const mockSession = {
-        access_token: "mock-token",
-        token_type: "bearer",
-        expires_in: 3600,
-        refresh_token: "mock-refresh",
-        user: mockUser,
-      } as any;
+      const mockSession = buildMockSession(mockUser);
       localStorage.setItem("donghua-mock-session", JSON.stringify({ session: mockSession, user: mockUser, profile: mockProfile }));
       setSession(mockSession);
       setUser(mockUser);
@@ -394,13 +382,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       preferences: {},
       created_at: new Date().toISOString(),
     };
-    const mockSession = {
-      access_token: "mock-token",
-      token_type: "bearer",
-      expires_in: 3600,
-      refresh_token: "mock-refresh",
-      user: mockUser,
-    } as any;
+    const mockSession = buildMockSession(mockUser);
     localStorage.setItem("donghua-mock-session", JSON.stringify({ session: mockSession, user: mockUser, profile: mockProfile }));
     localStorage.removeItem("teraplay_guest_plays");
     setSession(mockSession);

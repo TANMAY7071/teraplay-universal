@@ -18,6 +18,7 @@ interface ResolveResponse {
   success: boolean;
   title?: string;
   thumbnail?: string;
+  text_content?: string;
   embed_url?: string;
   thumbnails?: Array<{
     url: string;
@@ -45,6 +46,7 @@ interface ResolveResponse {
     | 'dailymotion'
     | 'snapchat'
     | 'linkedin'
+    | 'twitch'
     | 'twitter'
     | 'vimeo'
     | 'universal';
@@ -99,6 +101,29 @@ interface CacheItem {
 }
 const MEDIA_CACHE = new Map<string, CacheItem>();
 const CACHE_TTL_MS = 2 * 60 * 1000;
+const MEDIA_CACHE_MAX_ENTRIES = 200;
+
+/**
+ * Store a resolve result.
+ *
+ * The key is the caller-supplied URL, so the map needs a size cap and
+ * expired-entry eviction. Without them a warm instance grows until the
+ * platform recycles it.
+ */
+function cacheSet(key: string, data: ResolveResponse): void {
+  const now = Date.now();
+  if (MEDIA_CACHE.size >= MEDIA_CACHE_MAX_ENTRIES) {
+    for (const [k, v] of MEDIA_CACHE) {
+      if (v.expiresAt <= now) MEDIA_CACHE.delete(k);
+    }
+    while (MEDIA_CACHE.size >= MEDIA_CACHE_MAX_ENTRIES) {
+      const oldest = MEDIA_CACHE.keys().next();
+      if (oldest.done) break;
+      MEDIA_CACHE.delete(oldest.value);
+    }
+  }
+  MEDIA_CACHE.set(key, { data, expiresAt: now + CACHE_TTL_MS });
+}
 
 function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
   return new Promise((resolve) => {
@@ -114,7 +139,7 @@ function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
     // 45s ceiling: the TeraBox path can spend 10s on the share page, 10s on
     // share/list, then retry the legacy gateway. A 20s kill returned no result
     // and the request fell through to the demo fallback.
-    execFile(pythonBin, [scriptPath, targetUrl], { timeout: 45000 }, (error, stdout, stderr) => {
+    execFile(pythonBin, [scriptPath, targetUrl], { timeout: 45000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (!stdout) {
         console.warn('[LocalExtractor] Exec notice:', error?.message || stderr);
         resolve(null);
@@ -141,11 +166,30 @@ function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
           return;
         }
 
+        if (parsed.success && parsed.text_content) {
+          // Document results (Wattpad stories): the text is delivered to the
+          // browser and turned into a file client-side, so no stream URL exists.
+          resolve({
+            success: true,
+            title: parsed.title,
+            thumbnail: parsed.thumbnail || '',
+            text_content: parsed.text_content,
+            size: parsed.size || 'Text',
+            duration: 0,
+            shareId: 'text',
+            serverTime: new Date().toISOString(),
+            source: parsed.source || 'wattpad_api',
+            platform: parsed.platform || 'wattpad',
+            is_mock: false,
+          });
+          return;
+        }
+
         if (parsed.success && (parsed.stream_url || parsed.download_url)) {
           const directMedia = parsed.stream_url || parsed.download_url;
-          const cleanTitle = (parsed.title || 'video').replace(/[^a-zA-Z0-9_\-]/g, '_');
-          // When the extractor already returns a proxied (relative) URL — e.g. the audio-mux
-          // player stream — use it as-is; nesting a relative path inside another proxy's
+          const cleanTitle = (parsed.title || 'video').replace(/[^a-zA-Z0-9_-]/g, '_');
+          // When the extractor already returns a proxied (relative) URL â€” e.g. the audio-mux
+          // player stream â€” use it as-is; nesting a relative path inside another proxy's
           // `url=` param would break server-side fetching.
           const downloadProxy = directMedia.startsWith('/api/')
             ? directMedia
@@ -157,7 +201,12 @@ function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
             const ytParam = ytId ? `&v=${encodeURIComponent(ytId)}` : '';
             return {
               ...f,
-              download_url: f.url
+              // The extractor can hand back an already-proxied link (TeraBox
+              // dlinks). Re-wrapping it nests one proxy inside another and the
+              // endpoint rejects the relative url.
+              download_url: f.download_url && f.download_url.startsWith('/api/stream-download')
+                ? f.download_url
+                : f.url
                 ? `/api/stream-download?url=${encodeURIComponent(f.url)}${f.audio_url ? `&audio_url=${encodeURIComponent(f.audio_url)}` : ''}&filename=${encodeURIComponent(fileSuffix)}&ext=${encodeURIComponent(f.ext || (f.is_audio_only ? 'mp3' : 'mp4'))}&source=${encodeURIComponent(parsed.source || '')}${ytParam}`
                 : f.download_url || '',
             };
@@ -229,14 +278,17 @@ async function runRemoteResolver(targetUrl: string): Promise<ResolveResponse | n
 
     if (parsed.success && (parsed.stream_url || parsed.download_url)) {
       const directMedia = parsed.stream_url || parsed.download_url;
-      const cleanTitle = (parsed.title || 'video').replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const cleanTitle = (parsed.title || 'video').replace(/[^a-zA-Z0-9_-]/g, '_');
       const downloadProxy = directMedia.startsWith('/api/')
         ? directMedia
         : `/api/stream-download?url=${encodeURIComponent(directMedia)}&filename=${encodeURIComponent(cleanTitle)}&source=${encodeURIComponent(parsed.source || '')}`;
 
       const mapFormat = (f: any) => ({
         ...f,
-        download_url: f.url
+        // Already-proxied links (TeraBox dlinks) pass through untouched.
+        download_url: f.download_url && f.download_url.startsWith('/api/stream-download')
+          ? f.download_url
+          : f.url
           ? `/api/stream-download?url=${encodeURIComponent(f.url)}${f.audio_url ? `&audio_url=${encodeURIComponent(f.audio_url)}` : ''}&filename=${encodeURIComponent(`${cleanTitle}_${f.format_id}`)}&ext=${encodeURIComponent(f.ext || (f.is_audio_only ? 'mp3' : 'mp4'))}&source=${encodeURIComponent(parsed.source || '')}`
           : f.download_url || '',
       });
@@ -354,7 +406,7 @@ async function extractTikTokDirect(targetUrl: string): Promise<ResolveResponse |
         url: imgUrl,
         width: 1080,
         height: 1920,
-        resolution: '1080 × 1920',
+        resolution: '1080 Ã— 1920',
         quality_label: `Slide ${idx + 1} of ${images.length} (HD Photo)`,
       }));
       const formats = images.map((imgUrl, idx) => ({
@@ -412,40 +464,65 @@ async function extractTikTokDirect(targetUrl: string): Promise<ResolveResponse |
       };
     }
 
-    const playUrl = data.play || data.hdplay;
+    const hdPlayUrl = data.hdplay;
+    const playUrl = data.play;
     const wmUrl = data.wmplay;
-    const primaryStream = playUrl || wmUrl;
+    const primaryStream = hdPlayUrl || playUrl || wmUrl;
     if (!primaryStream) return null;
 
-    const sizeBytes = Number(data.size || 0);
-    const sizeLabel = sizeBytes > 0 ? `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB` : 'HD Quality';
-    const cleanTitle = title.replace(/[^a-zA-Z0-9_\-]/g, '_');
-
-    const downloadProxy = `/api/stream-download?url=${encodeURIComponent(primaryStream)}&filename=${encodeURIComponent(cleanTitle)}&source=tiktok`;
-
+    const cleanTitle = title.replace(/[^a-zA-Z0-9_-]/g, '_');
     const formats = [];
-    if (playUrl) {
+
+    // 1. HD No Watermark (if provided by TikWM)
+    if (hdPlayUrl) {
+      const hdSizeBytes = Number(data.hd_size || data.size || 0);
+      const hdSizeLabel = hdSizeBytes > 0 ? `${(hdSizeBytes / (1024 * 1024)).toFixed(1)} MB` : '1080p HD';
       formats.push({
         format_id: 'hd_no_watermark',
-        quality: '1080p HD (No Watermark)',
+        quality: '1080p Full HD (No Watermark)',
         height: 1080,
         ext: 'mp4',
-        filesize: sizeLabel,
-        url: playUrl,
-        download_url: downloadProxy,
+        filesize: hdSizeLabel,
+        url: hdPlayUrl,
+        download_url: `/api/stream-download?url=${encodeURIComponent(hdPlayUrl)}&filename=${encodeURIComponent(`${cleanTitle}_1080p`)}&source=tiktok`,
         has_audio: true,
         has_video: true,
         is_audio_only: false,
         is_progressive: true,
       });
     }
-    if (wmUrl && wmUrl !== playUrl) {
+
+    // 2. Clean standard stream (No Watermark)
+    if (playUrl && playUrl !== hdPlayUrl) {
+      const sizeBytes = Number(data.size || 0);
+      const sizeLabel = sizeBytes > 0 ? `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB` : (hdPlayUrl ? '720p HD' : 'HD Quality');
+      const height = hdPlayUrl ? 720 : 1080;
+      const label = hdPlayUrl ? '720p HD (No Watermark)' : '1080p Full HD (No Watermark)';
+      formats.push({
+        format_id: hdPlayUrl ? 'sd_no_watermark' : 'hd_no_watermark',
+        quality: label,
+        height,
+        ext: 'mp4',
+        filesize: sizeLabel,
+        url: playUrl,
+        download_url: `/api/stream-download?url=${encodeURIComponent(playUrl)}&filename=${encodeURIComponent(cleanTitle)}&source=tiktok`,
+        has_audio: true,
+        has_video: true,
+        is_audio_only: false,
+        is_progressive: true,
+      });
+    }
+
+    // 3. Watermarked version (Official TikTok copy)
+    if (wmUrl && wmUrl !== playUrl && wmUrl !== hdPlayUrl) {
+      const wmSizeBytes = Number(data.wm_size || data.size || 0);
+      const wmSizeLabel = wmSizeBytes > 0 ? `${(wmSizeBytes / (1024 * 1024)).toFixed(1)} MB` : 'Original';
       formats.push({
         format_id: 'watermark',
         quality: 'Original (With Watermark)',
         height: 1080,
         ext: 'mp4',
-        filesize: sizeLabel,
+        filesize: wmSizeLabel,
         url: wmUrl,
         download_url: `/api/stream-download?url=${encodeURIComponent(wmUrl)}&filename=${encodeURIComponent(`${cleanTitle}_wm`)}&source=tiktok`,
         has_audio: true,
@@ -454,6 +531,10 @@ async function extractTikTokDirect(targetUrl: string): Promise<ResolveResponse |
         is_progressive: true,
       });
     }
+
+    const primaryFormat = formats[0];
+    const downloadProxy = primaryFormat?.download_url || `/api/stream-download?url=${encodeURIComponent(primaryStream)}&filename=${encodeURIComponent(cleanTitle)}&source=tiktok`;
+    const sizeLabel = primaryFormat?.filesize || (data.size ? `${(Number(data.size) / (1024 * 1024)).toFixed(1)} MB` : 'HD Quality');
 
     const audioFormats = [];
     if (data.music) {
@@ -484,7 +565,7 @@ async function extractTikTokDirect(targetUrl: string): Promise<ResolveResponse |
               url: cover,
               width: 1080,
               height: 1920,
-              resolution: '1080 × 1920',
+              resolution: '1080 Ã— 1920',
               quality_label: 'Cover Thumbnail',
             },
           ]
@@ -552,7 +633,7 @@ export default async function handler(req: any, res: any) {
   // 1. Remote Microservice: Check Render/Railway Python service if configured in production
   const remoteExtracted = await runRemoteResolver(queryTarget);
   if (remoteExtracted && remoteExtracted.success) {
-    MEDIA_CACHE.set(cacheKey, { data: remoteExtracted, expiresAt: Date.now() + CACHE_TTL_MS });
+    cacheSet(cacheKey, remoteExtracted);
     res.status(200).json(remoteExtracted);
     return;
   }
@@ -564,7 +645,7 @@ export default async function handler(req: any, res: any) {
   // 2. Local Fallback: Run local high-performance Python extractor (.venv yt-dlp + TeraBox gateway)
   const localExtracted = await runLocalExtractor(queryTarget);
   if (localExtracted && localExtracted.success) {
-    MEDIA_CACHE.set(cacheKey, { data: localExtracted, expiresAt: Date.now() + CACHE_TTL_MS });
+    cacheSet(cacheKey, localExtracted);
     res.status(200).json(localExtracted);
     return;
   }
@@ -590,7 +671,7 @@ export default async function handler(req: any, res: any) {
         is_mock: false,
       };
 
-      MEDIA_CACHE.set(cacheKey, { data: resolved, expiresAt: Date.now() + CACHE_TTL_MS });
+      cacheSet(cacheKey, resolved);
       res.status(200).json(resolved);
       return;
     }
@@ -600,7 +681,7 @@ export default async function handler(req: any, res: any) {
   if (cacheKey.includes('tiktok.com')) {
     const ttExtracted = await extractTikTokDirect(queryTarget);
     if (ttExtracted && ttExtracted.success) {
-      MEDIA_CACHE.set(cacheKey, { data: ttExtracted, expiresAt: Date.now() + CACHE_TTL_MS });
+      cacheSet(cacheKey, ttExtracted);
       res.status(200).json(ttExtracted);
       return;
     }
@@ -619,7 +700,7 @@ export default async function handler(req: any, res: any) {
   if (upstreamUrl) {
     try {
       // Canonicalize obscure/shortlink mirrors (terasharefile.com etc.) onto the
-      // canonical TeraBox domain before delegating — third-party parsers fail on
+      // canonical TeraBox domain before delegating â€” third-party parsers fail on
       // unknown hostnames. Rebuild the shorturl with its leading "1".
       const canonicalTarget = /^(https?:\/\/)?([\w-]+\.)*(terabox|1024tera|nephobox|terasharefile|teraboxlink|1024terabox|freeterabox|mirrobox|terashare)/i.test(queryTarget)
         ? `https://www.terabox.app/s/1${shareId}`
@@ -665,7 +746,7 @@ export default async function handler(req: any, res: any) {
         }
 
         if (directMedia) {
-          const cleanTitle = (title || `TeraBox_${shareId.substring(0, 8)}`).replace(/[^a-zA-Z0-9_\-]/g, '_');
+          const cleanTitle = (title || `TeraBox_${shareId.substring(0, 8)}`).replace(/[^a-zA-Z0-9_-]/g, '_');
           const proxiedStream = `/api/stream-download?url=${encodeURIComponent(directMedia)}&filename=${encodeURIComponent(cleanTitle)}&source=terabox`;
 
           const resolved: ResolveResponse = {
@@ -696,7 +777,7 @@ export default async function handler(req: any, res: any) {
             is_mock: false,
           };
 
-          MEDIA_CACHE.set(cacheKey, { data: resolved, expiresAt: Date.now() + CACHE_TTL_MS });
+          cacheSet(cacheKey, resolved);
           res.status(200).json(resolved);
           return;
         }
@@ -733,30 +814,13 @@ export default async function handler(req: any, res: any) {
   if (lower.includes('youtube.com') || lower.includes('youtu.be') || ytMatch) {
     detectedYtId = ytMatch ? ytMatch[1] : undefined;
     detectedPlatform = 'youtube';
-    title = detectedYtId === 'dQw4w9WgXcQ'
-      ? 'Rick Astley - Never Gonna Give You Up (Official Video)'
-      : (detectedYtId ? `YouTube Video [${detectedYtId}]` : 'YouTube Media Stream');
+    title = detectedYtId ? `YouTube Video [${detectedYtId}]` : 'YouTube Media Stream';
     thumbnail = detectedYtId ? `https://img.youtube.com/vi/${detectedYtId}/maxresdefault.jpg` : 'https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=1200&q=80';
     source = 'youtube_fast_cdn';
-    detectedTranscript = detectedYtId === 'dQw4w9WgXcQ' ? {
-      language: 'en',
-      items: [
-        { start: 1.36, duration: 1.68, text: "[Music]" },
-        { start: 18.64, duration: 3.24, text: "We're no strangers to love" },
-        { start: 22.64, duration: 4.32, text: "You know the rules and so do I" },
-        { start: 27.04, duration: 4.0, text: "A full commitment's what I'm thinking of" },
-        { start: 31.12, duration: 3.96, text: "You wouldn't get this from any other guy" },
-        { start: 35.16, duration: 4.36, text: "I just wanna tell you how I'm feeling" },
-        { start: 40.52, duration: 2.4, text: "Gotta make you understand" },
-        { start: 43.0, duration: 2.12, text: "Never gonna give you up" },
-        { start: 45.2, duration: 1.88, text: "Never gonna let you down" },
-        { start: 47.32, duration: 3.8, text: "Never gonna run around and desert you" },
-        { start: 51.48, duration: 2.0, text: "Never gonna make you cry" },
-        { start: 53.6, duration: 1.92, text: "Never gonna say goodbye" },
-        { start: 55.72, duration: 3.64, text: "Never gonna tell a lie and hurt you" }
-      ],
-      count: 13
-    } : null;
+    // A transcript is only attached when a real extractor produced one. The old
+    // code answered with lyrics for one hardcoded video id, which the client
+    // rendered as that video's subtitle track.
+    detectedTranscript = null;
   } else if (lower.includes('instagram.com') || lower.includes('instagr.am')) {
     detectedPlatform = 'instagram';
     title = `Instagram Reel - ${igShortcode || 'Video'} [Ultra HD]`;
@@ -815,119 +879,15 @@ export default async function handler(req: any, res: any) {
     title = 'Universal Media Stream';
   }
 
-  const rawSampleVideo = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
-  const downloadProxyUrl = `/api/stream-download?url=${encodeURIComponent(rawSampleVideo)}&filename=${encodeURIComponent(title.replace(/\s+/g, '_'))}`;
-
-  const mockFormats = [
-    {
-      format_id: '2160p',
-      quality: '4K Ultra HD (Audio + Video)',
-      height: 2160,
-      ext: 'mp4',
-      filesize: '145.8 MB',
-      url: rawSampleVideo,
-      audio_url: rawSampleVideo,
-      download_url: `${downloadProxyUrl}&audio_url=${encodeURIComponent(rawSampleVideo)}`,
-      has_audio: true,
-      has_video: true,
-      is_audio_only: false,
-      is_progressive: false,
-      can_mux: true,
-    },
-    {
-      format_id: '1440p',
-      quality: '1440p 2K QHD (Audio + Video)',
-      height: 1440,
-      ext: 'mp4',
-      filesize: '88.4 MB',
-      url: rawSampleVideo,
-      audio_url: rawSampleVideo,
-      download_url: `${downloadProxyUrl}&audio_url=${encodeURIComponent(rawSampleVideo)}`,
-      has_audio: true,
-      has_video: true,
-      is_audio_only: false,
-      is_progressive: false,
-      can_mux: true,
-    },
-    {
-      format_id: '1080p',
-      quality: '1080p Full HD (Audio + Video)',
-      height: 1080,
-      ext: 'mp4',
-      filesize: '45.2 MB',
-      url: rawSampleVideo,
-      audio_url: rawSampleVideo,
-      download_url: `${downloadProxyUrl}&audio_url=${encodeURIComponent(rawSampleVideo)}`,
-      has_audio: true,
-      has_video: true,
-      is_audio_only: false,
-      is_progressive: false,
-      can_mux: true,
-    },
-    {
-      format_id: '720p',
-      quality: '720p HD (Audio + Video)',
-      height: 720,
-      ext: 'mp4',
-      filesize: '28.1 MB',
-      url: rawSampleVideo,
-      download_url: downloadProxyUrl,
-      has_audio: true,
-      has_video: true,
-      is_audio_only: false,
-      is_progressive: true,
-    },
-    {
-      format_id: '480p',
-      quality: '480p SD (Audio + Video)',
-      height: 480,
-      ext: 'mp4',
-      filesize: '16.5 MB',
-      url: rawSampleVideo,
-      download_url: downloadProxyUrl,
-      has_audio: true,
-      has_video: true,
-      is_audio_only: false,
-      is_progressive: true,
-    },
-    {
-      format_id: 'mp3_320',
-      quality: '320 kbps (High Quality MP3)',
-      height: 0,
-      ext: 'mp3',
-      filesize: '8.1 MB',
-      url: rawSampleVideo,
-      download_url: downloadProxyUrl,
-      has_audio: true,
-      has_video: false,
-      is_audio_only: true,
-      is_progressive: false,
-    },
-  ];
-
-  const mockResponse: ResolveResponse = {
-    success: true,
-    title,
-    thumbnail,
-    thumbnails: [
-      { url: thumbnail, width: 1920, height: 1080, resolution: '1920 × 1080', quality_label: '1080p Full HD' },
-    ],
-    m3u8_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-    fast_download_url: downloadProxyUrl,
-    size: '348.2 MB',
-    duration: 634,
-    shareId,
-    serverTime: new Date().toISOString(),
-    source,
+  // No extractor produced a playable stream for this link. Return an honest
+  // failure. The old fallback answered with sample-video formats and a canned
+  // transcript and the client presented both as the real media.
+  res.status(404).json({
+    success: false,
+    error:
+      'No downloadable stream was found for this link. The host may require a signed-in session, or the share link may have expired.',
     platform: detectedPlatform,
-    youtube_id: detectedYtId,
-    transcript: detectedTranscript,
-    formats: mockFormats,
-    video_formats: mockFormats.filter(f => !f.is_audio_only),
-    audio_formats: mockFormats.filter(f => f.is_audio_only),
-    is_mock: true,
-  };
-
-  MEDIA_CACHE.set(cacheKey, { data: mockResponse, expiresAt: Date.now() + CACHE_TTL_MS });
-  res.status(200).json(mockResponse);
+    is_mock: false,
+  });
+  return;
 }

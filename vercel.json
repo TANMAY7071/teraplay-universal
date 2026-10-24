@@ -1,6 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
+  "functions": {
+    "api/resolve.ts": { "maxDuration": 60 },
+    "api/stream-download.ts": { "maxDuration": 60 },
+    "api/transcribe.ts": { "maxDuration": 60 },
+    "api/transcript.ts": { "maxDuration": 60 }
+  },
   "headers": [
     {
       "source": "/assets/(.*)",

@@ -19,6 +19,7 @@ const TermsPage = React.lazy(() => import("./pages/Terms"));
 const DisclaimerPage = React.lazy(() => import("./pages/Disclaimer"));
 const ContactPage = React.lazy(() => import("./pages/Contact"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
+const DocumentDownloaderPage = React.lazy(() => import("./pages/DocumentDownloader"));
 
 const LoadingFallback = () => (
   <div className="fixed inset-0 z-50 bg-[#06080F]/80 backdrop-blur-sm flex flex-col items-center justify-center p-4">
@@ -71,6 +72,7 @@ const App: React.FC = () => {
                       <Route path="/youtube-transcript-downloader" element={<Index />} />
                       <Route path="/youtube-thumbnail-downloader" element={<Index />} />
                       <Route path="/youtube-video-player" element={<Index />} />
+                      <Route path="/document-downloader" element={<DocumentDownloaderPage />} />
 
                       {/* Legal, Trust & Compliance Pages */}
                       <Route path="/dmca" element={<DmcaPage />} />

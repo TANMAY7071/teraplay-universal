@@ -2,6 +2,46 @@ import { execFile } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { mapGroqResponseToTranscript, FALLBACK_DEMO_TRANSCRIPT, type TranscriptData } from '../src/lib/transcription.ts';
+import { assertPublicHttpUrl } from './_guard.ts';
+
+/** Largest media file the endpoint will pull into memory. */
+const MAX_MEDIA_BYTES = 24 * 1024 * 1024;
+/** Largest request body the endpoint will accept. */
+const MAX_REQUEST_BYTES = 24 * 1024 * 1024;
+
+/**
+ * Read a response body while enforcing a byte budget. Returns null when the
+ * body is larger than the budget.
+ */
+async function readCapped(response: Response, maxBytes: number): Promise<Buffer | null> {
+  if (!response.body) return null;
+  const reader = response.body.getReader();
+  const chunks: Buffer[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks);
+}
+
+/** Decode a base64 audio payload, refusing anything over the budget. */
+function decodeAudioPayload(base64: string): Buffer | null {
+  const clean = base64.replace(/^data:[^;]+;base64,/, '');
+  // base64 expands to 3 bytes per 4 characters.
+  if (clean.length > Math.ceil((MAX_REQUEST_BYTES * 4) / 3)) return null;
+  return Buffer.from(clean, 'base64');
+}
 
 function extractYouTubeId(input: string): string | null {
   if (!input) return null;
@@ -96,7 +136,7 @@ function runLocalMediaInfoExtractor(targetUrl: string): Promise<any | null> {
     const scriptPath = path.resolve(process.cwd(), 'scripts', 'extractor.py');
     const pythonBin = fs.existsSync(venvPython) ? venvPython : fallbackPython;
 
-    execFile(pythonBin, [scriptPath, targetUrl], { timeout: 25000 }, (error, stdout) => {
+    execFile(pythonBin, [scriptPath, targetUrl], { timeout: 18000 }, (error, stdout) => {
       if (error || !stdout) {
         resolve(null);
         return;
@@ -288,15 +328,33 @@ export default async function handler(req: any, res: any) {
   } else if (typeof req.body === 'object' && req.body !== null) {
     body = req.body;
     if (typeof body.audio === 'string' && body.audio.trim()) {
-      const cleanB64 = body.audio.replace(/^data:[^;]+;base64,/, '');
-      directAudioBuffer = Buffer.from(cleanB64, 'base64');
+      const decoded = decodeAudioPayload(body.audio);
+      if (!decoded) {
+        res.status(413).json({
+          success: false,
+          code: 'PAYLOAD_TOO_LARGE',
+          error: 'The uploaded audio is larger than the limit.',
+          can_fallback_demo: true,
+        });
+        return;
+      }
+      directAudioBuffer = decoded;
     }
   } else if (typeof req.body === 'string' && req.body.trim()) {
     try {
       body = JSON.parse(req.body);
       if (typeof body.audio === 'string' && body.audio.trim()) {
-        const cleanB64 = body.audio.replace(/^data:[^;]+;base64,/, '');
-        directAudioBuffer = Buffer.from(cleanB64, 'base64');
+        const decoded = decodeAudioPayload(body.audio);
+        if (!decoded) {
+          res.status(413).json({
+            success: false,
+            code: 'PAYLOAD_TOO_LARGE',
+            error: 'The uploaded audio is larger than the limit.',
+            can_fallback_demo: true,
+          });
+          return;
+        }
+        directAudioBuffer = decoded;
       }
     } catch {}
   }
@@ -305,8 +363,20 @@ export default async function handler(req: any, res: any) {
   if (!directAudioBuffer && !req.body && req.method === 'POST' && typeof req.on === 'function') {
     try {
       const chunks: Buffer[] = [];
+      let received = 0;
       for await (const chunk of req) {
-        chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+        const buf = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
+        received += buf.length;
+        if (received > MAX_REQUEST_BYTES) {
+          res.status(413).json({
+            success: false,
+            code: 'PAYLOAD_TOO_LARGE',
+            error: 'The uploaded audio is larger than the limit.',
+            can_fallback_demo: true,
+          });
+          return;
+        }
+        chunks.push(buf);
       }
       if (chunks.length > 0) {
         const assembled = Buffer.concat(chunks);
@@ -315,8 +385,17 @@ export default async function handler(req: any, res: any) {
           try {
             body = JSON.parse(assembled.toString('utf8'));
             if (typeof body.audio === 'string' && body.audio.trim()) {
-              const cleanB64 = body.audio.replace(/^data:[^;]+;base64,/, '');
-              directAudioBuffer = Buffer.from(cleanB64, 'base64');
+              const decoded = decodeAudioPayload(body.audio);
+              if (!decoded) {
+                res.status(413).json({
+                  success: false,
+                  code: 'PAYLOAD_TOO_LARGE',
+                  error: 'The uploaded audio is larger than the limit.',
+                  can_fallback_demo: true,
+                });
+                return;
+              }
+              directAudioBuffer = decoded;
             }
           } catch {}
         } else {
@@ -401,7 +480,7 @@ export default async function handler(req: any, res: any) {
   // 5. Groq Whisper API Key Verification
   const apiKey = (process.env.GROQ_API_KEY || '').trim();
   if (!apiKey) {
-    res.status(200).json({
+    res.status(500).json({
       success: false,
       code: 'MISSING_API_KEY',
       error: 'GROQ_API_KEY is not configured in environment. Configure GROQ_API_KEY to enable Groq Whisper AI transcription.',
@@ -425,7 +504,7 @@ export default async function handler(req: any, res: any) {
       // Check if URL is already a direct media file
       if (!directMediaUrl && urlParam) {
         if (!/^https?:\/\//i.test(urlParam) && !/^[a-zA-Z0-9_-]{11}$/.test(urlParam)) {
-          res.status(200).json({
+          res.status(422).json({
             success: false,
             code: 'STREAM_RESOLVE_FAILED',
             error: 'Could not resolve a direct media stream from this link. Please ensure video is public or provide a direct media link.',
@@ -478,19 +557,35 @@ export default async function handler(req: any, res: any) {
         directMediaUrl = primaryTarget;
       }
 
-      // Resolve relative path to absolute URL
+      // Resolve a relative path against the configured public origin. The Host and
+      // X-Forwarded-Proto headers are caller-controlled, so deriving the origin
+      // from them turns this endpoint into an SSRF proxy.
       if (directMediaUrl.startsWith('/')) {
-        const host = req.headers?.host || 'localhost:5173';
-        const proto = req.headers?.['x-forwarded-proto'] || 'http';
-        directMediaUrl = `${proto}://${host}${directMediaUrl}`;
+        const publicOrigin = (process.env.PUBLIC_ORIGIN || 'https://teraplay.app').replace(/\/$/, '');
+        directMediaUrl = `${publicOrigin}${directMediaUrl}`;
       }
 
       // Check if target is a valid HTTP/HTTPS URL
       if (!/^https?:\/\//i.test(directMediaUrl)) {
-        res.status(200).json({
+        res.status(422).json({
           success: false,
           code: 'STREAM_RESOLVE_FAILED',
           error: 'Could not resolve a playable media stream from this link or identifier.',
+          can_fallback_demo: true,
+        });
+        return;
+      }
+
+      // The media URL is caller-controlled and this handler fetches it. Vet it
+      // before it reaches the network so the endpoint cannot reach loopback
+      // services or the cloud metadata address.
+      try {
+        await assertPublicHttpUrl(directMediaUrl);
+      } catch (err: any) {
+        res.status(400).json({
+          success: false,
+          code: 'INVALID_MEDIA_URL',
+          error: err?.message || 'The media URL is not allowed.',
           can_fallback_demo: true,
         });
         return;
@@ -504,7 +599,7 @@ export default async function handler(req: any, res: any) {
         !directMediaUrl.includes('fbcdn.net') &&
         !directMediaUrl.includes('googlevideo.com')
       ) {
-        res.status(200).json({
+        res.status(422).json({
           success: false,
           code: 'STREAM_RESOLVE_FAILED',
           error: 'Could not resolve a direct media stream from this link. Please ensure video is public or provide a direct media link.',
@@ -530,11 +625,11 @@ export default async function handler(req: any, res: any) {
 
       const mediaRes = await fetch(directMediaUrl, {
         headers: upstreamHeaders,
-        signal: AbortSignal.timeout(35000),
+        signal: AbortSignal.timeout(12000),
       });
 
       if (!mediaRes.ok && mediaRes.status !== 206) {
-        res.status(200).json({
+        res.status(502).json({
           success: false,
           code: 'MEDIA_FETCH_FAILED',
           error: `Could not fetch media stream (HTTP ${mediaRes.status}). Stream link may have expired or is protected.`,
@@ -549,11 +644,33 @@ export default async function handler(req: any, res: any) {
         mediaContentType.includes('text/plain') ||
         mediaContentType.includes('application/json');
 
-      const arrayBuffer = await mediaRes.arrayBuffer();
-      mediaBuffer = Buffer.from(arrayBuffer);
+      // Cap the download before it lands in the heap. The whole file was being
+      // buffered, so one large media URL could exhaust the instance.
+      const declaredLength = Number(mediaRes.headers.get('content-length') || 0);
+      if (declaredLength > MAX_MEDIA_BYTES) {
+        res.status(413).json({
+          success: false,
+          code: 'MEDIA_TOO_LARGE',
+          error: 'The media file is larger than the transcription limit.',
+          can_fallback_demo: true,
+        });
+        return;
+      }
+
+      const capped = await readCapped(mediaRes, MAX_MEDIA_BYTES);
+      if (!capped) {
+        res.status(413).json({
+          success: false,
+          code: 'MEDIA_TOO_LARGE',
+          error: 'The media file is larger than the transcription limit.',
+          can_fallback_demo: true,
+        });
+        return;
+      }
+      mediaBuffer = capped;
 
       if (mediaBuffer.length === 0) {
-        res.status(200).json({
+        res.status(422).json({
           success: false,
           code: 'EMPTY_MEDIA',
           error: 'Fetched media payload was empty.',
@@ -564,7 +681,7 @@ export default async function handler(req: any, res: any) {
 
       const isHtmlBody = /^\s*(?:<!doctype|<html|<head|<\?xml|<!--|\{)/i.test(mediaBuffer.subarray(0, 100).toString('utf8'));
       if (isHtmlResponse || isHtmlBody) {
-        res.status(200).json({
+        res.status(422).json({
           success: false,
           code: 'STREAM_RESOLVE_FAILED',
           error: 'Could not resolve a direct media stream from this link. Upstream server returned a webpage or error document instead of an audio/video stream.',
@@ -599,11 +716,11 @@ export default async function handler(req: any, res: any) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: formData,
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(25000),
     });
 
     if (groqResponse.status === 401) {
-      res.status(200).json({
+      res.status(500).json({
         success: false,
         code: 'INVALID_API_KEY',
         error: 'GROQ_API_KEY is invalid or expired. Please check your credentials in the Groq console.',
@@ -613,7 +730,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (groqResponse.status === 429) {
-      res.status(200).json({
+      res.status(429).json({
         success: false,
         code: 'RATE_LIMITED',
         error: 'Groq Whisper rate limit exceeded. Free tier limit reached (14,400 audio seconds/day).',
@@ -629,7 +746,7 @@ export default async function handler(req: any, res: any) {
         const parsed = JSON.parse(errText);
         if (parsed.error?.message) msg = parsed.error.message;
       } catch {}
-      res.status(200).json({
+      res.status(502).json({
         success: false,
         code: 'GROQ_API_ERROR',
         error: msg,
@@ -642,7 +759,7 @@ export default async function handler(req: any, res: any) {
     const transcript = mapGroqResponseToTranscript(groqJson);
 
     if (!transcript.items.length) {
-      res.status(200).json({
+      res.status(422).json({
         success: false,
         code: 'NO_SPEECH_DETECTED',
         error: 'No audible speech or transcript cues were detected in this media file.',
@@ -659,10 +776,12 @@ export default async function handler(req: any, res: any) {
     });
   } catch (err: any) {
     console.error('[TranscribeEndpoint] Error:', err);
-    res.status(200).json({
+    // The raw message can carry upstream hostnames, temp paths, or command
+    // lines. Log the detail, return a generic one.
+    res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      error: err?.message || 'Unexpected error while transcribing media stream.',
+      error: 'Transcription failed. Please retry.',
       can_fallback_demo: true,
     });
   }

@@ -92,3 +92,19 @@ Many of the hardest-won lessons from the Donghua platform became foundational pi
 ## 6. Safe Pruning Rationale
 Because TeraPlay Universal is focused strictly on user-driven URL media extraction (YouTube, TeraBox, TikTok, Instagram, Facebook), all anime-specific CMS pages, character cultivation databases, fandom scrapers, and admin panels are obsolete within this repository. 
 The user retains their separate backup of the Donghua code, enabling this repository to become 100% clean, light, and hyper-optimized.
+
+---
+
+## 7. Pruned: Dynamic Sitemap Generator (`api/sitemap.js`)
+
+Removed on 2026-10-22. What it did and why it went:
+
+- It read the anime table from Supabase and emitted one `<url>` per `slug`, plus a fixed list of static paths.
+- The `<url>` values it produced were `/anime/<slug>` entries. The router redirects `/anime/*` to `/`, so every one of those entries pointed at a redirect. Search engines would have followed them straight back to the homepage.
+- Its static path list (`/explore`, `/calendar`, `/search`, `/community`) had no matching route. Those paths fell through to the 404 catch-all.
+- It was never reachable in production. `vercel.json` rewrites `/((?!api/.*).*)` to `/index.html`, and `public/sitemap.xml` is copied into the build output, so the static file won at the filesystem stage and the function never ran.
+
+What replaced it: `public/sitemap.xml` is now the single source of truth, listing all fifteen live routes (ten landing pages plus DMCA, Privacy, Terms, Disclaimer, and Contact). If the site ever gains real per-anime pages, reintroduce a generator at that point and add a matching `/sitemap.xml` rewrite, because a static file in `public/` always shadows an API route.
+
+The Supabase connection details it depended on (`VITE_SUPABASE_URL` / `SUPABASE_ANON_KEY`, `SITE_URL`) are still used by the rest of the backend, so nothing else had to change.
+

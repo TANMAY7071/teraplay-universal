@@ -12,30 +12,43 @@ export interface SeoRouteConfig {
 export const SEO_ROUTES: Record<string, SeoRouteConfig> = {
   '/': {
     path: '/',
-    badge: 'Universal Media & Creator Dock',
-    h1: 'TeraBox Online Video Player & Fast Media Saver',
-    subheadline: 'Watch TeraBox in-browser & save what you love. Fast YouTube transcripts, 1080p thumbnails, watermark-free TikTok & Instagram Reels — zero apps or logins required.',
-    metaTitle: 'TeraBox Online Video Player & Fast Media Saver | Free No App',
-    metaDescription: 'Watch TeraBox in-browser with zero app install. Extract YouTube transcripts, download 1080p thumbnails, save TikTok without watermark, and grab Instagram Reels.',
-    keywords: ['terabox player', 'terabox online player', '1024terabox player', 'youtube transcript downloader', 'youtube thumbnail download', 'tiktok no watermark downloader', 'instagram reels downloader'],
+    badge: 'Universal Media & Creator Hub',
+    h1: 'Universal Online Video Player & Multi-Platform Media Saver',
+    subheadline: 'Watch, stream, and download videos across YouTube, TikTok, Instagram, TeraBox, Twitch, and 1,000+ sites. Save 4K MP4s, pull clean MP3 audio, and export timestamped subtitles with zero apps or accounts.',
+    metaTitle: 'Universal Online Video Player & Downloader | Free 4K & MP3',
+    metaDescription: 'Free online video player and multi-platform media downloader. Stream and save videos from YouTube, TikTok, Instagram, TeraBox, and Twitch in 4K MP4, MP3, and SRT.',
+    keywords: [
+      'universal video player',
+      'free video downloader',
+      'youtube transcript downloader',
+      'terabox online player',
+      'tiktok no watermark downloader',
+      'instagram reels saver',
+      'twitch clip downloader',
+      '4k video downloader',
+    ],
     faqs: [
       {
-        question: 'Do I need to install the TeraBox app or register an account?',
-        answer: 'No. Our browser player extracts and streams direct video files directly inside your browser without requiring the TeraBox app or account registration.'
+        question: 'Which video and social platforms does TeraPlay support?',
+        answer: 'TeraPlay supports video streaming and media downloads from YouTube, TikTok, Instagram, TeraBox, Twitch, Snapchat, LinkedIn, Facebook, Vimeo, Bilibili, Dailymotion, and X (Twitter). Our universal extractor engine also handles direct MP4, M3U8 HLS streams, and over 1,000 video hosts across the web.',
       },
       {
-        question: 'Which TeraBox mirror domains are supported?',
-        answer: 'We support all 17+ TeraBox mirrors, including terabox.com, terabox.app, 1024tera.com, 1024terabox.com, nephobox.com, freeterabox.com, mirrobox.com, and 4funbox.com.'
+        question: 'How do I download or stream videos without watermarks?',
+        answer: 'Paste your link into the search box and select Launch & Analyze. TeraPlay fetches the original source file directly, allowing you to download clean MP4 video without platform watermarks or app overlays.',
       },
       {
-        question: 'Can I download the video directly to my phone or PC as an MP4 file?',
-        answer: 'Yes! After pasting your link, click the "Fast Download MP4" button to download the original video file at full network bandwidth.'
+        question: 'Can I extract audio-only MP3s and timestamped subtitles?',
+        answer: 'Yes. TeraPlay can extract high-bitrate MP3 audio tracks and pull accurate subtitles in SubRip (.SRT) format or clean (.TXT) transcripts for YouTube and supported video platforms.',
       },
       {
-        question: 'Is it completely free to use?',
-        answer: 'Yes. First-time visitors get free instant guest streaming. Registered members unlock unlimited free daily streams.'
-      }
-    ]
+        question: 'What video resolutions and qualities are supported?',
+        answer: 'We deliver video files at maximum source resolution, from 720p and 1080p Full HD up to 4K Ultra HD where provided by the creator. YouTube thumbnail cover art is exported in full uncompressed 1080p.',
+      },
+      {
+        question: 'Is TeraPlay 100% free with no account required?',
+        answer: 'Yes. TeraPlay is completely free to use directly in your browser. There are no registration forms, no subscription fees, no software installations, and no daily download limits.',
+      },
+    ],
   },
   '/terabox-online-player': {
     path: '/terabox-online-player',
@@ -184,5 +197,14 @@ export const SEO_ROUTES: Record<string, SeoRouteConfig> = {
 
 export function getSeoConfigForPath(pathname: string): SeoRouteConfig {
   const normalized = pathname.toLowerCase().replace(/\/$/, '') || '/';
-  return SEO_ROUTES[normalized] || SEO_ROUTES['/'];
+  const config = SEO_ROUTES[normalized];
+  if (!config) {
+    // A route without an entry silently publishes the homepage metadata. Say
+    // so during development instead of shipping a duplicate landing page.
+    if (import.meta.env.DEV) {
+      console.warn(`[seo] no SEO_ROUTES entry for "${normalized}", falling back to the homepage config.`);
+    }
+    return SEO_ROUTES['/'];
+  }
+  return config;
 }

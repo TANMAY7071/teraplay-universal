@@ -8,11 +8,14 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.api.json --noEmit",
+    "typecheck:api": "tsc -p tsconfig.api.json --noEmit",
+    "build": "npm run typecheck && vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node tests/universal-dock.test.mjs"
+    "test": "node tests/universal-dock.test.mjs",
+    "verify": "npm run lint && npm run build && npm test"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

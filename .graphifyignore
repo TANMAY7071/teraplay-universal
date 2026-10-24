@@ -1,0 +1,27 @@
+# graphify corpus exclusions: installed agent tooling and static assets,
+# so the knowledge graph stays about the product code and project docs.
+.agents/
+.claude/
+.clinerules
+.codex/
+.cook/
+.impeccable/
+.zcode/
+.vscode/
+opencode-skills/
+.github/skills/
+*.svg
+.planning/graphs/
+scratch/
+tmp_media/
+test-results/
+dist/
+node_modules/
+
+# Decorative site binaries add nothing to a code/doc graph.
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.ico
+*.gif

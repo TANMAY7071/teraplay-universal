@@ -332,37 +332,12 @@ All colors MUST be HSL.
       animation: slide-in-bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    .animate-danmaku-move {
-      animation: danmaku-slide 7s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-    }
-
     .animate-shimmer {
       animation: shimmer 1.5s infinite;
     }
 
     .animate-kenburns {
       animation: kenburns 25s ease-in-out infinite alternate;
-    }
-  }
-
-  /* Danmaku keeps its row but stops travelling. */
-  @media (prefers-reduced-motion: reduce) {
-    .animate-danmaku-move {
-      animation: none;
-      left: 8px !important;
-      right: auto !important;
-    }
-  }
-
-  @keyframes danmaku-slide {
-    0% {
-      left: 100%;
-      transform: translate3d(0, 0, 0);
-    }
-
-    100% {
-      left: 0%;
-      transform: translate3d(-100%, 0, 0);
     }
   }
 

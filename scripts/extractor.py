@@ -7,11 +7,51 @@ Resolves real video streams from Instagram, YouTube, Facebook, TeraBox, and univ
 import sys
 import os
 import ssl
+import io
 import json
 import re
 import shutil
+import socket
+import ipaddress
+import zipfile
 import urllib.parse
 import urllib.request
+import urllib.error
+from html import unescape as html_unescape
+
+def _assert_public_http_url(url, allowed_hosts=None):
+    """SSRF guard: http/https only, optionally host-allowlisted, and every
+    resolved IP must be public (blocks loopback, private, link-local, and
+    cloud-metadata ranges)."""
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme not in ('http', 'https'):
+        raise ValueError(f'Only http(s) URLs are supported, got {parsed.scheme or "none"}')
+    host = (parsed.hostname or '').lower()
+    if not host:
+        raise ValueError('URL has no hostname')
+    if allowed_hosts:
+        if not any(host == h or host.endswith('.' + h) for h in allowed_hosts):
+            raise ValueError(f'Unsupported host: {host}')
+    port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+    for _, _, _, _, sockaddr in socket.getaddrinfo(host, port):
+        ip = ipaddress.ip_address(sockaddr[0])
+        if not ip.is_global:
+            raise ValueError(f'Blocked non-public address for {host}: {ip}')
+    return host
+
+def _safe_open(url, headers, timeout=20, allowed_hosts=None):
+    """urlopen with SSRF validation applied to the initial URL and every
+    redirect target."""
+    _assert_public_http_url(url, allowed_hosts)
+
+    class _GuardedRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers_, newurl):
+            _assert_public_http_url(newurl, allowed_hosts)
+            return super().redirect_request(req, fp, code, msg, headers_, newurl)
+
+    opener = urllib.request.build_opener(_GuardedRedirect)
+    req = urllib.request.Request(url, headers=headers)
+    return opener.open(req, timeout=timeout)
 
 try:
     import certifi
@@ -136,6 +176,10 @@ def resolve_terabox_dm_link(url, share_id):
         "shareId": share_id,
         "platform": "terabox",
         "source": "terabox_dm_dlink",
+        # Playback runs in TeraBox's own embed player. The dlink above is for
+        # downloads only: dm-d.terabox.app throttles wide range requests, so a
+        # <video> pointed at the proxied dlink stalls at readyState 0.
+        "embed_url": f"https://www.1024tera.com/sharing/embed?surl={surl}",
         "formats": [
             {
                 "format_id": "terabox_hd",
@@ -758,38 +802,64 @@ def resolve_tiktok_media(url):
                     "is_mock": False
                 }
 
-            no_watermark_url = data.get('play') or data.get('hdplay')
+            hd_play_url = data.get('hdplay')
+            play_url = data.get('play')
             watermark_url = data.get('wmplay')
             music_url = data.get('music')
-            primary_stream = no_watermark_url or watermark_url
+            primary_stream = hd_play_url or play_url or watermark_url
             if not primary_stream:
                 return None
 
-            size_bytes = int(data.get('size') or 0)
-            size_label = format_size(size_bytes)
-
             formats = []
-            if no_watermark_url:
+
+            # 1. HD No Watermark (if provided by TikWM)
+            if hd_play_url:
+                hd_size_bytes = int(data.get('hd_size') or data.get('size') or 0)
+                hd_size_label = format_size(hd_size_bytes) if hd_size_bytes > 0 else "1080p HD"
                 formats.append({
                     "format_id": "hd_no_watermark",
-                    "quality": "1080p HD (No Watermark)",
+                    "quality": "1080p Full HD (No Watermark)",
                     "height": 1080,
                     "ext": "mp4",
-                    "filesize": size_label,
-                    "url": no_watermark_url,
-                    "download_url": no_watermark_url,
+                    "filesize": hd_size_label,
+                    "url": hd_play_url,
+                    "download_url": hd_play_url,
                     "has_audio": True,
                     "has_video": True,
                     "is_audio_only": False,
                     "is_progressive": True
                 })
-            if watermark_url and watermark_url != no_watermark_url:
+
+            # 2. Standard play URL (No Watermark)
+            if play_url and play_url != hd_play_url:
+                size_bytes = int(data.get('size') or 0)
+                size_label = format_size(size_bytes) if size_bytes > 0 else ("720p HD" if hd_play_url else "HD Quality")
+                height = 720 if hd_play_url else 1080
+                label = "720p HD (No Watermark)" if hd_play_url else "1080p Full HD (No Watermark)"
+                formats.append({
+                    "format_id": "sd_no_watermark" if hd_play_url else "hd_no_watermark",
+                    "quality": label,
+                    "height": height,
+                    "ext": "mp4",
+                    "filesize": size_label,
+                    "url": play_url,
+                    "download_url": play_url,
+                    "has_audio": True,
+                    "has_video": True,
+                    "is_audio_only": False,
+                    "is_progressive": True
+                })
+
+            # 3. Watermarked version (Official TikTok copy)
+            if watermark_url and watermark_url != play_url and watermark_url != hd_play_url:
+                wm_size_bytes = int(data.get('wm_size') or data.get('size') or 0)
+                wm_size_label = format_size(wm_size_bytes) if wm_size_bytes > 0 else "Original"
                 formats.append({
                     "format_id": "watermark",
                     "quality": "Original (With Watermark)",
                     "height": 1080,
                     "ext": "mp4",
-                    "filesize": size_label,
+                    "filesize": wm_size_label,
                     "url": watermark_url,
                     "download_url": watermark_url,
                     "has_audio": True,
@@ -797,6 +867,8 @@ def resolve_tiktok_media(url):
                     "is_audio_only": False,
                     "is_progressive": True
                 })
+
+            size_label = formats[0]["filesize"] if formats else format_size(int(data.get('size') or 0))
 
             audio_formats = []
             if music_url:
@@ -848,11 +920,223 @@ def resolve_tiktok_media(url):
     except Exception:
         return None
 
+def resolve_bilibili_media(url):
+    """Cobalt-style Bilibili resolver (from cobalt api/.../services/bilibili.py).
+
+    yt-dlp parses window.__INITIAL_STATE__ from the page HTML, but bilibili's
+    overseas CDN edge serves those requests a 2KB stub. The server-rendered
+    <script>window.__playinfo__= payload survives that (cobalt's facebookexternalhit
+    UA trick), so parse it directly. bilibili.tv links skip the page entirely
+    via the public intl gateway API.
+    """
+    clean = url.strip()
+    lower = clean.lower()
+
+    try:
+        if 'b23.tv' in lower:
+            # Short link: read the Location header without following it, then
+            # treat the target like any other .com link.
+            class NoRedirect(urllib.request.HTTPRedirectHandler):
+                def redirect_request(self, req, fp, code, msg, headers, newurl):
+                    return None
+            opener = urllib.request.build_opener(NoRedirect)
+            req = urllib.request.Request(clean, headers={'User-Agent': 'Mozilla/5.0'})
+            try:
+                opener.open(req, timeout=10)
+            except urllib.error.HTTPError as e:
+                location = (e.headers.get('Location') or '') if e.headers else ''
+                if location:
+                    clean = urllib.parse.urljoin(clean, location)
+                    lower = clean.lower()
+                else:
+                    return None
+            else:
+                return None
+
+        tv_match = re.search(r'bilibili\.tv/[^/]+/video/(\d+)', clean)
+        com_match = re.search(r'bilibili\.(?:com|net)/(?:video/)?(BV[0-9A-Za-z]+|\d+)', clean)
+        part_match = re.search(r'[?&]p=(\d+)', clean)
+        if not tv_match and not com_match:
+            return None
+
+        if tv_match:
+            # Intl gateway: reachable from regions where bilibili.com WAF 412s.
+            # Returns up to 480p DASH (qn=64) with no auth, avc1 only per cobalt.
+            aid = tv_match.group(1)
+            endpoint = (
+                'https://api.bilibili.tv/intl/gateway/web/playurl'
+                '?s_locale=en_US&platform=web&qn=64&type=0&device=wap'
+                f'&tf=0&spm_id=bstar-web.ugc-video-detail.0.0&from_spm_id=&aid={aid}'
+            )
+            req = urllib.request.Request(endpoint, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+            })
+            with urllib.request.urlopen(req, timeout=12) as res:
+                payload = json.loads(res.read().decode('utf-8'))
+            playurl = ((payload.get('data') or {}).get('playurl') or {})
+            raw_video = [v.get('video_resource') for v in (playurl.get('video') or []) if v.get('video_resource')]
+            video_tracks = [v for v in raw_video if 'avc1' in str(v.get('codecs') or '')]
+            audio_tracks = list(playurl.get('audio_resource') or [])
+            duration = int(next((int(v.get('duration') or 0) for v in video_tracks if v.get('duration')), 0))
+            title = f"Bilibili TV Video [{aid}]"
+            cover = ''
+            source = 'bilibili_tv_gateway'
+        else:
+            vid = com_match.group(1)
+            page_url = f"https://www.bilibili.com/video/{vid}"
+            if part_match:
+                page_url += f"?p={part_match.group(1)}"
+            req = urllib.request.Request(page_url, headers={
+                'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+                'Accept': 'text/html,application/xhtml+xml',
+            })
+            with urllib.request.urlopen(req, timeout=12) as res:
+                html = res.read().decode('utf-8', 'ignore')
+            if '<script>window.__playinfo__=' not in html or '"video_codecid"' not in html:
+                return None
+            play_m = re.search(r'<script>window.__playinfo__=(\{.*?\})</script>', html)
+            if not play_m:
+                return None
+            play = json.loads(play_m.group(1))
+            dash = (play.get('data') or {}).get('dash') or {}
+            video_tracks = list(dash.get('video') or [])
+            audio_tracks = list(dash.get('audio') or [])
+            duration = int(((play.get('data') or {}).get('timelength') or 0)) // 1000
+            title_m = re.search(r'og:title"\s+content="([^"]+)"', html) or re.search(r'<title[^>]*>([^<]+)</title>', html)
+            title = (title_m.group(1).strip() if title_m else '') or f"Bilibili Video [{vid}]"
+            cover_m = re.search(r'og:image"\s+content="([^"]+)"', html)
+            cover = cover_m.group(1) if cover_m else ''
+            source = 'bilibili_playinfo_engine'
+
+        def best_track(tracks):
+            usable = [t for t in tracks if t.get('url') or t.get('baseUrl')]
+            if not usable:
+                return None
+            return max(usable, key=lambda t: t.get('bandwidth') or (t.get('width', 0) * t.get('height', 0)))
+
+        def track_url(t):
+            return (t.get('url') or t.get('baseUrl') or '') if t else ''
+
+        best_video = best_track(video_tracks)
+        best_audio = best_track(audio_tracks)
+        best_audio_url = track_url(best_audio)
+        if not best_video or not best_audio_url:
+            return None
+
+        def quality_label(h):
+            if h >= 2160:
+                return "2160p (4K)"
+            if h >= 1080:
+                return "1080p Full HD"
+            if h >= 720:
+                return "720p HD"
+            if h >= 480:
+                return "480p SD"
+            return f"{h}p" if h else "Default"
+
+        clean_title = re.sub(r'[^a-zA-Z0-9_-]', '_', title).strip('_') or 'bilibili_video'
+        enc_a = urllib.parse.quote(best_audio_url)
+
+        # DASH tracks are video-only + audio-only. Pair every video tier with
+        # the master audio through the mux proxy, like the universal path.
+        seen_heights = set()
+        video_formats = []
+        for t in sorted(video_tracks, key=lambda t: t.get('height') or 0, reverse=True):
+            v_url = track_url(t)
+            h = int(t.get('height') or 0)
+            if not v_url or h in seen_heights:
+                continue
+            seen_heights.add(h)
+            enc_v = urllib.parse.quote(v_url)
+            bandwidth = int(t.get('bandwidth') or 0)
+            est_bytes = int(bandwidth / 8 * duration) if (bandwidth and duration) else 0
+            video_formats.append({
+                "format_id": str(t.get('id') or f"bili_{h}"),
+                "quality": f"{quality_label(h)} (Audio + Video)",
+                "height": h,
+                "ext": "mp4",
+                "filesize": format_size(est_bytes),
+                "url": v_url,
+                "download_url": f"/api/stream-download?url={enc_v}&audio_url={enc_a}&filename={clean_title}_{h}p&ext=mp4",
+                "audio_url": best_audio_url,
+                "has_audio": True,
+                "has_video": True,
+                "is_audio_only": False,
+                "is_progressive": False,
+                "can_mux": True,
+            })
+
+        mp3_tiers = [
+            (320, "320 kbps (High Quality)"),
+            (256, "256 kbps (Standard)"),
+            (192, "192 kbps (Medium)"),
+            (128, "128 kbps (Fast & Compact)"),
+        ]
+        audio_formats = []
+        for abr, q_label in mp3_tiers:
+            est_bytes = int((abr * 1000 / 8) * duration) if duration else 0
+            audio_formats.append({
+                "format_id": f"mp3_{abr}",
+                "quality": q_label,
+                "height": 0,
+                "ext": "mp3",
+                "filesize": format_size(est_bytes) if est_bytes else f"{abr} kbps",
+                "url": best_audio_url,
+                "download_url": f"/api/stream-download?url={enc_a}&filename={clean_title}_{abr}kbps&ext=mp3",
+                "has_audio": True,
+                "has_video": False,
+                "is_audio_only": True,
+                "is_progressive": False,
+            })
+
+        best_v_url = track_url(best_video)
+        enc_v = urllib.parse.quote(best_v_url)
+        stream_url = f"/api/stream-download?url={enc_v}&audio_url={enc_a}&filename=player_{clean_title[:48]}&ext=mp4"
+
+        best_w = int(best_video.get('width') or 0)
+        best_h = int(best_video.get('height') or 0)
+        thumbnails = [{
+            "url": cover,
+            "width": best_w or 1280,
+            "height": best_h or 720,
+            "resolution": f"{best_w or 1280} × {best_h or 720}",
+            "quality_label": "Cover Thumbnail",
+        }] if cover else []
+
+        return {
+            "success": True,
+            "title": title,
+            "thumbnail": cover,
+            "thumbnails": thumbnails,
+            "stream_url": stream_url,
+            "download_url": stream_url,
+            "size": format_size(int(best_video.get('bandwidth') or 0) // 8 * duration) if duration else "Direct Stream",
+            "duration": duration,
+            "shareId": (tv_match or com_match).group(1),
+            "source": source,
+            "platform": "bilibili",
+            "media_type": "video",
+            "is_vertical": bool(best_h and best_w and best_h > best_w),
+            "aspect_ratio": f"{best_w}:{best_h}" if (best_w and best_h) else None,
+            "formats": video_formats + audio_formats,
+            "video_formats": video_formats,
+            "audio_formats": audio_formats,
+            "is_mock": False
+        }
+    except Exception as e:
+        print(f"[extractor] bilibili engine fell back to yt-dlp: {e}", file=sys.stderr)
+        return None
+
 def resolve_ytdlp(url):
     if 'tiktok.com' in url.lower():
         tt_res = resolve_tiktok_media(url)
         if tt_res and tt_res.get('success'):
             return tt_res
+
+    if 'bilibili' in url.lower() or 'b23.tv' in url.lower():
+        bili_res = resolve_bilibili_media(url)
+        if bili_res and bili_res.get('success'):
+            return bili_res
 
     if not yt_dlp:
         return {"success": False, "error": "yt-dlp is not installed"}
@@ -1269,6 +1553,243 @@ def resolve_ytdlp(url):
     except Exception as e:
         return {"success": False, "error": format_friendly_error(str(e))}
 
+def resolve_reddit_media(url):
+    """Reddit requires auth cookies for yt-dlp since 2024, but the public .json
+    endpoint still serves media to logged-out clients. fallback_url is a direct
+    video MP4; non-muted posts also expose a sibling DASH audio track."""
+    browser_headers = {
+        # Script-style UA is the shape Reddit's public JSON still accepts from
+        # logged-out clients; browser UAs get 403.
+        'User-Agent': 'script:TeraPlay:v1.0 (by /u/teraplay)',
+        'Accept': 'application/json',
+    }
+    try:
+        json_url = re.sub(r'[?#].*$', '', url).rstrip('/') + '.json'
+        json_url = json_url.replace('//www.reddit.com', '//old.reddit.com')
+        payload = None
+        for attempt_cookie in (False, True):
+            headers = dict(browser_headers)
+            if attempt_cookie:
+                session = os.environ.get('REDDIT_SESSION')
+                if not session:
+                    break
+                headers['Cookie'] = f'reddit_session={session}'
+            req = urllib.request.Request(json_url, headers=headers)
+            try:
+                with _safe_open(json_url, headers,
+                                allowed_hosts=('reddit.com',)) as resp:
+                    final_url = resp.geturl()
+                    if '/login/' in final_url:
+                        continue
+                    payload = json.loads(resp.read().decode('utf-8', 'replace'))
+                    break
+            except (urllib.error.HTTPError, ValueError):
+                continue
+        if payload is None:
+            return {"success": False, "error": "Reddit is blocking anonymous access from this server. Set the REDDIT_SESSION environment variable to a reddit_session cookie to enable Reddit downloads."}
+        post = payload[0]['data']['children'][0]['data']
+        media = post.get('secure_media') or post.get('media') or {}
+        video = media.get('reddit_video') if isinstance(media, dict) else None
+        if not video and post.get('crosspost_parent_list'):
+            cp_media = post['crosspost_parent_list'][0].get('secure_media') or {}
+            video = cp_media.get('reddit_video') if isinstance(cp_media, dict) else None
+        fallback = (video or {}).get('fallback_url')
+        if not fallback:
+            # Image/text post: let the generic yt-dlp path try gallery handling.
+            return None
+
+        audio_url = None
+        audio_guess = re.sub(r'/DASH_\d+\.mp4', '/DASH_AUDIO_128.mp4', fallback)
+        try:
+            probe = urllib.request.Request(audio_guess, headers={
+                'User-Agent': browser_headers['User-Agent'],
+                'Range': 'bytes=0-16',
+            })
+            with urllib.request.urlopen(probe, timeout=10) as r:
+                if r.status == 200:
+                    audio_url = audio_guess
+        except Exception:
+            audio_url = None
+
+        thumb = post.get('thumbnail')
+        return {
+            "success": True,
+            "title": post.get('title') or 'Reddit Video',
+            "thumbnail": thumb if isinstance(thumb, str) and thumb.startswith('http') else None,
+            "thumbnails": [],
+            "stream_url": fallback,
+            "download_url": fallback,
+            "size": "Direct Stream",
+            "duration": int(video.get('duration') or 0),
+            "source": "reddit_json",
+            "platform": "reddit",
+            "youtube_id": None,
+            "transcript": None,
+            "is_vertical": None,
+            "aspect_ratio": None,
+            "formats": [],
+            "audio_url": audio_url,
+        }
+    except Exception as e:
+        return {"success": False, "error": format_friendly_error(str(e))}
+
+def _html_to_text(html: str) -> str:
+    """Minimal tag stripper for Wattpad part HTML. No bs4 dependency."""
+    text = re.sub(r'<(br|/p|/div|/h\d)[^>]*>', '\n', html, flags=re.I)
+    text = re.sub(r'<[^>]+>', '', text)
+    text = html_unescape(text)
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+def resolve_wattpad_media(url):
+    """Free public Wattpad stories via the public v3/apiv2 endpoints used by
+    TheOnlyWayUp/WattpadDownloader. Paid Stories are refused, not bypassed."""
+    browser_headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36',
+    }
+    try:
+        story_id = None
+        part_id = None
+        m = re.search(r'wattpad\.com/story/(\d+)', url)
+        if m:
+            story_id = m.group(1)
+        else:
+            m = re.search(r'wattpad\.com/(?:story/\d+[^/]*/)?part/(\d+)', url)
+            if m:
+                part_id = m.group(1)
+            else:
+                m = re.search(r'wattpad\.com/(\d{5,})', url)
+                if m:
+                    part_id = m.group(1)
+        if not story_id and not part_id:
+            return None
+
+        if part_id and not story_id:
+            with _safe_open(
+                f'https://www.wattpad.com/api/v3/story_parts/{part_id}?fields=groupId',
+                browser_headers, allowed_hosts=('wattpad.com',)) as resp:
+                story_id = str(json.loads(resp.read().decode('utf-8', 'replace'))['groupId'])
+
+        fields = 'id,title,createDate,modifyDate,completed,mature,url,isPaywalled,user(username),parts(id,title),cover,description'
+        with _safe_open(
+            f'https://www.wattpad.com/api/v3/stories/{story_id}?fields={fields}',
+            browser_headers, allowed_hosts=('wattpad.com',)) as resp:
+            story = json.loads(resp.read().decode('utf-8', 'replace'))
+
+        if story.get('isPaywalled'):
+            return {
+                "success": False,
+                "error": "This is a Wattpad Paid Story. TeraPlay does not bypass payments; only free public stories are supported.",
+                "title": story.get('title'),
+            }
+
+        with _safe_open(
+            f'https://www.wattpad.com/apiv2/?m=storytext&group_id={story_id}&output=zip',
+            browser_headers, timeout=30, allowed_hosts=('wattpad.com',)) as resp:
+            zip_bytes = resp.read()
+        archive = zipfile.ZipFile(io.BytesIO(zip_bytes), 'r')
+        title_by_id = {str(p['id']): p.get('title', '') for p in story.get('parts', [])}
+
+        sections = []
+        total_chars = 0
+        truncated = False
+        for name in archive.namelist():
+            part_key = str(name).rsplit('.', 1)[0]
+            if part_key not in title_by_id:
+                continue
+            part_html = archive.read(name).decode('utf-8', 'replace')
+            part_text = _html_to_text(part_html)
+            if not part_text:
+                continue
+            sections.append(f"\n\n## {title_by_id[part_key]}\n\n{part_text}")
+            total_chars += len(part_text)
+            if total_chars > 500000:
+                truncated = True
+                break
+
+        if not sections:
+            return {"success": False, "error": "This story has no readable public parts."}
+
+        author = (story.get('user') or {}).get('username') or 'Unknown'
+        text_content = f"{story.get('title', 'Wattpad Story')}\nby {author} on Wattpad\n{'=' * 40}\n" + ''.join(sections)
+        if truncated:
+            text_content += "\n\n[Truncated: story exceeds TeraPlay's 500k character limit.]"
+
+        cover = story.get('cover')
+        return {
+            "success": True,
+            "title": story.get('title') or 'Wattpad Story',
+            "thumbnail": cover if isinstance(cover, str) and cover.startswith('http') else None,
+            "thumbnails": [],
+            "stream_url": None,
+            "download_url": None,
+            "size": f"{len(text_content) // 1024} KB text",
+            "duration": 0,
+            "source": "wattpad_api",
+            "platform": "wattpad",
+            "youtube_id": None,
+            "transcript": None,
+            "text_content": text_content,
+            "formats": [],
+        }
+    except Exception as e:
+        return {"success": False, "error": format_friendly_error(str(e))}
+
+def resolve_slideshare_media(url):
+    """Public SlideShare decks: slide images are rendered openly on the page
+    and served from image.slidesharecdn.com without login."""
+    browser_headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36',
+    }
+    try:
+        with _safe_open(url, browser_headers,
+                        allowed_hosts=('slideshare.net', 'slideshare.com')) as resp:
+            page = resp.read().decode('utf-8', 'replace')
+
+        title_match = re.search(r'<meta property="og:title" content="([^"]+)"', page)
+        title = html_unescape(title_match.group(1)) if title_match else 'SlideShare Deck'
+
+        seen = set()
+        slides = []
+        for img in re.findall(r'https://image\.slidesharecdn\.com/[^\s"\'\\<>]+?\.(?:jpg|jpeg|png)[^\s"\'\\<>]*', page):
+            base = img.split('?')[0]
+            if base in seen:
+                continue
+            seen.add(base)
+            slides.append(img)
+        if not slides:
+            return {"success": False, "error": "No public slide images found on this SlideShare page. The deck may be private or SlideShare may have changed its layout."}
+
+        thumbs = []
+        for idx, slide in enumerate(slides):
+            thumbs.append({
+                "url": slide,
+                "width": 1024,
+                "height": 768,
+                "resolution": "Slide Image",
+                "quality_label": f"Slide {idx + 1} of {len(slides)}",
+            })
+        return {
+            "success": True,
+            "title": title,
+            "thumbnail": slides[0],
+            "thumbnails": thumbs,
+            "stream_url": slides[0],
+            "download_url": slides[0],
+            "size": f"{len(slides)} slides",
+            "duration": 0,
+            "source": "slideshare_page",
+            "platform": "slideshare",
+            "youtube_id": None,
+            "transcript": None,
+            "is_vertical": False,
+            "aspect_ratio": None,
+            "formats": [],
+        }
+    except Exception as e:
+        return {"success": False, "error": format_friendly_error(str(e))}
+
 def extract_media_info(url: str, is_transcript_only: bool = False) -> dict:
     url = (url or "").strip()
     if not url:
@@ -1289,6 +1810,22 @@ def extract_media_info(url: str, is_transcript_only: bool = False) -> dict:
             tb_result = resolve_terabox(url, share_id)
             if tb_result:
                 return tb_result
+
+    if not is_transcript_only:
+        lower_url = url.lower()
+        if 'wattpad.com' in lower_url:
+            wattpad_result = resolve_wattpad_media(url)
+            if wattpad_result is not None:
+                return wattpad_result
+        if 'slideshare.' in lower_url:
+            slideshare_result = resolve_slideshare_media(url)
+            if slideshare_result is not None:
+                return slideshare_result
+
+    if not is_transcript_only and 'reddit.com' in url.lower():
+        reddit_result = resolve_reddit_media(url)
+        if reddit_result is not None:
+            return reddit_result
 
     # Universal / Social Media / YouTube resolution via yt-dlp
     try:

@@ -1,3 +1,6 @@
+// Deno edge function: imports remote https modules and is not covered by
+// the project's tsconfig, so file-wide type checking is intentionally off.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";

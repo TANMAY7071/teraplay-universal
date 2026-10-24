@@ -3,15 +3,16 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
-const apiResolveDevPlugin = (): Plugin => ({
+const apiResolveDevPlugin = (mode: string): Plugin => ({
   name: "api-resolve-dev",
   configureServer(server) {
     // Server-side API handlers (api/*.ts) share Vite's Node process. Vite only
     // exposes VITE_* vars to the client and never populates process.env, so
     // secret-bearing vars (TERABOX_COOKIE, API keys) never reach the handlers.
     // loadEnv with an empty prefix pulls EVERY .env var so handlers can read it.
+    // The mode has to match, or .env.development and .env.production are skipped.
     try {
-      const fileVars = loadEnv("", path.resolve(__dirname), "");
+      const fileVars = loadEnv(mode, path.resolve(__dirname), "");
       for (const [k, v] of Object.entries(fileVars)) {
         if (!(k in process.env)) process.env[k] = v;
       }
@@ -142,7 +143,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    apiResolveDevPlugin(),
+    apiResolveDevPlugin(mode),
     mode === "development" && componentTagger(),
   ].filter(Boolean),
   resolve: {

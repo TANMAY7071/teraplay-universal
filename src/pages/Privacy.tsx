@@ -1,77 +1,86 @@
 import React from "react";
 import LegalPageShell from "@/components/legal/LegalPageShell";
-import { CONTACT_EMAIL } from "@/config/site";
+import { PRIVACY_EMAIL } from "@/config/site";
 
 const PrivacyPage = () => (
   <LegalPageShell
     title="Privacy Policy"
-    description="How this website collects, uses, and protects your information."
-    lastUpdated="October 5, 2026"
-    intro="This policy explains what information we collect when you use this website, why we collect it, and the choices you have."
+    description="Privacy policy and data protection practices for TeraPlay Universal Media & Creator Dock."
+    lastUpdated="October 2026"
+    intro="TeraPlay respects your privacy. This policy explains how our universal media tools operate, what transient technical data is processed, and how your privacy is protected."
     sections={[
       {
-        heading: "Information we collect",
-        body: (
-          <ul className="list-disc pl-5 space-y-1">
-            <li><strong className="text-white">Account information</strong> — if you register, we store your email address, username, and avatar. Accounts are managed through Supabase authentication.</li>
-            <li><strong className="text-white">Site activity</strong> — your watchlist, watch progress, ratings, and comments, so the site can sync your library across devices.</li>
-            <li><strong className="text-white">Local data</strong> — some preferences (theme, consent, recent searches) are stored only in your browser's localStorage and are never sent to us.</li>
-            <li><strong className="text-white">Guest sessions</strong> — if you browse without an account (currently the only mode), all of your watch progress, library, and preferences are stored only in your browser's local storage. This data never leaves your device and is not sent to us.</li>
-          </ul>
-        ),
-      },
-      {
-        heading: "What we do not collect",
-        body: (
-          <p>
-            We do not ask for your real name, address, or payment information. We do not sell your
-            data. We do not run third-party advertising or analytics scripts.
-          </p>
-        ),
-      },
-      {
-        heading: "Third-party services",
+        heading: "Zero-Account Architecture & No Personal Data Collection",
         body: (
           <>
             <p>
-              Metadata (titles, descriptions, posters, episode information) is fetched from public
-              third-party APIs such as AniList, TMDB, and Simkl. These services receive your IP
-              address as part of any request a browser makes to them; they are governed by their
-              own privacy policies.
+              TeraPlay operates on a client-first, zero-registration model. You do not need to create an account, register an email address, or provide personal credentials to use any feature of the site.
             </p>
             <p>
-              Our database and authentication are hosted by Supabase. Data you create (account,
-              comments, progress) is stored on Supabase infrastructure protected by row-level
-              security, and your email address is never exposed to other users.
+              We do not collect or store names, physical addresses, telephone numbers, or financial details. All stream extraction, SubRip caption formatting, and thumbnail conversions happen without user registration.
             </p>
           </>
         ),
       },
       {
-        heading: "Cookies & storage",
+        heading: "Ephemeral Link Resolution & Zero Activity Logs",
+        body: (
+          <>
+            <p>
+              When you paste a media URL from YouTube, TeraBox, TikTok, Instagram, Facebook, or other supported platforms, the link is resolved in real time. Our serverless functions parse public metadata and return direct stream URLs to your browser.
+            </p>
+            <p>
+              We do not build user profiles, track your download history, or maintain permanent logs associating submitted URLs with personal IP addresses. Once link extraction finishes, the connection closes.
+            </p>
+          </>
+        ),
+      },
+      {
+        heading: "Local Browser Storage",
         body: (
           <p>
-            We use browser localStorage (not tracking cookies) to keep you signed in and remember
-            your preferences. Clearing your browser storage removes this data from your device.
+            We use browser localStorage solely to preserve client-side display preferences, such as your selected dark or light theme and interface toggle states. This data stays entirely on your local device. It is never transmitted to our servers and you can clear it anytime through your browser settings.
           </p>
         ),
       },
       {
-        heading: "Your choices",
+        heading: "Third-Party Advertising & Cookie Disclosures",
+        body: (
+          <>
+            <p>
+              To maintain TeraPlay as a 100% free utility without paywalls, we display advertising slots managed by certified third-party ad networks (including Monetag, Adsterra, or Google AdSense).
+            </p>
+            <p>
+              These advertising partners may deploy standard HTTP cookies, device identifiers, or web beacons to collect non-personal diagnostic metrics and serve relevant advertisements based on general geographic region or prior browsing patterns.
+            </p>
+            <p>
+              You have full control over cookies. You can reject or clear tracking cookies in your browser preferences, or visit industry opt-out portals such as the Network Advertising Initiative (networkadvertising.org) and Digital Advertising Alliance (aboutads.info).
+            </p>
+          </>
+        ),
+      },
+      {
+        heading: "External Content Delivery Networks",
         body: (
           <p>
-            You may delete your account's activity by removing items from your library, and you may
-            request deletion of your account and associated data at any time by contacting{" "}
-            <strong className="text-white">{CONTACT_EMAIL}</strong>.
+            When playing or downloading media, your browser establishes direct connections with external content distribution networks (such as YouTube Googlevideo, Meta CDN, TikTok CDN, or TeraBox file servers). Those third-party networks receive standard web request headers (including IP address and user-agent strings) governed by their respective corporate privacy policies.
           </p>
         ),
       },
       {
-        heading: "Children",
+        heading: "Children's Online Privacy Protection",
         body: (
           <p>
-            This site is not directed at children under 13, and we do not knowingly collect
-            personal information from them.
+            TeraPlay complies with the Children's Online Privacy Protection Act (COPPA). We do not knowingly target or collect personal information from individuals under 13 years of age.
+          </p>
+        ),
+      },
+      {
+        heading: "Privacy Inquiries & Policy Updates",
+        body: (
+          <p>
+            We may revise this Privacy Policy periodically to reflect infrastructure improvements or regulatory requirements. Direct any questions regarding our privacy practices to our team at{" "}
+            <strong className="text-[var(--tp-ink)]">{PRIVACY_EMAIL}</strong>.
           </p>
         ),
       },

@@ -1,5 +1,6 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 
 const NotFound = () => {
@@ -14,6 +15,13 @@ const NotFound = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background text-foreground dragon-scales">
+      <Helmet>
+        <title>Page Not Found | TeraPlay Universal</title>
+        <meta name="description" content="The requested page does not exist." />
+        {/* A 404 must not be indexed, otherwise every junk URL becomes a
+            soft 404 in the search results. */}
+        <meta name="robots" content="noindex, follow" />
+      </Helmet>
       <div className="text-center space-y-6 max-w-md px-4">
         <h1 className="text-8xl font-black tracking-tighter text-primary animate-pulse">404</h1>
         <div className="space-y-2">

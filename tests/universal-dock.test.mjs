@@ -121,6 +121,11 @@ assert.equal(vimeoNorm.isValid, true);
 assert.equal(vimeoNorm.platform, 'vimeo');
 assert.equal(vimeoNorm.shareId, '123456789');
 
+// Twitch
+const twitchNorm = normalizeMediaUrl('https://www.twitch.tv/videos/1234567890');
+assert.equal(twitchNorm.isValid, true);
+assert.equal(twitchNorm.platform, 'twitch');
+
 // Universal link (any valid HTTP/HTTPS URL)
 const uniNorm = normalizeMediaUrl('https://news.ycombinator.com/item?id=123');
 assert.equal(uniNorm.isValid, true);
@@ -358,7 +363,7 @@ const origKey = process.env.GROQ_API_KEY;
 delete process.env.GROQ_API_KEY;
 const missingKeyRes = createMockRes();
 await transcribeHandler({ method: 'GET', query: { url: 'https://example.com/audio.mp3' } }, missingKeyRes);
-assert.equal(missingKeyRes.statusCode, 200);
+assert.equal(missingKeyRes.statusCode, 500);
 assert.equal(missingKeyRes.body.success, false);
 assert.equal(missingKeyRes.body.code, 'MISSING_API_KEY');
 assert.equal(missingKeyRes.body.can_fallback_demo, true);
@@ -370,7 +375,7 @@ await transcribeHandler({
   body: Buffer.from('mock_audio_header_bytes'),
   headers: { 'content-type': 'audio/mpeg' },
 }, directAudioRes);
-assert.equal(directAudioRes.statusCode, 200);
+assert.equal(directAudioRes.statusCode, 500);
 // Missing API key is reached because direct audio payload was accepted!
 assert.equal(directAudioRes.body.code, 'MISSING_API_KEY');
 
@@ -381,7 +386,10 @@ await transcribeHandler({
   method: 'GET',
   query: { url: 'https://www.instagram.com/p/invalid_nonexistent_private_test/' },
 }, unresolvableRes);
-assert.equal(unresolvableRes.statusCode, 200);
+assert.ok(
+  unresolvableRes.statusCode === 422 || unresolvableRes.statusCode === 502,
+  `Expected 422 or 502, got ${unresolvableRes.statusCode}`
+);
 assert.equal(unresolvableRes.body.success, false);
 assert.ok(
   unresolvableRes.body.code === 'STREAM_RESOLVE_FAILED' || unresolvableRes.body.code === 'MEDIA_FETCH_FAILED',
@@ -395,7 +403,10 @@ await transcribeHandler({
   method: 'GET',
   query: { url: 'https://www.instagram.com/reels/DA7x03uJ6wW/' },
 }, igReelsRes);
-assert.equal(igReelsRes.statusCode, 200);
+assert.ok(
+  igReelsRes.statusCode === 422 || igReelsRes.statusCode === 502,
+  `Expected 422 or 502, got ${igReelsRes.statusCode}`
+);
 assert.equal(igReelsRes.body.success, false);
 assert.ok(
   igReelsRes.body.code === 'STREAM_RESOLVE_FAILED' || igReelsRes.body.code === 'MEDIA_FETCH_FAILED'
@@ -407,7 +418,10 @@ await transcribeHandler({
   method: 'GET',
   query: { url: 'https://vimeo.com/123456789' },
 }, vimeoRes);
-assert.equal(vimeoRes.statusCode, 200);
+assert.ok(
+  vimeoRes.statusCode === 422 || vimeoRes.statusCode === 502,
+  `Expected 422 or 502, got ${vimeoRes.statusCode}`
+);
 assert.equal(vimeoRes.body.success, false);
 assert.ok(
   vimeoRes.body.code === 'STREAM_RESOLVE_FAILED' || vimeoRes.body.code === 'MEDIA_FETCH_FAILED'
@@ -419,10 +433,27 @@ await transcribeHandler({
   method: 'GET',
   query: { url: 'not-a-valid-url-target' },
 }, invalidUrlRes);
-assert.equal(invalidUrlRes.statusCode, 200);
+assert.equal(invalidUrlRes.statusCode, 422);
 assert.equal(invalidUrlRes.body.success, false);
 assert.equal(invalidUrlRes.body.code, 'STREAM_RESOLVE_FAILED');
 assert.equal(invalidUrlRes.body.can_fallback_demo, true);
+
+// 6h2. Internal targets are refused before the handler reaches the network.
+// The url parameter is caller-controlled, so a request must not be able to
+// steer the function at the cloud metadata service or a loopback port.
+process.env.GROQ_API_KEY = 'gsk_test_mock_key';
+for (const internalTarget of [
+  'http://169.254.169.254/latest/meta-data/iam/security-credentials/',
+  'http://127.0.0.1:8080/secret',
+  'http://localhost/secret',
+  'http://10.0.0.5/internal',
+]) {
+  const ssrfRes = createMockRes();
+  await transcribeHandler({ method: 'GET', query: { url: internalTarget } }, ssrfRes);
+  assert.equal(ssrfRes.statusCode, 400, `Expected 400 for ${internalTarget}`);
+  assert.equal(ssrfRes.body.code, 'INVALID_MEDIA_URL', `Expected INVALID_MEDIA_URL for ${internalTarget}`);
+  assert.equal(ssrfRes.body.success, false);
+}
 
 // 6i. Direct audio buffer with WAV and WebM headers accepted as audio payloads
 delete process.env.GROQ_API_KEY;
@@ -433,7 +464,7 @@ await transcribeHandler({
   body: wavBuffer,
   headers: { 'content-type': 'audio/wav' },
 }, wavAudioRes);
-assert.equal(wavAudioRes.statusCode, 200);
+assert.equal(wavAudioRes.statusCode, 500);
 assert.equal(wavAudioRes.body.code, 'MISSING_API_KEY'); // Reached API key check because buffer accepted!
 
 // 6j - 6n. Groq Whisper API HTTP responses & retry handling (Mocked upstream)
@@ -459,7 +490,7 @@ try {
     body: Buffer.from('mock_audio_bytes'),
     headers: { 'content-type': 'audio/mpeg' },
   }, groq401Res);
-  assert.equal(groq401Res.statusCode, 200);
+  assert.equal(groq401Res.statusCode, 500);
   assert.equal(groq401Res.body.code, 'INVALID_API_KEY');
   assert.equal(groq401Res.body.can_fallback_demo, true);
 
@@ -481,7 +512,7 @@ try {
     body: Buffer.from('mock_audio_bytes'),
     headers: { 'content-type': 'audio/mpeg' },
   }, groq429Res);
-  assert.equal(groq429Res.statusCode, 200);
+  assert.equal(groq429Res.statusCode, 429);
   assert.equal(groq429Res.body.code, 'RATE_LIMITED');
   assert.equal(groq429Res.body.can_fallback_demo, true);
 
@@ -502,7 +533,7 @@ try {
     body: Buffer.from('mock_audio_bytes'),
     headers: { 'content-type': 'audio/mpeg' },
   }, groqEmptyRes);
-  assert.equal(groqEmptyRes.statusCode, 200);
+  assert.equal(groqEmptyRes.statusCode, 422);
   assert.equal(groqEmptyRes.body.code, 'NO_SPEECH_DETECTED');
   assert.equal(groqEmptyRes.body.can_fallback_demo, true);
 
@@ -589,12 +620,14 @@ assert.equal(f1080.has_audio, true, '1080p format must have has_audio: true for 
 assert.ok(f1080.download_url?.includes('audio_url='), '1080p download_url must contain audio_url query param');
 
 // 7b. Stream download endpoint HEAD request with audio_url returns 200 with video/mp4 headers
+// The host is a public IP literal on purpose: the handler refuses private and
+// unresolvable targets, and a hostname would make the test depend on DNS.
 const streamHeadRes = createMockRes();
 await streamDownloadHandler({
   method: 'HEAD',
   query: {
-    url: 'https://example.com/video.mp4',
-    audio_url: 'https://example.com/audio.mp4',
+    url: 'https://1.1.1.1/video.mp4',
+    audio_url: 'https://8.8.8.8/audio.mp4',
     filename: 'rick_astley_1080p',
     ext: 'mp4',
   },

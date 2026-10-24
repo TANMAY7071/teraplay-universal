@@ -13,6 +13,7 @@ export type SupportedPlatform =
   | 'dailymotion'
   | 'snapchat'
   | 'linkedin'
+  | 'twitch'
   | 'twitter'
   | 'vimeo'
   | 'direct'
@@ -283,6 +284,16 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       platform: 'vimeo',
       shareId: vimeoId,
       normalizedUrl: vimeoId ? `https://vimeo.com/${vimeoId}` : trimmed,
+      originalUrl: trimmed,
+    };
+  }
+
+  // Twitch Link (streams, clips, VODs)
+  if (trimmed.includes('twitch.tv')) {
+    return {
+      isValid: true,
+      platform: 'twitch',
+      normalizedUrl: trimmed,
       originalUrl: trimmed,
     };
   }
