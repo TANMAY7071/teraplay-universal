@@ -20,7 +20,16 @@ jobs:
           node-version: lts/*
           cache: 'npm'
 
-      - name: Install Dependencies
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python Dependencies
+        run: pip install yt-dlp
+
+      - name: Install Node Dependencies
         run: npm ci
 
       - name: Run Full Gate Verification
