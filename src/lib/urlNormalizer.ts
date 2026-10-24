@@ -51,10 +51,18 @@ const TERABOX_DOMAINS = [
   'boxterabox.com',
 ];
 
+export function extractUrlFromText(text: string): string {
+  if (!text) return '';
+  const trimmed = text.trim();
+  // Extract http:// or https:// URL from surrounding text or brackets (e.g. mobile share snippets)
+  const match = trimmed.match(/https?:\/\/[^\s"'<>()[\]【】]+/i);
+  return match ? match[0] : trimmed;
+}
+
 export function isTeraBoxUrl(url: string): boolean {
   if (!url) return false;
   try {
-    const raw = url.trim();
+    const raw = extractUrlFromText(url);
     const parsed = new URL(raw.startsWith('http') ? raw : 'https://' + raw);
     const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
     return TERABOX_DOMAINS.some((domain) => host === domain || host.endsWith('.' + domain));
@@ -65,7 +73,7 @@ export function isTeraBoxUrl(url: string): boolean {
 
 export function extractTeraBoxShareId(url: string): string | null {
   if (!url) return null;
-  const clean = url.trim();
+  const clean = extractUrlFromText(url);
 
   // Pattern 1: /s/1[a-zA-Z0-9_-]+
   const slashMatch = clean.match(/\/s\/(?:1)?([a-zA-Z0-9_-]+)/i);
@@ -94,8 +102,9 @@ export interface InstagramMediaInfo {
 
 export function extractInstagramShortcode(url: string): InstagramMediaInfo | null {
   if (!url) return null;
+  const clean = extractUrlFromText(url);
   const regex = /(?:https?:\/\/)?(?:www\.)?instagram\.com\/(reels?|p|tv|stories)\/([A-Za-z0-9_-]+)/i;
-  const match = url.trim().match(regex);
+  const match = clean.match(regex);
   if (!match) return null;
   const rawType = match[1].toLowerCase();
   return {
@@ -106,7 +115,7 @@ export function extractInstagramShortcode(url: string): InstagramMediaInfo | nul
 
 export function extractYouTubeVideoId(url: string): string | null {
   if (!url) return null;
-  const clean = url.trim();
+  const clean = extractUrlFromText(url);
   const match = clean.match(/(?:youtu\.be\/|(?:youtube\.com|youtube-nocookie\.com)\/(?:embed\/|v\/|watch\?(?:.*&)?v=|shorts\/|live\/))([\w-]{11})/i);
   if (match && match[1]) return match[1];
   if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) return clean;
@@ -114,13 +123,14 @@ export function extractYouTubeVideoId(url: string): string | null {
 }
 
 export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
-  const trimmed = inputUrl ? inputUrl.trim() : '';
+  const original = inputUrl ? inputUrl.trim() : '';
+  const trimmed = extractUrlFromText(original);
   if (!trimmed) {
     return {
       isValid: false,
       platform: 'unknown',
       normalizedUrl: '',
-      originalUrl: trimmed,
+      originalUrl: original,
       error: 'Please enter a valid link.',
     };
   }
@@ -133,7 +143,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
         isValid: false,
         platform: 'terabox',
         normalizedUrl: trimmed,
-        originalUrl: trimmed,
+        originalUrl: original,
         error: 'Invalid TeraBox share link or missing share ID.',
       };
     }
@@ -145,7 +155,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       platform: 'terabox',
       shareId,
       normalizedUrl: canonical,
-      originalUrl: trimmed,
+      originalUrl: original,
     };
   }
 
@@ -155,7 +165,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       isValid: true,
       platform: 'direct',
       normalizedUrl: trimmed,
-      originalUrl: trimmed,
+      originalUrl: original,
     };
   }
 
@@ -168,7 +178,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
         isValid: false,
         platform: 'youtube',
         normalizedUrl: trimmed,
-        originalUrl: trimmed,
+        originalUrl: original,
         error: 'Please enter a valid YouTube video or Shorts link containing an 11-character video ID.',
       };
     }
@@ -177,7 +187,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       platform: 'youtube',
       shareId: ytId,
       normalizedUrl: `https://www.youtube.com/watch?v=${ytId}`,
-      originalUrl: trimmed,
+      originalUrl: original,
     };
   }
 
@@ -191,7 +201,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       platform: 'instagram',
       shareId: shortcode,
       normalizedUrl: shortcode ? `https://www.instagram.com/${pathType}/${shortcode}/` : trimmed,
-      originalUrl: trimmed,
+      originalUrl: original,
     };
   }
 
@@ -201,7 +211,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       isValid: true,
       platform: 'facebook',
       normalizedUrl: trimmed,
-      originalUrl: trimmed,
+      originalUrl: original,
     };
   }
 
@@ -211,7 +221,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       isValid: false,
       platform: 'whatsapp',
       normalizedUrl: trimmed,
-      originalUrl: trimmed,
+      originalUrl: original,
       error: 'WhatsApp chat media is end-to-end encrypted. Copy and paste the original video link (YouTube, Instagram, TikTok) shared in your chat.',
     };
   }
@@ -222,7 +232,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       isValid: true,
       platform: 'tiktok',
       normalizedUrl: trimmed,
-      originalUrl: trimmed,
+      originalUrl: original,
     };
   }
 
@@ -232,7 +242,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       isValid: true,
       platform: 'bilibili',
       normalizedUrl: trimmed,
-      originalUrl: trimmed,
+      originalUrl: original,
     };
   }
 
@@ -242,7 +252,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       isValid: true,
       platform: 'dailymotion',
       normalizedUrl: trimmed,
-      originalUrl: trimmed,
+      originalUrl: original,
     };
   }
 
@@ -252,7 +262,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       isValid: true,
       platform: 'snapchat',
       normalizedUrl: trimmed,
-      originalUrl: trimmed,
+      originalUrl: original,
     };
   }
 
@@ -262,7 +272,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       isValid: true,
       platform: 'linkedin',
       normalizedUrl: trimmed,
-      originalUrl: trimmed,
+      originalUrl: original,
     };
   }
 
@@ -272,7 +282,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       isValid: true,
       platform: 'twitter',
       normalizedUrl: trimmed,
-      originalUrl: trimmed,
+      originalUrl: original,
     };
   }
 
@@ -285,7 +295,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       platform: 'vimeo',
       shareId: vimeoId,
       normalizedUrl: vimeoId ? `https://vimeo.com/${vimeoId}` : trimmed,
-      originalUrl: trimmed,
+      originalUrl: original,
     };
   }
 
@@ -295,7 +305,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
       isValid: true,
       platform: 'twitch',
       normalizedUrl: trimmed,
-      originalUrl: trimmed,
+      originalUrl: original,
     };
   }
 
@@ -308,7 +318,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
         isValid: true,
         platform: 'universal',
         normalizedUrl: parsed.href,
-        originalUrl: trimmed,
+        originalUrl: original,
       };
     }
   } catch {
@@ -319,7 +329,7 @@ export function normalizeMediaUrl(inputUrl: string): NormalizedLinkResult {
     isValid: false,
     platform: 'universal',
     normalizedUrl: trimmed,
-    originalUrl: trimmed,
+    originalUrl: original,
     error: 'Please enter a valid video link or streaming URL.',
   };
 }

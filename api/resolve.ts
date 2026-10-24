@@ -94,6 +94,14 @@ function extractShareId(input: string): string | null {
   return null;
 }
 
+function extractUrlFromText(input: string): string {
+  if (!input) return '';
+  const trimmed = input.trim();
+  const match = trimmed.match(/https?:\/\/[^\s"'<>()[\]【】]+/i);
+  return match ? match[0] : trimmed;
+}
+
+
 // In-memory cache for resolved media links (TTL 1 hour)
 interface CacheItem {
   data: ResolveResponse;
@@ -613,7 +621,8 @@ export default async function handler(req: any, res: any) {
   res.setHeader('Vercel-CDN-Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
 
   const { url, id } = req.query || {};
-  const queryTarget = (url || id || '') as string;
+  const rawTarget = (url || id || '') as string;
+  const queryTarget = extractUrlFromText(rawTarget);
 
   if (!queryTarget) {
     res.status(400).json({

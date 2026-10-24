@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { extractYouTubeVideoId, normalizeMediaUrl, isTeraBoxUrl, extractTeraBoxShareId } from '../src/lib/urlNormalizer.ts';
+import { extractYouTubeVideoId, normalizeMediaUrl, isTeraBoxUrl, extractTeraBoxShareId, extractUrlFromText } from '../src/lib/urlNormalizer.ts';
 
 console.log('--- RUNNING UNIVERSAL DOCK VERIFICATION SUITE ---');
 
@@ -131,7 +131,21 @@ const uniNorm = normalizeMediaUrl('https://news.ycombinator.com/item?id=123');
 assert.equal(uniNorm.isValid, true);
 assert.equal(uniNorm.platform, 'universal');
 
-console.log('  ✓ WhatsApp E2EE error, social platforms, and universal links verified');
+// Mobile app share snippets with surrounding titles or brackets
+const mobileBiliSnippet = '【Folding it 10,000 times, will it break? An in-depth review of iPhone Duo】https://www.bilibili.com/en/video/BV1xrnz6gEVD/?share_source=copy_web';
+assert.equal(extractUrlFromText(mobileBiliSnippet), 'https://www.bilibili.com/en/video/BV1xrnz6gEVD/?share_source=copy_web');
+const biliSnippetNorm = normalizeMediaUrl(mobileBiliSnippet);
+assert.equal(biliSnippetNorm.isValid, true);
+assert.equal(biliSnippetNorm.platform, 'bilibili');
+assert.equal(biliSnippetNorm.normalizedUrl, 'https://www.bilibili.com/en/video/BV1xrnz6gEVD/?share_source=copy_web');
+
+const mobileYtSnippet = 'Hey watch this cool review! https://youtu.be/dQw4w9WgXcQ (shared via app)';
+const ytSnippetNorm = normalizeMediaUrl(mobileYtSnippet);
+assert.equal(ytSnippetNorm.isValid, true);
+assert.equal(ytSnippetNorm.platform, 'youtube');
+assert.equal(ytSnippetNorm.shareId, 'dQw4w9WgXcQ');
+
+console.log('  ✓ WhatsApp E2EE error, mobile app share snippets, and universal links verified');
 
 // 4. Subtitle Time & Format Logic
 console.log('[4/4] Testing Subtitle & SRT formatting...');

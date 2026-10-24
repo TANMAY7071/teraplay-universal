@@ -6,6 +6,7 @@ interface AdBannerSlotProps {
   format?: 'leaderboard' | 'rectangle' | 'banner';
   className?: string;
   customHtml?: string;
+  showPlaceholder?: boolean;
 }
 
 export const AdBannerSlot: React.FC<AdBannerSlotProps> = ({
@@ -13,10 +14,9 @@ export const AdBannerSlot: React.FC<AdBannerSlotProps> = ({
   format = 'leaderboard',
   className = '',
   customHtml,
+  showPlaceholder = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  // True once a publisher creative is actually in the slot. Until then the
-  // slot says so, rather than claiming an ad that is not there.
   const [hasCreative, setHasCreative] = useState(false);
 
   useEffect(() => {
@@ -34,8 +34,6 @@ export const AdBannerSlot: React.FC<AdBannerSlotProps> = ({
     const fragment = range.createContextualFragment(customHtml);
     container.appendChild(fragment);
 
-    // A fragment built from a string does not run its scripts. Every script
-    // element has to be re-created for the publisher tag to load.
     const scripts = Array.from(container.querySelectorAll('script'));
     scripts.forEach((oldScript) => {
       const fresh = document.createElement('script');
@@ -48,12 +46,15 @@ export const AdBannerSlot: React.FC<AdBannerSlotProps> = ({
 
     setHasCreative(scripts.length > 0 || container.children.length > 0);
 
-    // The injected creative carries publisher counters and queued state.
-    // Clear it when the slot changes or unmounts.
     return () => {
       container.innerHTML = '';
     };
   }, [customHtml]);
+
+  // If no creative is configured and placeholder is not requested, do not render an empty box.
+  if (!customHtml && !showPlaceholder) {
+    return null;
+  }
 
   const getFormatClasses = () => {
     switch (format) {
@@ -72,30 +73,30 @@ export const AdBannerSlot: React.FC<AdBannerSlotProps> = ({
       id={slotId}
       data-ad-slot={slotId}
       data-ad-format={format}
-      className={`relative my-6 rounded-2xl border border-white/5 bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-3 text-center overflow-hidden transition-[border-color] duration-300 hover:border-white/10 ${className}`}
+      className={`relative my-6 rounded-3xl border border-white/10 dark:border-white/[0.08] bg-white/[0.03] dark:bg-[#0c1222]/80 backdrop-blur-2xl p-3.5 text-center overflow-hidden shadow-lg transition-[border-color] duration-300 ${className}`}
     >
       {/* Discrete label */}
-      <div className="flex items-center justify-between pb-2 px-1 text-[10px] uppercase tracking-wider text-slate-500 font-mono">
-        <span className="flex items-center gap-1">
-          <Sparkles className="w-3 h-3 text-[#e4f222]/50" />
+      <div className="flex items-center justify-between pb-2 px-1 text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-mono">
+        <span className="flex items-center gap-1.5 font-medium">
+          <Sparkles className="w-3 h-3 text-amber-400/80" />
           {hasCreative ? 'Sponsored' : 'Ad Slot'}
         </span>
-        <span className="text-slate-600">
-          {hasCreative ? 'Adsterra / Monetag Network' : 'No publisher tag configured'}
+        <span className="text-slate-500 text-[10px]">
+          {hasCreative ? 'Partner Network' : 'No publisher creative active'}
         </span>
       </div>
 
       {/* Ad content container */}
       <div
         ref={containerRef}
-        className={`flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-[#080d1e]/40 p-4 ${getFormatClasses()}`}
+        className={`flex flex-col items-center justify-center rounded-2xl border border-white/5 bg-black/20 p-4 ${getFormatClasses()}`}
       >
-        {!customHtml && (
-          <div className="flex flex-col items-center justify-center gap-1.5 text-center">
-            <span className="text-xs font-semibold text-slate-400">
+        {!customHtml && showPlaceholder && (
+          <div className="flex flex-col items-center justify-center gap-1 text-center py-4">
+            <span className="text-xs font-medium text-slate-300">
               Ad Placement Slot ({format.toUpperCase()})
             </span>
-            <span className="text-[11px] text-slate-500 max-w-sm">
+            <span className="text-[11px] text-slate-400 max-w-sm">
               Ready for Monetag, Adsterra native banner tags, or Google AdSense script integration.
             </span>
           </div>

@@ -1764,24 +1764,24 @@ export default function Index() {
       <div className="tp-wrap">
         {resolveError && !resolvedVideo && (
           <section id="error-viewport" className="w-full my-6 animate-in fade-in zoom-in-95 duration-200 ease-out">
-            <div className="rounded-2xl border border-amber-500/30 bg-[var(--tp-paper-elevated)] backdrop-blur-xl p-6 sm:p-8 space-y-4 shadow-xl">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
-                  <AlertCircle className="w-6 h-6 text-amber-400" />
+            <div className="relative overflow-hidden rounded-3xl border border-white/10 dark:border-white/[0.08] bg-white/[0.03] dark:bg-[#0c1222]/80 backdrop-blur-2xl p-5 sm:p-7 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent">
+              <div className="flex items-start gap-3.5 sm:gap-4 min-w-0 max-w-full">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 shadow-inner">
+                  <AlertCircle className="w-5 h-5 text-amber-400" />
                 </div>
-                <div className="space-y-2 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base sm:text-lg font-bold text-[var(--tp-ink)]">
+                <div className="min-w-0 flex-1 space-y-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-semibold tracking-tight text-white dark:text-slate-100">
                       {resolveError.title}
                     </h3>
-                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                    <span className="rounded-full px-2.5 py-0.5 text-[10px] font-medium tracking-wide uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20">
                       Notice
                     </span>
                   </div>
-                  <p className="text-xs sm:text-sm text-[var(--tp-text-dim)] leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-300 dark:text-slate-400 leading-relaxed break-words [overflow-wrap:anywhere] break-all max-w-full select-text">
                     {resolveError.message}
                   </p>
-                  <div className="pt-2 flex flex-wrap items-center gap-3">
+                  <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-3">
                     <button
                       type="button"
                       onClick={() => {
@@ -1790,13 +1790,12 @@ export default function Index() {
                         const el = document.getElementById('resolver-dock');
                         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                       }}
-                      className="tp-btn tp-btn-primary active:opacity-90"
-                      style={{ height: '36px', fontSize: '12px' }}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-xs font-medium text-white bg-white/10 hover:bg-white/15 active:bg-white/20 border border-white/15 backdrop-blur-md shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-white/20 cursor-pointer w-fit"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                       <span>Try Another Link</span>
                     </button>
-                    <span className="text-xs text-[var(--tp-muted)] font-mono">
+                    <span className="text-[11px] text-slate-400/80 leading-normal">
                       Tip: Public Instagram Reels, YouTube videos, and TeraBox files can be streamed directly.
                     </span>
                   </div>
