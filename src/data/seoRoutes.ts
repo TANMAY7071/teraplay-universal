@@ -29,24 +29,24 @@ export const SEO_ROUTES: Record<string, SeoRouteConfig> = {
     ],
     faqs: [
       {
-        question: 'Which video and social platforms does TeraPlay support?',
-        answer: 'TeraPlay supports video streaming and media downloads from YouTube, TikTok, Instagram, TeraBox, Twitch, Snapchat, LinkedIn, Facebook, Vimeo, Bilibili, Dailymotion, and X (Twitter). Our universal extractor engine also handles direct MP4, M3U8 HLS streams, and over 1,000 video hosts across the web.',
+        question: 'Which video and social platforms does linkplay4u support?',
+        answer: 'linkplay4u supports video streaming and media downloads from YouTube, TikTok, Instagram, TeraBox, Twitch, Snapchat, LinkedIn, Facebook, Vimeo, Bilibili, Dailymotion, and X (Twitter). Our universal extractor engine also handles direct MP4, M3U8 HLS streams, and over 1,000 video hosts across the web.',
       },
       {
         question: 'How do I download or stream videos without watermarks?',
-        answer: 'Paste your link into the search box and select Launch & Analyze. TeraPlay fetches the original source file directly, allowing you to download clean MP4 video without platform watermarks or app overlays.',
+        answer: 'Paste your link into the search box and select Launch & Analyze. linkplay4u fetches the original source file directly, allowing you to download clean MP4 video without platform watermarks or app overlays.',
       },
       {
         question: 'Can I extract audio-only MP3s and timestamped subtitles?',
-        answer: 'Yes. TeraPlay can extract high-bitrate MP3 audio tracks and pull accurate subtitles in SubRip (.SRT) format or clean (.TXT) transcripts for YouTube and supported video platforms.',
+        answer: 'Yes. linkplay4u can extract high-bitrate MP3 audio tracks and pull accurate subtitles in SubRip (.SRT) format or clean (.TXT) transcripts for YouTube and supported video platforms.',
       },
       {
         question: 'What video resolutions and qualities are supported?',
         answer: 'We deliver video files at maximum source resolution, from 720p and 1080p Full HD up to 4K Ultra HD where provided by the creator. YouTube thumbnail cover art is exported in full uncompressed 1080p.',
       },
       {
-        question: 'Is TeraPlay 100% free with no account required?',
-        answer: 'Yes. TeraPlay is completely free to use directly in your browser. There are no registration forms, no subscription fees, no software installations, and no daily download limits.',
+        question: 'Is linkplay4u 100% free with no account required?',
+        answer: 'Yes. linkplay4u is completely free to use directly in your browser. There are no registration forms, no subscription fees, no software installations, and no daily download limits.',
       },
     ],
   },

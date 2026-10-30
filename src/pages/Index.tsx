@@ -58,6 +58,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import AdBannerSlot from '@/components/ads/AdBannerSlot';
 import { ThemeChanger } from '@/components/ThemeChanger';
 import { IconFolder, PLATFORM_ICONS } from '@/components/ui/icon-folder';
+import { MarqueeBand, ToolsGrid, HowItWorks, Reveal } from '@/components/home/HomeBelowHero';
+import './home-below-hero.css';
+import { PlatformBrandIcon } from '@/components/media/PlatformBrandIcon';
 import './VideoPlayer21st.css';
 
 import {
@@ -227,12 +230,17 @@ const FaqAccordionSection = React.memo(({ faqs }: { faqs: FaqItemData[] }) => {
 
   return (
     <section className="tp-faq-sec">
+      <div className="tp-eyebrow">
+        <span className="tp-eyebrow-dot" aria-hidden="true" />
+        <span>Common Inquiries</span>
+      </div>
       <h2 className="tp-sec-title">Frequently Asked Questions</h2>
       <p className="tp-sec-intro">Everything you need to know about multi-platform playback, downloads, YouTube transcripts, and TeraBox streaming.</p>
 
       <div className="tp-faq-list">
         {faqs.map((faq, idx) => {
           const isOpen = openIndex === idx;
+          const numStr = String(idx + 1).padStart(2, '0');
           return (
             <div key={idx} className="tp-faq-item" data-open={isOpen ? 'true' : 'false'}>
               <button
@@ -241,7 +249,10 @@ const FaqAccordionSection = React.memo(({ faqs }: { faqs: FaqItemData[] }) => {
                 aria-expanded={isOpen}
                 onClick={() => setOpenIndex(isOpen ? null : idx)}
               >
-                <span>{faq.question}</span>
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <span className="tp-faq-idx" aria-hidden="true">{numStr}</span>
+                  <span className="tp-faq-q">{faq.question}</span>
+                </div>
                 <span className="tp-faq-icon" aria-hidden="true" />
               </button>
 
@@ -257,7 +268,6 @@ const FaqAccordionSection = React.memo(({ faqs }: { faqs: FaqItemData[] }) => {
     </section>
   );
 });
-
 export type PlatformChip =
   | 'YouTube'
   | 'TeraBox'
@@ -1343,7 +1353,7 @@ export default function Index() {
   const jsonLdWebApp = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
-    name: 'TeraPlay Universal Video & Creator Dock',
+    name: 'linkplay4u Universal Video & Creator Dock',
     url: canonicalPath,
     applicationCategory: 'MultimediaApplication',
     operatingSystem: 'Any',
@@ -1389,8 +1399,8 @@ export default function Index() {
 
       {/* MINIMAL FLOATING NAVIGATION BAR */}
       <header className="tp-nav">
-        <Link to="/" className="tp-brand" aria-label="TeraPlay home">
-          <span className="tp-brand-word">TeraPlay</span>
+        <Link to="/" className="tp-brand" aria-label="linkplay4u home">
+          <span className="tp-brand-word">linkplay4u</span>
           <svg className="tp-svg" width="17" height="14" viewBox="0 0 17 14" aria-hidden="true">
             <path
               d="M1 13.2c4.6-.4 8.4-2.6 11-6.4L15.6 1M9.6 1.4h6v6"
@@ -1403,7 +1413,7 @@ export default function Index() {
           </svg>
         </Link>
 
-        <div className="tp-center-info" title="TeraPlay Network Status">
+        <div className="tp-center-info" title="linkplay4u Network Status">
           <span>Edge CDN Online</span>
           <span className="tp-center-bar" aria-hidden="true" />
           <span>YouTube Studio & TeraBox</span>
@@ -1416,8 +1426,8 @@ export default function Index() {
             type="button"
             onClick={() => setShowSupportModal(true)}
             className="tp-btn-nav-accent"
-            title="Support TeraPlay"
-            aria-label="Support TeraPlay"
+            title="Support linkplay4u"
+            aria-label="Support linkplay4u"
           >
             <Coffee className="w-3.5 h-3.5 mr-1 text-black/80" aria-hidden="true" />
             <span>Support</span>
@@ -1753,6 +1763,9 @@ export default function Index() {
         </div>
       </section>
 
+      {/* PLATFORM MARQUEE BAND (EDITORIAL SCROLL STRIP) */}
+      <MarqueeBand />
+
       {/* TOP AD BANNER SLOT (MONETAG / ADSTERRA LEADERBOARD READY) */}
       <div className="tp-wrap">
         <AdBannerSlot slotId="ad-banner-top" format="leaderboard" />
@@ -1888,12 +1901,12 @@ export default function Index() {
 
             {/* UNIVERSAL DOCK TAB NAVIGATION */}
             {/* UNIVERSAL DOCK TAB NAVIGATION */}
-            <div id="studio-tabs-nav" className="flex items-center border-b border-[var(--tp-border-subtle)] px-2 sm:px-6 py-2 overflow-x-auto scrollbar-none flex-nowrap gap-1.5">
+            <div id="studio-tabs-nav" className="tp-editorial-tab-strip">
               {[
-                { id: 'downloads', label: 'Downloads', icon: ArrowDownToLine, count: videoFormats.length + audioFormats.length > 0 ? (videoFormats.length + audioFormats.length) : null, countColor: 'text-emerald-700 dark:text-emerald-400' },
-                { id: 'transcript', label: 'Transcripts', icon: Captions, badge: 'Upcoming', badgeColor: 'text-amber-500/90 dark:text-amber-400 bg-amber-500/10 border-amber-500/20' },
-                { id: 'thumbnails', label: 'Thumbnails', icon: Images, count: coverTiers.length > 0 ? (isTrueCarousel ? `${carouselSlides.length} Slides` : timelineScenes.length > 0 ? `${timelineScenes.length + 1} Visuals` : '1080p HD') : null, countColor: 'text-sky-700 dark:text-sky-400' },
-                { id: 'player', label: 'Player', icon: PlayCircle },
+                { id: 'downloads', label: 'Downloads', idx: '01', icon: ArrowDownToLine, count: videoFormats.length + audioFormats.length > 0 ? (videoFormats.length + audioFormats.length) : null },
+                { id: 'transcript', label: 'Transcripts', idx: '02', icon: Captions, badge: 'Experiment' },
+                { id: 'thumbnails', label: isTrueCarousel ? 'Slides' : 'Thumbnails', idx: '03', icon: Images, count: coverTiers.length > 0 ? (isTrueCarousel ? `${carouselSlides.length}` : timelineScenes.length > 0 ? `${timelineScenes.length + 1}` : 'HD') : null },
+                { id: 'player', label: isImageMedia ? 'Viewer' : 'Player', idx: '04', icon: PlayCircle },
               ].map((tab) => {
                 const isActive = youtubeTab === tab.id;
                 const IconComponent = tab.icon;
@@ -1902,21 +1915,18 @@ export default function Index() {
                     key={tab.id}
                     type="button"
                     onClick={() => setYoutubeTab(tab.id as 'downloads' | 'transcript' | 'thumbnails' | 'player')}
-                    className={`flex items-center gap-1.5 sm:gap-2 py-2 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all shrink-0 whitespace-nowrap ${
-                      isActive
-                        ? 'bg-[var(--tp-mid)]/15 border border-[var(--tp-mid)]/35 text-[var(--tp-mid)] shadow-sm dark:bg-gradient-to-b dark:from-[#2659d9] dark:to-[#123bb0] dark:border-transparent dark:text-white dark:shadow-[0_4px_14px_rgba(6,23,74,0.6),0_0_12px_rgba(38,89,217,0.35)]'
-                        : 'border border-transparent text-[var(--tp-muted)] hover:text-[var(--tp-ink)] hover:bg-white/5'
-                    }`}
+                    className={`tp-editorial-tab ${isActive ? 'active' : ''}`}
                   >
-                    <IconComponent className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                    <span className="tp-tab-idx" aria-hidden="true">{tab.idx}</span>
+                    <IconComponent className="w-3.5 h-3.5 shrink-0" />
                     <span>{tab.label}</span>
                     {tab.count !== null && tab.count !== undefined && (
-                      <span className={`text-[10px] font-mono ${isActive ? 'text-white/90' : tab.countColor}`}>
-                        {tab.count}
+                      <span className="tp-tab-count">
+                        [{tab.count}]
                       </span>
                     )}
                     {tab.badge && (
-                      <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${tab.badgeColor}`}>
+                      <span className="tp-tab-badge">
                         {tab.badge}
                       </span>
                     )}
@@ -1932,7 +1942,7 @@ export default function Index() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   {/* LEFT: EMBEDDED LIVE PLAYER */}
                   <div className={`${isVerticalMedia ? 'lg:col-span-6 xl:col-span-5 mx-auto w-full max-w-md lg:max-w-none' : 'lg:col-span-7'} space-y-2`}>
-                    <div id="studio-player-frame" className={`relative ${isVerticalMedia ? 'aspect-[3/4] max-h-[640px] max-w-[480px] mx-auto' : 'aspect-video'} rounded-2xl overflow-hidden bg-black group`}>
+                    <div id="studio-player-frame" className={`relative ${isVerticalMedia ? 'aspect-[3/4] max-h-[640px] max-w-[480px] mx-auto' : 'aspect-video'} tp-editorial-player-frame group`}>
                       {isYouTubeMode && resolvedVideo.youtube_id ? (
                         <iframe
                           className="w-full h-full"
@@ -2027,7 +2037,7 @@ export default function Index() {
                     </div>
 
                     <div>
-                      <h3 className="text-base font-bold text-[var(--tp-ink)] leading-snug line-clamp-2">
+                      <h3 className="text-xl sm:text-2xl font-normal text-[var(--tp-ink)] leading-snug tracking-tight line-clamp-2 uppercase" style={{ fontFamily: 'var(--tp-font-display, Anton, sans-serif)' }}>
                         {resolvedVideo.title}
                       </h3>
                     </div>
@@ -2046,9 +2056,9 @@ export default function Index() {
                         </a>
                       )}
 
-                      {/* Action 2: Split Download Dropdown (Image 3) */}
+                      {/* Action 2: Split Download Dropdown */}
                       <div className={`relative ${isQuickDropdownOpen ? 'z-40' : ''}`} ref={quickDropdownRef}>
-                        <div className="flex items-stretch rounded-xl">
+                        <div className="tp-editorial-split-cta">
                           <a
                             href={isImageMedia ? (carouselSlides[activeSlideIndex]?.url || resolvedVideo.m3u8_url) : (bestVideo?.download_url || bestVideo?.url)}
                             download={isImageMedia ? `instagram_slide_${activeSlideIndex + 1}.jpg` : undefined}
@@ -2060,15 +2070,14 @@ export default function Index() {
                                 toast.info('Analyzing streams... Please wait a moment.');
                               }
                             }}
-                            className={`tp-btn tp-btn-download flex-1 justify-center rounded-r-none border-r border-black/20 active:opacity-90 ${
+                            className={`tp-editorial-cta-main ${
                               !isImageMedia && !bestVideo ? 'opacity-60 cursor-not-allowed' : ''
                             }`}
-                            style={{ height: '44px', fontSize: '13px' }}
                           >
                             <Download className="w-4 h-4" />
                             <span>
                               {isImageMedia
-                                ? `Download Slide ${activeSlideIndex + 1} (1080p)`
+                                ? `Download Slide ${activeSlideIndex + 1} (JPG)`
                                 : bestVideo
                                 ? `Download Video (${getShortResTag(bestVideo.height)})`
                                 : 'Analyzing Streams...'}
@@ -2078,8 +2087,7 @@ export default function Index() {
                           <button
                             type="button"
                             onClick={() => setIsQuickDropdownOpen(!isQuickDropdownOpen)}
-                            className="tp-btn tp-btn-download rounded-l-none px-3.5 active:opacity-90"
-                            style={{ height: '44px' }}
+                            className="tp-editorial-cta-arrow"
                             title={isImageMedia ? "Select carousel slide" : "Select quick download quality"}
                             aria-expanded={isQuickDropdownOpen}
                           >
@@ -2087,7 +2095,7 @@ export default function Index() {
                           </button>
                         </div>
 
-                        {/* Backdrop overlay: closes dropdown when clicking anywhere outside */}
+                        {/* Backdrop overlay */}
                         {isQuickDropdownOpen && (
                           <div
                             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]"
@@ -2097,10 +2105,10 @@ export default function Index() {
 
                         {/* Dropdown Menu Popover */}
                         {isQuickDropdownOpen && (
-                          <div className="absolute right-0 top-full mt-2 w-full sm:w-[340px] max-h-[min(520px,75vh)] overflow-y-auto overscroll-contain bg-white dark:bg-[#090f22] border border-[var(--tp-border-card)] rounded-2xl p-2.5 shadow-2xl shadow-black/60 z-50 scrollbar-thin">
-                            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--tp-muted)] px-3 py-1 flex items-center justify-between">
+                          <div className="tp-editorial-popover">
+                            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--tp-muted)] px-4 py-2 border-b border-[var(--tp-border-subtle)] flex items-center justify-between">
                               <span>{isImageMedia ? 'Carousel Slides (1080p JPG)' : 'Video Qualities (MP4)'}</span>
-                              <span className="text-[9px] text-[#e4f222]">{isImageMedia ? `${carouselSlides.length} Slides` : 'Standard Res'}</span>
+                              <span className="text-[10px] text-[var(--tp-accent)]">{isImageMedia ? `${carouselSlides.length} Slides` : 'Standard Res'}</span>
                             </div>
                             <div className="space-y-0.5">
                               {isImageMedia ? (
@@ -2115,13 +2123,13 @@ export default function Index() {
                                       setActiveSlideIndex(idx);
                                       setIsQuickDropdownOpen(false);
                                     }}
-                                    className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-[var(--tp-paper-input)] active:opacity-90 text-[var(--tp-ink)] font-medium transition-colors"
+                                    className="tp-editorial-popover-item"
                                   >
                                     <span className="flex items-center gap-2">
                                       <ImageIcon className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                                       <span className="font-semibold">Slide {idx + 1} of {carouselSlides.length}</span>
                                     </span>
-                                    <span className="text-[10px] font-mono tabular-nums text-sky-300 dark:text-sky-300 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded shrink-0">
+                                    <span className="text-[10px] font-mono tabular-nums text-[var(--tp-accent)] shrink-0">
                                       1080p HD
                                     </span>
                                   </a>
@@ -2135,113 +2143,95 @@ export default function Index() {
                                     key={vf.format_id}
                                     href={vf.download_url || vf.url}
                                     download
+                                    target="_blank"
+                                    rel="noreferrer"
                                     onClick={() => setIsQuickDropdownOpen(false)}
-                                    className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-[var(--tp-paper-input)] active:opacity-90 text-[var(--tp-ink)] font-medium transition-colors"
+                                    className="tp-editorial-popover-item"
                                   >
                                     <span className="flex items-center gap-2">
-                                      <Film className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                                      <span className="font-semibold">
-                                        {tier}
-                                        {!vf.has_audio && (
-                                          <span className="ml-1.5 text-[10px] text-amber-400/90 font-normal">
-                                            (Video Only)
-                                          </span>
-                                        )}
-                                        {isCinema && (
-                                          <span className="ml-1.5 text-[10px] text-[var(--tp-muted)] font-mono font-normal">
-                                            ({vf.height}p)
-                                          </span>
-                                        )}
-                                      </span>
+                                      <span className="font-semibold">{vf.quality || getStandardResTier(vf.height)}</span>
+                                      {vf.height && vf.height >= 1080 && (
+                                        <span className="text-[9px] font-mono px-1 py-0.2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                          HD
+                                        </span>
+                                      )}
                                     </span>
-                                    <span className="text-[10px] font-mono tabular-nums text-sky-300 dark:text-sky-300 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded shrink-0">
-                                      {vf.filesize}
+                                    <span className="text-[10px] font-mono tabular-nums text-[var(--tp-muted)] shrink-0">
+                                      {vf.filesize || 'Direct'}
                                     </span>
                                   </a>
                                 );
-                              })
-                            )}
+                              }))}
                             </div>
-
                           </div>
                         )}
                       </div>
 
-                      {/* Action 3: Split MP3 Download Dropdown (audio twin of Action 2) */}
-                      {bestAudio && (
-                        <div className={'relative ' + (isAudioDropdownOpen ? 'z-40' : '')} ref={audioDropdownRef}>
-                          <div className="flex items-stretch rounded-xl">
+                      {/* Action 3: Quick MP3 Audio Download */}
+                      {!isImageMedia && bestAudio && (
+                        <div className="relative" ref={audioDropdownRef}>
+                          <div className="tp-editorial-split-cta-secondary">
                             <a
-                              href={getFormatDownloadHref(bestAudio)}
-                              download={getFormatDownloadFilename(bestAudio)}
-                              className="tp-btn tp-btn-download-audio flex-1 justify-center rounded-r-none border-r border-black/20 active:opacity-90"
-                              style={{ height: '44px', fontSize: '13px' }}
+                              href={bestAudio.download_url || bestAudio.url}
+                              download
+                              target="_blank"
+                              rel="noreferrer"
+                              className="tp-editorial-cta-main-secondary"
                             >
-                              <Download className="w-4 h-4" />
-                              <span>Download Audio (MP3 320 kbps)</span>
+                              <Music className="w-4 h-4 text-[var(--tp-accent)]" />
+                              <span>Download Audio (MP3 · {bestAudio.quality || '320k'})</span>
                             </a>
-                            <button
-                              type="button"
-                              onClick={() => setIsAudioDropdownOpen(!isAudioDropdownOpen)}
-                              className="tp-btn tp-btn-download-audio rounded-l-none px-3.5 active:opacity-90"
-                              style={{ height: '44px' }}
-                              title="Select audio bitrate"
-                              aria-expanded={isAudioDropdownOpen}
-                            >
-                              <ChevronDown className={'w-4 h-4 transition-transform duration-200 ' + (isAudioDropdownOpen ? 'rotate-180' : '')} />
-                            </button>
+                            {audioFormats.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setIsAudioDropdownOpen(!isAudioDropdownOpen)}
+                                className="tp-editorial-cta-arrow-secondary"
+                                title="Select audio bitrate"
+                                aria-expanded={isAudioDropdownOpen}
+                              >
+                                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isAudioDropdownOpen ? 'rotate-180' : ''}`} />
+                              </button>
+                            )}
                           </div>
 
+                          {/* Audio Dropdown Popover */}
                           {isAudioDropdownOpen && (
-                            <div
-                              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]"
-                              onClick={() => setIsAudioDropdownOpen(false)}
-                            />
-                          )}
-
-                          {isAudioDropdownOpen && (
-                            <div className="absolute right-0 top-full mt-2 w-full sm:w-[340px] max-h-[min(520px,75vh)] overflow-y-auto overscroll-contain bg-white dark:bg-[#090f22] border border-[var(--tp-border-card)] rounded-2xl p-2.5 shadow-2xl shadow-black/60 z-50 scrollbar-thin">
-                              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--tp-muted)] px-3 py-1 flex items-center justify-between">
-                                <span>Audio Tracks (MP3 / AAC)</span>
-                                <span className="text-[9px] text-emerald-400">Audio Only</span>
+                            <div className="tp-editorial-popover">
+                              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--tp-muted)] px-4 py-2 border-b border-[var(--tp-border-subtle)] flex items-center justify-between">
+                                <span>Audio Bitrates (MP3)</span>
+                                <span className="text-[10px] text-[var(--tp-accent)]">Direct Audio</span>
                               </div>
-                              {audioFormats.length > 0 ? (
-                                <div className="space-y-0.5">
-                                  {audioFormats.map((af) => (
-                                    <a
-                                      key={af.format_id}
-                                      href={af.download_url || af.url}
-                                      download
-                                      onClick={() => setIsAudioDropdownOpen(false)}
-                                      className="flex items-center justify-between px-3 py-2 text-xs rounded-xl hover:bg-[var(--tp-paper-input)] active:opacity-90 text-[var(--tp-ink)] font-medium transition-colors"
-                                    >
-                                      <span className="flex items-center gap-2">
-                                        <Music className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                                        <span className="truncate">{af.quality}</span>
-                                      </span>
-                                      <span className="text-[10px] font-mono tabular-nums text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-1.5 py-0.5 rounded shrink-0">
-                                        {af.filesize}
-                                      </span>
-                                    </a>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="px-3 py-2 text-[11px] font-mono text-[var(--tp-muted)]">
-                                  Analyzing audio tracks...
-                                </div>
-                              )}
+                              <div className="space-y-0.5">
+                                {audioFormats.map((af) => (
+                                  <a
+                                    key={af.format_id}
+                                    href={af.download_url || af.url}
+                                    download
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={() => setIsAudioDropdownOpen(false)}
+                                    className="tp-editorial-popover-item"
+                                  >
+                                    <span className="flex items-center gap-2">
+                                      <Music className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                      <span className="font-semibold">{af.quality || 'Studio Audio'}</span>
+                                    </span>
+                                    <span className="text-[10px] font-mono tabular-nums text-[var(--tp-muted)] shrink-0">
+                                      {af.filesize || 'Direct'}
+                                    </span>
+                                  </a>
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
                       )}
-
-
                     </div>
                   </div>
                 </div>
 
                 {/* BOTTOM SECTION: SEGMENTED SWITCHER & QUALITY TABLE (IMAGE 4 & 5) */}
-                <div className="space-y-4 pt-4 border-t border-[var(--tp-border-subtle)]">
+                <div id="downloads-directory" className="space-y-4 pt-4 border-t border-[var(--tp-border-subtle)]">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <h4 className="text-base font-bold text-[var(--tp-ink)]">Full Quality Downloads</h4>
@@ -3203,8 +3193,15 @@ export default function Index() {
             Icons are lucide glyphs whose shape matches the feature, unlike the
             old decorative arrow/ring/plus marks that carried no meaning.
             ========================================================================= */}
+        {/* =========================================================================
+            FEATURE TRIO — WHAT THE DOCK ACTUALLY DOES (INTERACTIVE PLATFORM FOLDERS)
+            ========================================================================= */}
         <section className="tp-features-sec">
-          <h2 className="tp-sec-title">Paste any link. Stream, extract, or save instantly.</h2>
+          <div className="tp-eyebrow">
+            <span className="tp-eyebrow-dot" aria-hidden="true" />
+            <span>WHAT THE DOCK DOES</span>
+          </div>
+          <h2 className="tp-sec-title">PASTE ANY LINK. STREAM, EXTRACT, OR SAVE INSTANTLY.</h2>
           <p className="tp-sec-intro">
             From 4K video streams to timestamped transcripts and audio MP3s, all in one place.
           </p>
@@ -3247,48 +3244,25 @@ export default function Index() {
               />
             </div>
           </div>
-
-          <div className="tp-features-grid mt-16 sm:mt-20">
-            {/* Feature 1: Direct in-browser streaming */}
-            <article className="tp-feature-card">
-              <div className="tp-feature-idx" aria-hidden="true">01</div>
-              <div className="tp-feature-mark">
-                <MonitorPlay className="tp-mark-lucide" width={54} height={54} strokeWidth={1.5} aria-hidden="true" />
-              </div>
-              <h3 className="tp-feature-title">Direct in-browser streaming</h3>
-              <p className="tp-feature-text">
-                Stream videos, cloud archives, and live feeds inside a distraction-free player. Complete with Picture-in-Picture, custom playback speeds, and zero banner overlays.
-              </p>
-            </article>
-
-            {/* Feature 2: Source-quality 4K & studio audio */}
-            <article className="tp-feature-card">
-              <div className="tp-feature-idx" aria-hidden="true">02</div>
-              <div className="tp-feature-mark">
-                <Captions className="tp-mark-lucide" width={54} height={54} strokeWidth={1.5} aria-hidden="true" />
-              </div>
-              <h3 className="tp-feature-title">Source-quality 4K & studio audio</h3>
-              <p className="tp-feature-text">
-                Download raw video up to 4K Ultra HD at source bitrate. Extract crisp MP3 audio tracks and pull timestamped SubRip .SRT or clean .TXT subtitles with millisecond accuracy.
-              </p>
-            </article>
-
-            {/* Feature 3: Zero friction & client privacy */}
-            <article className="tp-feature-card">
-              <div className="tp-feature-idx" aria-hidden="true">03</div>
-              <div className="tp-feature-mark">
-                <ShieldCheck className="tp-mark-lucide" width={54} height={54} strokeWidth={1.5} aria-hidden="true" />
-              </div>
-              <h3 className="tp-feature-title">Zero friction & client privacy</h3>
-              <p className="tp-feature-text">
-                No apps to download, no accounts to register, and no watermarks stamped onto your files. Media saves directly to your device preserving the author's original title.
-              </p>
-            </article>
-          </div>
         </section>
 
-        {/* STATS BAND */}
+        <Reveal>
+          <HowItWorks />
+        </Reveal>
+
+      {/* TOOL ROWS — TRANSCRIPT / THUMBNAIL / TERABOX PLAYER */}
+      <ToolsGrid />
+
+        {/* STATS BAND — eyebrow, Anton title, closed border grid */}
         <section className="tp-stats-band">
+          <div className="tp-eyebrow">
+            <span className="tp-eyebrow-dot" aria-hidden="true" />
+            <span>By The Numbers</span>
+          </div>
+          <h2 className="tp-stats-heading">
+            <span className="tp-stats-heading-line">The Dock,</span>
+            <span className="tp-stats-heading-line">Measured.</span>
+          </h2>
           <div className="tp-stats-grid">
             <div>
               <div className="tp-stat-val">12+</div>
@@ -3296,7 +3270,7 @@ export default function Index() {
             </div>
             <div>
               <div className="tp-stat-val">5</div>
-              <div className="tp-stat-lbl">Media Formats: MP4 · MP3 · SRT · TXT · JPG</div>
+              <div className="tp-stat-lbl">Media Formats<br />MP4 · MP3 · SRT · TXT · JPG</div>
             </div>
             <div>
               <div className="tp-stat-val">$0</div>
@@ -3304,7 +3278,7 @@ export default function Index() {
             </div>
             <div>
               <div className="tp-stat-val">4K</div>
-              <div className="tp-stat-lbl">Max Video Quality · 1080p Artwork</div>
+              <div className="tp-stat-lbl">Max Video Quality</div>
             </div>
           </div>
         </section>
@@ -3312,6 +3286,10 @@ export default function Index() {
         {/* SEO DOMAIN STATUS GRID & EXPLANATION */}
         <section className="tp-seo-card">
           <div className="space-y-3">
+            <div className="tp-eyebrow">
+              <span className="tp-eyebrow-dot" aria-hidden="true" />
+              <span>Platform Engine</span>
+            </div>
             {/* The hero headline is the brand line on every route, so the route
                 keyword lives here as the section heading instead. */}
             <h2>{seo.h1}</h2>
@@ -3322,7 +3300,7 @@ export default function Index() {
               cloud-share player that demands its own app.
             </p>
             <p>
-              <strong>TeraPlay</strong> handles all of those jobs from a single input field. Paste a
+              <strong>linkplay4u</strong> handles all of those jobs from a single input field. Paste a
               link from YouTube, TikTok, Instagram, TeraBox, Twitch, Snapchat, LinkedIn, Facebook, Vimeo, Bilibili, Dailymotion, or X (Twitter), then
               stream it in the browser, download the original file in up to 4K, export timestamped SubRip .SRT or clean .TXT subtitles, pull studio MP3 audio, and
               grab uncompressed 1080p cover art. One universal tool for all of it, no app installs, no login walls.
@@ -3374,7 +3352,7 @@ export default function Index() {
           {/* Col 1: Brand & Status */}
           <div>
             <div className="tp-foot-brand">
-              <span>TeraPlay</span>
+              <span>linkplay4u</span>
               <svg width="17" height="14" viewBox="0 0 17 14" aria-hidden="true" className="text-[#e4f222]">
                 <path
                   d="M1 13.2c4.6-.4 8.4-2.6 11-6.4L15.6 1M9.6 1.4h6v6"
@@ -3552,12 +3530,12 @@ export default function Index() {
 
           {/* Bottom Bar */}
           <div className="tp-foot-bottom-bar">
-            <span>© {new Date().getFullYear()} TeraPlay Universal Media Hub.</span>
+            <span>© {new Date().getFullYear()} linkplay4u Universal Media Hub.</span>
           </div>
         </div>
 
         <div className="tp-foot-watermark" aria-hidden="true">
-          <span className="tp-foot-word">TeraPlay</span>
+          <span className="tp-foot-word">linkplay4u</span>
           <svg viewBox="0 0 17 14" className="tp-foot-word-arrow" aria-hidden="true">
             <path
               d="M1 13.2c4.6-.4 8.4-2.6 11-6.4L15.6 1M9.6 1.4h6v6"
@@ -3597,14 +3575,14 @@ export default function Index() {
                 theme === 'light' ? 'text-slate-900' : 'text-white'
               }`}
             >
-              Support TeraPlay
+              Support linkplay4u
             </DialogTitle>
             <DialogDescription
               className={`text-sm text-center max-w-sm leading-relaxed ${
                 theme === 'light' ? 'text-slate-600' : 'text-slate-300'
               }`}
             >
-              TeraPlay is 100% free with zero paywalls and no mandatory accounts. If you find this tool helpful, consider supporting server costs or sharing it with friends.
+              linkplay4u is 100% free with zero paywalls and no mandatory accounts. If you find this tool helpful, consider supporting server costs or sharing it with friends.
             </DialogDescription>
           </DialogHeader>
 
