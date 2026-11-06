@@ -950,7 +950,7 @@ export default function Index() {
           sublabel: 'Full HD 1080p Lossless',
           res: '1920 × 1080',
           badge: 'Highest Quality',
-          badgeColor: 'text-[#e4f222] bg-[#e4f222]/15 border-[#e4f222]/30',
+          badgeColor: 'text-[#C6F432] bg-[#C6F432]/15 border-[#C6F432]/30',
           url: `https://img.youtube.com/vi/${resolvedVideo.youtube_id}/maxresdefault.jpg`,
           tag: '1080p',
         },
@@ -1019,7 +1019,7 @@ export default function Index() {
               : 'Standard';
           const badgeColor =
             badge === '4K UHD' || badge === 'Highest Quality'
-              ? 'text-[#e4f222] bg-[#e4f222]/15 border-[#e4f222]/30'
+              ? 'text-[#C6F432] bg-[#C6F432]/15 border-[#C6F432]/30'
               : badge === 'High Definition'
               ? 'text-sky-400 bg-sky-400/15 border-sky-400/30'
               : 'text-amber-400 bg-amber-400/15 border-amber-400/30';
@@ -1047,7 +1047,7 @@ export default function Index() {
           sublabel: 'Lossless Master Cover',
           res: 'HD Standard',
           badge: 'HD Quality',
-          badgeColor: 'text-[#e4f222] bg-[#e4f222]/15 border-[#e4f222]/30',
+          badgeColor: 'text-[#C6F432] bg-[#C6F432]/15 border-[#C6F432]/30',
           url: resolvedVideo.thumbnail,
           tag: 'original',
         },
@@ -1071,7 +1071,7 @@ export default function Index() {
         sublabel: t.quality_label || 'Original Lossless Quality',
         res: t.resolution || (t.width && t.height ? `${t.width} × ${t.height}` : '1080p HD'),
         badge: idx === 0 ? 'Cover Slide' : 'Slide',
-        badgeColor: idx === 0 ? 'text-[#e4f222] bg-[#e4f222]/15 border-[#e4f222]/30' : 'text-sky-400 bg-sky-400/15 border-sky-400/30',
+        badgeColor: idx === 0 ? 'text-[#C6F432] bg-[#C6F432]/15 border-[#C6F432]/30' : 'text-sky-400 bg-sky-400/15 border-sky-400/30',
         url: t.url,
         tag: `slide_${idx + 1}`,
       }));
@@ -1526,7 +1526,7 @@ export default function Index() {
                   className="tp-btn-paste-inline"
                   title="Paste link from clipboard"
                 >
-                  <Clipboard className="w-3.5 h-3.5 text-[#e4f222] shrink-0" />
+                  <Clipboard className="w-3.5 h-3.5 text-[#C6F432] shrink-0" />
                   <span>Paste</span>
                 </button>
               </div>
@@ -2006,7 +2006,7 @@ export default function Index() {
                               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-xs font-mono font-bold text-white flex items-center gap-2 shadow-lg">
                                 <span>Slide {activeSlideIndex + 1} of {carouselSlides.length}</span>
                                 <span className="w-1 h-1 rounded-full bg-white/40" />
-                                <span className="text-[#e4f222]">{resolvedVideo.thumbnails?.[activeSlideIndex]?.resolution || '1080p Original'}</span>
+                                <span className="text-[#C6F432]">{resolvedVideo.thumbnails?.[activeSlideIndex]?.resolution || '1080p Original'}</span>
                               </div>
                             </>
                           )}
@@ -2245,7 +2245,7 @@ export default function Index() {
                         onClick={() => setDownloadFormatTab('video')}
                         className={`flex items-center gap-2 px-3 py-2 border-b-2 text-xs sm:text-sm font-semibold transition-colors ${
                           downloadFormatTab === 'video'
-                            ? 'border-[var(--tp-mid)] text-[var(--tp-mid)] dark:border-[#e4f222] dark:text-[#e4f222]'
+                            ? 'border-[var(--tp-mid)] text-[var(--tp-mid)] dark:border-[#C6F432] dark:text-[#C6F432]'
                             : 'border-transparent text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
                         }`}
                       >
@@ -2261,7 +2261,7 @@ export default function Index() {
                         onClick={() => setDownloadFormatTab('audio')}
                         className={`flex items-center gap-2 px-3 py-2 border-b-2 text-xs sm:text-sm font-semibold transition-colors ${
                           downloadFormatTab === 'audio'
-                            ? 'border-[var(--tp-mid)] text-[var(--tp-mid)] dark:border-[#e4f222] dark:text-[#e4f222]'
+                            ? 'border-[var(--tp-mid)] text-[var(--tp-mid)] dark:border-[#C6F432] dark:text-[#C6F432]'
                             : 'border-transparent text-[var(--tp-muted)] hover:text-[var(--tp-ink)]'
                         }`}
                       >
@@ -2481,7 +2481,7 @@ export default function Index() {
                     <Search className="w-4 h-4 text-[var(--tp-muted)] absolute left-3 top-3" />
                     <input
                       type="text"
-                      className="w-full bg-[var(--tp-paper-elevated)] border border-[var(--tp-border-card)] rounded-xl pl-9 pr-3 py-2 text-xs text-[var(--tp-ink)] placeholder-[var(--tp-muted)] focus:outline-none focus:border-[var(--tp-mid)] dark:focus:border-[#e4f222]"
+                      className="w-full bg-[var(--tp-paper-elevated)] border border-[var(--tp-border-card)] rounded-xl pl-9 pr-3 py-2 text-xs text-[var(--tp-ink)] placeholder-[var(--tp-muted)] focus:outline-none focus:border-[var(--tp-mid)] dark:focus:border-[#C6F432]"
                       placeholder="Search within transcript..."
                       value={transcriptSearch}
                       onChange={(e) => setTranscriptSearch(e.target.value)}
@@ -2504,7 +2504,7 @@ export default function Index() {
                       onClick={() => setShowTimestamps(!showTimestamps)}
                       className={`h-9 px-3 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
                         showTimestamps
-                          ? 'border-[var(--tp-accent)] bg-[var(--tp-accent)]/15 text-[var(--tp-accent-ink)] dark:text-[#e4f222]'
+                          ? 'border-[var(--tp-accent)] bg-[var(--tp-accent)]/15 text-[var(--tp-accent-ink)] dark:text-[#C6F432]'
                           : 'border-[var(--tp-border-card)] bg-[var(--tp-paper-elevated)] text-[var(--tp-muted)] hover:text-[var(--tp-ink)] hover:bg-[var(--tp-paper-input)]'
                       }`}
                       title="Toggle timestamp markers"
@@ -2524,7 +2524,7 @@ export default function Index() {
                       {isTranscribing ? (
                         <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-500" />
                       ) : (
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-[#e4f222]" />
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-[#C6F432]" />
                       )}
                       <span>{isTranscribing ? 'Transcribing...' : 'AI Transcribe'}</span>
                     </button>
@@ -2624,7 +2624,7 @@ export default function Index() {
                           </div>
                         ) : isTranscribing ? (
                           <div className="space-y-3 py-6">
-                            <RefreshCw className="w-8 h-8 animate-spin text-[var(--tp-mid)] dark:text-[#e4f222] mx-auto" />
+                            <RefreshCw className="w-8 h-8 animate-spin text-[var(--tp-mid)] dark:text-[#C6F432] mx-auto" />
                             <p className="text-sm font-semibold text-[var(--tp-ink)]">
                               Transcribing audio with Groq Whisper AI...
                             </p>
@@ -2667,7 +2667,7 @@ export default function Index() {
                           </div>
                         ) : (
                           <div className="space-y-3">
-                            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-[#e4f222] flex items-center justify-center mx-auto">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-[#C6F432] flex items-center justify-center mx-auto">
                               <Sparkles className="w-6 h-6" />
                             </div>
                             <div className="space-y-1">
@@ -2775,9 +2775,9 @@ export default function Index() {
                           : 'text-[var(--tp-muted)] hover:text-[var(--tp-ink)] border border-transparent'
                       }`}
                     >
-                      <ImageIcon className="w-3.5 h-3.5 text-[#e4f222]" />
+                      <ImageIcon className="w-3.5 h-3.5 text-[#C6F432]" />
                       <span>Official Video Cover</span>
-                      <span className="text-[10px] font-mono text-[#e4f222] bg-[#e4f222]/15 px-1.5 py-0.5 rounded-md">
+                      <span className="text-[10px] font-mono text-[#C6F432] bg-[#C6F432]/15 px-1.5 py-0.5 rounded-md">
                         {coverTiers.length} Qualities
                       </span>
                     </button>
@@ -2875,7 +2875,7 @@ export default function Index() {
                               <div className="absolute left-0 right-0 top-full mt-2 w-full bg-white dark:bg-[#090f22] border border-[var(--tp-border-card)] rounded-2xl p-2.5 shadow-2xl shadow-black/60 z-50">
                                 <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--tp-muted)] px-3 py-1 flex items-center justify-between">
                                   <span>Select Quality</span>
-                                  <span className="text-[9px] text-[#e4f222]">Lossless JPG</span>
+                                  <span className="text-[9px] text-[#C6F432]">Lossless JPG</span>
                                 </div>
                                 <div className="space-y-1 mt-1">
                                   {coverTiers.map((tier) => (
@@ -2889,7 +2889,7 @@ export default function Index() {
                                       }}
                                       className={`w-full flex items-center justify-between px-3 py-2.5 text-xs rounded-xl transition-colors ${
                                         activeCoverTier.tag === tier.tag
-                                          ? 'bg-[var(--tp-mid)]/20 text-[#e4f222] font-bold border border-[#e4f222]/30'
+                                          ? 'bg-[var(--tp-mid)]/20 text-[#C6F432] font-bold border border-[#C6F432]/30'
                                           : 'hover:bg-[var(--tp-paper-input)] text-[var(--tp-ink)] font-medium border border-transparent'
                                       }`}
                                     >
@@ -3138,7 +3138,7 @@ export default function Index() {
                         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-md border border-white/20 text-xs font-mono font-bold text-white flex items-center gap-2 shadow-lg">
                           <span>Slide {activeSlideIndex + 1} of {carouselSlides.length}</span>
                           <span className="w-1 h-1 rounded-full bg-white/40" />
-                          <span className="text-[#e4f222]">{resolvedVideo.thumbnails?.[activeSlideIndex]?.resolution || '1080p Original'}</span>
+                          <span className="text-[#C6F432]">{resolvedVideo.thumbnails?.[activeSlideIndex]?.resolution || '1080p Original'}</span>
                         </div>
                       </>
                     )}
@@ -3250,6 +3250,21 @@ export default function Index() {
           <HowItWorks />
         </Reveal>
 
+        {/* LAUNCH FILM — 19s teaser (films/teraplay-film) */}
+        <section className="mx-auto w-full max-w-5xl px-4 py-16" aria-label="TeraPlay launch teaser">
+          <video
+            className="w-full rounded-2xl border border-white/10 shadow-2xl"
+            src="/film/teraplay-teaser.mp4"
+            poster="/film/teraplay-poster.png"
+            autoPlay
+            muted
+            loop
+            playsInline
+            controls
+            preload="metadata"
+          />
+        </section>
+
       {/* TOOL ROWS — TRANSCRIPT / THUMBNAIL / TERABOX PLAYER */}
       <ToolsGrid />
 
@@ -3353,7 +3368,7 @@ export default function Index() {
           <div>
             <div className="tp-foot-brand">
               <span>linkplay4u</span>
-              <svg width="17" height="14" viewBox="0 0 17 14" aria-hidden="true" className="text-[#e4f222]">
+              <svg width="17" height="14" viewBox="0 0 17 14" aria-hidden="true" className="text-[#C6F432]">
                 <path
                   d="M1 13.2c4.6-.4 8.4-2.6 11-6.4L15.6 1M9.6 1.4h6v6"
                   fill="none"
@@ -3564,8 +3579,8 @@ export default function Index() {
             <div
               className={`w-14 h-14 rounded-2xl flex items-center justify-center border shadow-sm ${
                 theme === 'light'
-                  ? 'bg-[#e4f222]/25 border-[#b6c200]/40 text-[#4c5200]'
-                  : 'bg-[#e4f222]/15 border-[#e4f222]/35 text-[#e4f222]'
+                  ? 'bg-[#C6F432]/25 border-[#b6c200]/40 text-[#4c5200]'
+                  : 'bg-[#C6F432]/15 border-[#C6F432]/35 text-[#C6F432]'
               }`}
             >
               <Coffee className="w-7 h-7" />

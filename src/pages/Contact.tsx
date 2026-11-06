@@ -30,7 +30,7 @@ const ContactPage = () => (
               <div className="pt-2 border-t border-[var(--tp-border-subtle)] flex items-center justify-between">
                 <a
                   href={`mailto:${CONTACT_EMAIL}`}
-                  className="text-xs font-mono font-bold text-[#2659d9] dark:text-[#e4f222] hover:underline"
+                  className="text-xs font-mono font-bold text-[#2659d9] dark:text-[#C6F432] hover:underline"
                 >
                   {CONTACT_EMAIL}
                 </a>
@@ -82,7 +82,7 @@ const ContactPage = () => (
               <div className="pt-2 border-t border-[var(--tp-border-subtle)] flex items-center justify-between">
                 <a
                   href={`mailto:${PRIVACY_EMAIL}`}
-                  className="text-xs font-mono font-bold text-[#2659d9] dark:text-[#e4f222] hover:underline"
+                  className="text-xs font-mono font-bold text-[#2659d9] dark:text-[#C6F432] hover:underline"
                 >
                   {PRIVACY_EMAIL}
                 </a>

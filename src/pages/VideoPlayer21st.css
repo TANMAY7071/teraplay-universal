@@ -151,7 +151,7 @@ body::-webkit-scrollbar,
   --tp-ink: #f1f5fd;
   --tp-muted: #8e9bb5;
   --tp-text-dim: #bac5dc;
-  --tp-accent: #e4f222;
+  --tp-accent: #C6F432;
   --tp-accent-ink: #0c0e13;
   --tp-audio: #fbbf24;
   --tp-audio-ink: #231502;
@@ -1030,12 +1030,12 @@ body::-webkit-scrollbar,
   background: var(--tp-accent);
   color: var(--tp-accent-ink);
   box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.15),
-              0 2px 10px rgba(228, 242, 34, 0.22);
+              0 2px 10px rgba(198, 244, 50, 0.22);
 }
 
 .tp-btn-primary:hover:not(:disabled) {
   box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.15),
-              0 4px 16px rgba(228, 242, 34, 0.35);
+              0 4px 16px rgba(198, 244, 50, 0.35);
   filter: brightness(1.05);
 }
 
@@ -1377,11 +1377,11 @@ body::-webkit-scrollbar,
   background: var(--tp-accent);
   color: var(--tp-accent-ink);
   font-weight: 600;
-  box-shadow: 0 2px 10px rgba(228, 242, 34, 0.22);
+  box-shadow: 0 2px 10px rgba(198, 244, 50, 0.22);
 }
 
 .tp-btn-download:hover {
-  box-shadow: 0 4px 16px rgba(228, 242, 34, 0.35);
+  box-shadow: 0 4px 16px rgba(198, 244, 50, 0.35);
 }
 
 /* The accent glow reads as a smudge on white paper, so light theme keeps a
@@ -1400,11 +1400,11 @@ body::-webkit-scrollbar,
   background: var(--tp-accent);
   color: var(--tp-accent-ink);
   font-weight: 600;
-  box-shadow: 0 2px 10px rgba(228, 242, 34, 0.22);
+  box-shadow: 0 2px 10px rgba(198, 244, 50, 0.22);
 }
 
 .tp-btn-download-audio:hover {
-  box-shadow: 0 4px 16px rgba(228, 242, 34, 0.35);
+  box-shadow: 0 4px 16px rgba(198, 244, 50, 0.35);
 }
 
 .tp-root[data-theme="light"] .tp-btn-download-audio,
@@ -2061,7 +2061,7 @@ body::-webkit-scrollbar,
     font-size: 14.5px;
     font-weight: 700;
     justify-content: center;
-    box-shadow: 0 2px 12px rgba(228, 242, 34, 0.25);
+    box-shadow: 0 2px 12px rgba(198, 244, 50, 0.25);
   }
   .tp-player-header {
     padding: 12px 14px;
