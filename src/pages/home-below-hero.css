@@ -339,7 +339,7 @@
 }
 
 @media (min-width: 768px) {
-  .tp-how-grid {
+  .tp-how-sec .tp-how-grid, .tp-how-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
