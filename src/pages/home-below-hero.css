@@ -149,8 +149,8 @@
   background: var(--tp-paper);
 }
 
-.tp-tool-list {
-  margin-top: 44px;
+.tp-tools-sec .tp-tool-list, .tp-tool-list {
+  margin-top: clamp(60px, 5.5vw, 82px);
   list-style: none;
 }
 
@@ -330,8 +330,8 @@
   flex-shrink: 0;
 }
 
-.tp-how-grid {
-  margin-top: 48px;
+.tp-how-sec .tp-how-grid, .tp-how-grid {
+  margin-top: clamp(64px, 6vw, 88px);
   list-style: none;
   display: grid;
   grid-template-columns: 1fr;
