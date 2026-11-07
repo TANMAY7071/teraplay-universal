@@ -42,7 +42,7 @@ const ThinBar: React.FC<{
     >
       <div
         className="absolute top-0 left-0 h-full bg-white rounded-full pointer-events-none"
-        style={{ width: `${value}%` }}
+        style={{ width: `${Math.min(100, Math.max(0, isNaN(value) ? 0 : value))}%` }}
       />
     </div>
   );
@@ -344,6 +344,12 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         hlsInstance.loadSource(currentSrc);
         hlsInstance.attachMedia(video);
 
+        hlsInstance.on(Hls.Events.LEVEL_LOADED, (_event, data) => {
+          if (data.details && isFinite(data.details.totalduration) && data.details.totalduration > 0) {
+            setDuration(data.details.totalduration);
+          }
+        });
+
         hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
           if (!data.fatal) return;
           console.warn(`HLS fatal error: type = ${data.type}, details = ${data.details}`);
@@ -415,6 +421,9 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     const video = videoRef.current;
     if (!video) return;
     setCurrentTime(video.currentTime);
+    if (isFinite(video.duration) && video.duration > 0 && Math.abs(video.duration - duration) > 1) {
+      setDuration(video.duration);
+    }
     if (onTimeUpdate) {
       onTimeUpdate(video.currentTime, video.duration || 1);
     }
@@ -599,9 +608,21 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isIframeEmbed, handleVolumeChange, toggleMute, toggleFullscreen]);
+  const handleDurationChange = () => {
+    const video = videoRef.current;
+    if (!video || !isFinite(video.duration) || isNaN(video.duration) || video.duration <= 0) return;
+    setDuration(video.duration);
+  };
+
   const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
+    if (!secs || !isFinite(secs) || isNaN(secs) || secs < 0) return "0:00";
+    const totalSecs = Math.floor(secs);
+    const h = Math.floor(totalSecs / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    if (h > 0) {
+      return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    }
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
@@ -633,6 +654,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
           poster={poster}
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
+          onDurationChange={handleDurationChange}
           onClick={handlePlayPause}
           onDoubleClick={toggleFullscreen}
           onPlay={() => {
