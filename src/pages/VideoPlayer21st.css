@@ -1462,6 +1462,12 @@ body::-webkit-scrollbar,
 .tp-features-sec {
   padding: 80px 0;
   background: var(--tp-paper);
+  content-visibility: auto;
+  contain-intrinsic-size: 0 500px;
+}
+.tp-platform-folders-wrap {
+  contain: layout paint;
+  transform: translateZ(0);
 }
 
 .tp-sec-title {

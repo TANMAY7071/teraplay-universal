@@ -370,8 +370,10 @@ export function IconFolder(props: IconFolderProps) {
         letterSpacing: "-0.05em",
         zIndex: lift ? 2 : undefined,
         opacity: shown || reduced ? 1 : 0,
-        transform: shown || reduced ? (lift ? "translateY(-6px) scale(1.02)" : "none") : "translateY(34px) scale(.92)",
+        transform: shown || reduced ? (lift ? "translate3d(0, -6px, 0) scale(1.02)" : "translate3d(0, 0, 0)") : "translate3d(0, 34px, 0) scale(.92)",
         transition: reduced ? "none" : `transform .9s ${ease}, opacity .6s ease`,
+        willChange: "transform, opacity",
+        contain: "paint layout",
       }}
     >
       {/* soft glow behind the folder */}
@@ -453,7 +455,9 @@ export function IconFolder(props: IconFolderProps) {
         style={{
           background: t.front,
           clipPath: frontD ? `path('${frontD}')` : undefined,
-          transform: lift ? "translateY(6px)" : "none",
+          transform: lift ? "translate3d(0, 6px, 0)" : "translate3d(0, 0, 0)",
+          willChange: "transform",
+          backfaceVisibility: "hidden",
           transition: reduced ? "none" : `transform .6s ${ease}`,
         }}
       >
