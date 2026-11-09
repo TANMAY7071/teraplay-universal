@@ -121,7 +121,14 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
 
           {/* Page Heading & Intro */}
           <header className="mb-8">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[var(--tp-ink)] mb-4">
+            <h1
+              style={{
+                fontFamily: "var(--tp-font-display, 'Anton', 'Plus Jakarta Sans', sans-serif)",
+                letterSpacing: "0.01em",
+                lineHeight: "1.05",
+              }}
+              className="text-4xl sm:text-5xl lg:text-6xl font-normal uppercase tracking-wide text-[var(--tp-ink)] mb-4"
+            >
               {title}
             </h1>
             {intro && (
@@ -142,19 +149,19 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
                 <Link
                   key={page.path}
                   to={page.path}
-                  className={`group relative pb-3 text-xs sm:text-[13px] font-bold tracking-[0.16em] uppercase transition-colors whitespace-nowrap ${
+                  className={`group relative pb-3 text-xs sm:text-[13px] font-medium tracking-[0.18em] uppercase transition-colors whitespace-nowrap ${
                     isActive
                       ? "text-[#C6F432]"
                       : "text-[var(--tp-muted)] hover:text-[var(--tp-ink)]"
                   }`}
                 >
                   {page.label}
-                  {/* Underline: solid active, smooth expand on hover */}
+                  {/* Active lime bar OR subtle hover slide bar */}
                   <span
-                    className={`absolute bottom-0 left-0 h-[2px] bg-[#C6F432] rounded-full transition-all duration-300 ease-out ${
+                    className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full transition-all duration-300 ease-out ${
                       isActive
-                        ? "w-full opacity-100"
-                        : "w-0 opacity-0 group-hover:w-full group-hover:opacity-100"
+                        ? "bg-[#C6F432] opacity-100 scale-x-100"
+                        : "bg-[#C6F432]/60 opacity-0 scale-x-0 group-hover:opacity-100 group-hover:scale-x-100"
                     }`}
                     aria-hidden="true"
                   />
