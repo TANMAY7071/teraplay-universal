@@ -1413,12 +1413,7 @@ export default function Index() {
           </svg>
         </Link>
 
-        <div className="tp-center-info" title="LinkCastle Network Status">
-          <span>Edge CDN Online</span>
-          <span className="tp-center-bar" aria-hidden="true" />
-          <span>YouTube Studio & TeraBox</span>
-        </div>
-
+        
         <div className="tp-nav-actions">
           <ThemeChanger theme={theme} onToggle={toggleTheme} variant="icon" />
 

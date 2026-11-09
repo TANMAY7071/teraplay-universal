@@ -1,6 +1,6 @@
 import React from "react";
 import LegalPageShell from "@/components/legal/LegalPageShell";
-import { Mail, ShieldAlert, HelpCircle, Clock, CheckCircle2 } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { CONTACT_EMAIL, DMCA_EMAIL, PRIVACY_EMAIL } from "@/config/site";
 
 const ContactPage = () => (
@@ -8,88 +8,67 @@ const ContactPage = () => (
     title="Contact Support"
     description="Get in touch with the LinkCastle Universal support team for copyright inquiries, bug reports, and general assistance."
     lastUpdated="October 2026"
-    intro="Need help with media resolution, have a copyright question, or discovered a platform bug? Choose the appropriate department below for the fastest response."
+    intro="Need help with media resolution, have a copyright question, or discovered a platform bug? Reach out to our dedicated email channels below."
     sections={[
       {
         heading: "Official Contact Channels",
         body: (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 not-prose">
+          <div className="space-y-6 pt-1">
             {/* General Technical Support */}
-            <div className="p-4 sm:p-5 rounded-xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-input)] flex flex-col justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-[#2659d9]/15 text-[#2659d9] dark:text-[#a9c3f3] flex items-center justify-center shrink-0">
-                  <Mail className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-[var(--tp-ink)] text-sm sm:text-base">Technical Support & Feedback</h3>
-                  <p className="text-xs text-[var(--tp-muted)] mt-0.5">
-                    For broken links, resolver errors, or new platform suggestions.
-                  </p>
-                </div>
+            <div className="border-b border-white/10 pb-6 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-[var(--tp-ink)]">
+                  Technical Support & Feedback
+                </h3>
+                <p className="text-xs sm:text-sm text-[var(--tp-muted)] mt-1">
+                  For broken links, resolver errors, or new platform suggestions.
+                </p>
               </div>
-              <div className="pt-2 border-t border-[var(--tp-border-subtle)] flex items-center justify-between">
-                <a
-                  href={`mailto:${CONTACT_EMAIL}`}
-                  className="text-xs font-mono font-bold text-[#2659d9] dark:text-[#C6F432] hover:underline"
-                >
-                  {CONTACT_EMAIL}
-                </a>
-                <span className="text-[10px] text-[var(--tp-muted)] font-mono flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> 24-48h
-                </span>
-              </div>
+              <a
+                href={`mailto:${CONTACT_EMAIL}`}
+                className="group inline-flex items-center gap-1.5 text-base sm:text-lg font-mono font-bold text-[#C6F432] hover:underline whitespace-nowrap mt-2 sm:mt-0"
+              >
+                <span>{CONTACT_EMAIL}</span>
+                <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              </a>
             </div>
 
             {/* Copyright & DMCA */}
-            <div className="p-4 sm:p-5 rounded-xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-input)] flex flex-col justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0">
-                  <ShieldAlert className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-[var(--tp-ink)] text-sm sm:text-base">Copyright & Takedown Desk</h3>
-                  <p className="text-xs text-[var(--tp-muted)] mt-0.5">
-                    For intellectual property matters and resolution blocking.
-                  </p>
-                </div>
+            <div className="border-b border-white/10 pb-6 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-[var(--tp-ink)]">
+                  Copyright & Takedown Desk
+                </h3>
+                <p className="text-xs sm:text-sm text-[var(--tp-muted)] mt-1">
+                  For intellectual property matters, takedowns, and resolution blocking.
+                </p>
               </div>
-              <div className="pt-2 border-t border-[var(--tp-border-subtle)] flex items-center justify-between">
-                <a
-                  href={`mailto:${DMCA_EMAIL}`}
-                  className="text-xs font-mono font-bold text-rose-500 dark:text-rose-400 hover:underline"
-                >
-                  {DMCA_EMAIL}
-                </a>
-                <span className="text-[10px] text-[var(--tp-muted)] font-mono flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Priority
-                </span>
-              </div>
+              <a
+                href={`mailto:${DMCA_EMAIL}`}
+                className="group inline-flex items-center gap-1.5 text-base sm:text-lg font-mono font-bold text-[#C6F432] hover:underline whitespace-nowrap mt-2 sm:mt-0"
+              >
+                <span>{DMCA_EMAIL}</span>
+                <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              </a>
             </div>
 
             {/* Privacy Inquiries */}
-            <div className="p-4 sm:p-5 rounded-xl border border-[var(--tp-border-card)] bg-[var(--tp-paper-input)] flex flex-col justify-between gap-3 md:col-span-2">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-[var(--tp-ink)] text-sm sm:text-base">Privacy & Cookie Questions</h3>
-                  <p className="text-xs text-[var(--tp-muted)] mt-0.5">
-                    Inquiries concerning local storage, ad partner cookies, or data compliance.
-                  </p>
-                </div>
+            <div className="pb-2 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-[var(--tp-ink)]">
+                  Privacy & Cookie Questions
+                </h3>
+                <p className="text-xs sm:text-sm text-[var(--tp-muted)] mt-1">
+                  Inquiries concerning local storage, ad partner cookies, or data compliance.
+                </p>
               </div>
-              <div className="pt-2 border-t border-[var(--tp-border-subtle)] flex items-center justify-between">
-                <a
-                  href={`mailto:${PRIVACY_EMAIL}`}
-                  className="text-xs font-mono font-bold text-[#2659d9] dark:text-[#C6F432] hover:underline"
-                >
-                  {PRIVACY_EMAIL}
-                </a>
-                <span className="text-[10px] text-[var(--tp-muted)] font-mono flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> 24-48h
-                </span>
-              </div>
+              <a
+                href={`mailto:${PRIVACY_EMAIL}`}
+                className="group inline-flex items-center gap-1.5 text-base sm:text-lg font-mono font-bold text-[#C6F432] hover:underline whitespace-nowrap mt-2 sm:mt-0"
+              >
+                <span>{PRIVACY_EMAIL}</span>
+                <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              </a>
             </div>
           </div>
         ),
