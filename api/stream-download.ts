@@ -4,7 +4,7 @@ import { spawn, execFileSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { assertPublicHttpUrl, isCookieAllowedHost, sanitizeExtension } from './_guard.ts';
+import { assertPublicHttpUrl, isCookieAllowedHost, sanitizeExtension, setCorsHeaders, checkRateLimit } from './_guard.ts';
 
 let cachedSystemFfmpeg: string | null | undefined = undefined;
 
@@ -500,15 +500,18 @@ async function streamDirectFallback(
 
 export default async function handler(req: any, res: any) {
   // CORS configuration
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS, HEAD');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res, 'GET, OPTIONS, HEAD');
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
+  // Rate limiting (max 40 requests/min per IP)
+  if (!checkRateLimit(req, 40, 60_000)) {
+    res.status(429).json({ success: false, error: 'Rate limit exceeded. Too many requests.' });
+    return;
+  }
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.status(405).json({ success: false, error: 'Method not allowed. Use GET or HEAD.' });
     return;

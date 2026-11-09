@@ -1,13 +1,16 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://wwgvezljjaceoiybhklh.supabase.co";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3Z3ZlemxqamFjZW9peWJoa2xoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNjg4NDAsImV4cCI6MjA5ODY0NDg0MH0.-sAurKU52rkdQMsxAZjbiYwik6SESsOzVv0ogFf9cd4";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
 let clientInstance: SupabaseClient | null = null;
 
 export const getSupabase = (): SupabaseClient => {
   if (!clientInstance) {
-    clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn("[Supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables.");
+    }
+    clientInstance = createClient(supabaseUrl || "https://placeholder.supabase.co", supabaseAnonKey || "placeholder-anon-key", {
       auth: { persistSession: true, autoRefreshToken: true }
     });
   }
@@ -22,4 +25,3 @@ export const supabase = new Proxy({} as SupabaseClient, {
     return typeof value === "function" ? value.bind(client) : value;
   }
 });
-

@@ -2,7 +2,7 @@ import { execFile } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { mapGroqResponseToTranscript, FALLBACK_DEMO_TRANSCRIPT, type TranscriptData } from '../src/lib/transcription.ts';
-import { assertPublicHttpUrl } from './_guard.ts';
+import { assertPublicHttpUrl, setCorsHeaders, checkRateLimit } from './_guard.ts';
 
 /** Largest media file the endpoint will pull into memory. */
 const MAX_MEDIA_BYTES = 24 * 1024 * 1024;
@@ -309,12 +309,15 @@ function resampleAudioTo16kHz(
 
 export default async function handler(req: any, res: any) {
   // 1. CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  setCorsHeaders(req, res, 'GET, POST, OPTIONS');
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
+    return;
+  }
+  // Rate limiting (max 15 transcribe requests/min per IP)
+  if (!checkRateLimit(req, 15, 60_000)) {
+    res.status(429).json({ success: false, error: 'Rate limit exceeded for transcription. Please wait.' });
     return;
   }
 

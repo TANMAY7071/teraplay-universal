@@ -1,3 +1,4 @@
+import { setCorsHeaders, checkRateLimit } from './_guard.ts';
 import { execFile } from 'child_process';
 import path from 'path';
 import fs from 'fs';
@@ -86,12 +87,15 @@ const SAMPLE_TRANSCRIPT: TranscriptItem[] = [
 ];
 
 export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res, 'GET, OPTIONS');
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
+    return;
+  }
+  // Rate limiting (max 30 requests/min per IP)
+  if (!checkRateLimit(req, 30, 60_000)) {
+    res.status(429).json({ success: false, error: 'Rate limit exceeded. Too many requests.' });
     return;
   }
 

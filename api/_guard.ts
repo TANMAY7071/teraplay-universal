@@ -1,13 +1,5 @@
 /**
- * Shared outbound-request guards for the serverless handlers.
- *
- * These endpoints accept a user-supplied media URL and fetch it server-side.
- * Without these checks the handler is an open relay into the function's own
- * network: cloud metadata at 169.254.169.254, loopback services, and any
- * internal host reachable from the platform.
- *
- * Files prefixed with "_" are not routed by Vercel, so this module is never
- * exposed as an endpoint.
+ * Shared outbound-request guards and rate limiting for serverless handlers.
  */
 import dns from 'dns';
 
@@ -15,10 +7,67 @@ const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 
 const BLOCKED_HOSTNAMES = new Set([
   'localhost',
+  '127.0.0.1',
+  '0.0.0.0',
+  '::1',
   'metadata.google.internal',
   'metadata.goog',
   'instance-data',
+  '169.254.169.254',
 ]);
+
+/** Allowed origins for CORS */
+export function setCorsHeaders(req: any, res: any, allowedMethods = 'GET, OPTIONS') {
+  const origin = req.headers?.origin || '';
+  const host = req.headers?.host || '';
+  
+  // Allow self origin, vercel previews, or same-host requests
+  const isAllowed = 
+    !origin ||
+    origin.includes('localhost') ||
+    origin.includes('127.0.0.1') ||
+    origin.endsWith('.vercel.app') ||
+    origin.includes(host);
+
+  if (isAllowed && origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  } else {
+    // If foreign site tries to use our API as public proxy, restrict
+    res.setHeader('Access-Control-Allow-Origin', `https://${host}`);
+  }
+
+  res.setHeader('Access-Control-Allow-Methods', allowedMethods);
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+}
+
+/** In-memory sliding window rate limiter per serverless instance */
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+export function checkRateLimit(req: any, maxRequests = 60, windowMs = 60_000): boolean {
+  const ip =
+    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+    req.headers['x-real-ip'] ||
+    req.socket?.remoteAddress ||
+    'unknown';
+
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+
+  if (entry.count >= maxRequests) {
+    return false;
+  }
+
+  entry.count += 1;
+  return true;
+}
 
 /** Hosts that may receive the TeraBox session cookie. */
 const COOKIE_EXACT_HOSTS = new Set([
@@ -68,22 +117,22 @@ export function isPrivateIPv4(ip: string): boolean {
     return false;
   }
   const [a, b] = parts;
-  if (a === 0) return true; // 0.0.0.0/8 "this network"
+  if (a === 0) return true; // 0.0.0.0/8
   if (a === 10) return true; // 10.0.0.0/8
   if (a === 127) return true; // loopback
-  if (a === 169 && b === 254) return true; // link-local, includes cloud metadata
+  if (a === 169 && b === 254) return true; // link-local metadata
   if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
   if (a === 192 && b === 168) return true; // 192.168.0.0/16
   if (a === 100 && b >= 64 && b <= 127) return true; // 100.64.0.0/10 CGNAT
-  if (a === 192 && b === 0) return true; // 192.0.0.0/24 and 192.0.2.0/24
-  if (a === 198 && (b === 18 || b === 19)) return true; // 198.18.0.0/15 benchmark
-  if (a >= 224) return true; // multicast and reserved
+  if (a === 192 && b === 0) return true; // 192.0.0.0/24
+  if (a === 198 && (b === 18 || b === 19)) return true; // benchmark
+  if (a >= 224) return true; // multicast / reserved
   return false;
 }
 
 export function isPrivateIPv6(ip: string): boolean {
   const host = ip.toLowerCase().split('%')[0];
-  if (host === '::' || host === '::1') return true;
+  if (host === '::' || host === '::1' || host === '0:0:0:0:0:0:0:1' || host === '0:0:0:0:0:0:0:0') return true;
   if (host.startsWith('::ffff:')) return isPrivateIPv4(host.slice('::ffff:'.length));
   if (host.startsWith('fe80')) return true; // link-local
   if (host.startsWith('fc') || host.startsWith('fd')) return true; // unique local
@@ -117,7 +166,6 @@ async function assertPublicHost(hostname: string): Promise<void> {
 
 /**
  * Parse and vet a user-supplied URL before the server fetches it.
- * Throws with a caller-safe message when the target is not a public http(s) URL.
  */
 export async function assertPublicHttpUrl(raw: string): Promise<URL> {
   let parsed: URL;
@@ -146,10 +194,7 @@ export async function assertPublicHttpUrl(raw: string): Promise<URL> {
 }
 
 /**
- * The TeraBox cookie is a live account session. Attach it only to hosts in
- * the TeraBox family, never to an arbitrary URL that merely claimed
- * `source=terabox`. Extend the list with TERABOX_COOKIE_HOSTS if the CDN
- * introduces a new host.
+ * TeraBox cookie protection
  */
 export function isCookieAllowedHost(hostname: string): boolean {
   const host = normalizeHost(hostname);
@@ -164,7 +209,6 @@ export function isCookieAllowedHost(hostname: string): boolean {
   return false;
 }
 
-/** Clamp a caller-supplied file extension to the known media set. */
 export function sanitizeExtension(raw: string | undefined): string {
   const value = (raw || '').toLowerCase().replace(/^\./, '');
   return ALLOWED_EXTENSIONS.has(value) ? value : '';

@@ -1,6 +1,7 @@
 import { execFile } from 'child_process';
 import path from 'path';
 import fs from 'fs';
+import { setCorsHeaders, checkRateLimit, assertPublicHttpUrl } from './_guard.ts';
 
 interface TranscriptItem {
   start: number;
@@ -602,15 +603,18 @@ async function extractTikTokDirect(targetUrl: string): Promise<ResolveResponse |
 
 export default async function handler(req: any, res: any) {
   // CORS configuration
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res, 'GET, OPTIONS');
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
+  // Rate limiting (max 60 requests/min per IP)
+  if (!checkRateLimit(req, 60, 60_000)) {
+    res.status(429).json({ success: false, error: 'Rate limit exceeded. Too many requests.' });
+    return;
+  }
   if (req.method !== 'GET') {
     res.status(405).json({ success: false, error: 'Method not allowed. Use GET.' });
     return;
