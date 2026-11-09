@@ -365,14 +365,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await new Promise((resolve) => setTimeout(resolve, 300));
     const mockUser = {
       id: "mock-google-user",
-      email: "creator@teraplay.com",
-      user_metadata: { username: "TeraPlay Creator" },
+      email: "creator@linkcastle.app",
+      user_metadata: { username: "LinkCastle Creator" },
       is_anonymous: false,
     } as any;
     const mockProfile = {
       id: mockUser.id,
       email: mockUser.email,
-      username: "TeraPlay Creator",
+      username: "LinkCastle Creator",
       avatar_url: "",
       avatar_frame: "none",
       cultivation_rank: "VIP Unlimited",

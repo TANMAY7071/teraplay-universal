@@ -107,7 +107,7 @@ export function generateSrtContent(items?: TranscriptItem[] | null): string {
  */
 export function generateTxtContent(items?: TranscriptItem[] | null, withTimestamps?: boolean, title?: string): string {
   const safeTitle = title || 'Media';
-  const header = `Transcript: ${safeTitle}\nExported from TeraPlay Universal Dock\n${'='.repeat(40)}\n\n`;
+  const header = `Transcript: ${safeTitle}\nExported from LinkCastle Universal Dock\n${'='.repeat(40)}\n\n`;
   if (!Array.isArray(items) || items.length === 0) {
     return header + '(No transcript cues available)';
   }

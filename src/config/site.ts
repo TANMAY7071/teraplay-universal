@@ -3,16 +3,16 @@
  * CHANGE ME: replace the placeholder email with the address you actually
  * monitor — it is published on the Contact, DMCA, and Privacy pages.
  */
-export const CONTACT_EMAIL = "support@teraplay.app";
-export const DMCA_EMAIL = "dmca@teraplay.app";
-export const PRIVACY_EMAIL = "privacy@teraplay.app";
+export const CONTACT_EMAIL = "support@linkcastle.app";
+export const DMCA_EMAIL = "dmca@linkcastle.app";
+export const PRIVACY_EMAIL = "privacy@linkcastle.app";
 
 /**
  * Canonical public origin. Canonical links, og:url and the sitemap all read
  * this, so the site stops advertising three different hosts.
  * CHANGE ME: point this at the domain you actually serve from.
  */
-export const SITE_URL = "https://teraplay.app";
+export const SITE_URL = "https://linkcastle.app";
 
 /**
  * Build a canonical URL for a route path. Query strings and hashes are dropped

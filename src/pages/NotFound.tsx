@@ -16,7 +16,7 @@ const NotFound = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background text-foreground dragon-scales">
       <Helmet>
-        <title>Page Not Found | TeraPlay Universal</title>
+        <title>Page Not Found | LinkCastle Universal</title>
         <meta name="description" content="The requested page does not exist." />
         {/* A 404 must not be indexed, otherwise every junk URL becomes a
             soft 404 in the search results. */}

@@ -229,7 +229,7 @@ const DocumentDownloader = () => {
           <p className="font-medium mb-1">Why no Scribd?</p>
           <p>
             Scribd documents sit behind a subscription paywall, so downloading them
-            means bypassing payment. TeraPlay does not do that, and never will. For
+            means bypassing payment. LinkCastle does not do that, and never will. For
             free books and papers, use Project Gutenberg, Open Library, or arXiv.
           </p>
         </section>
@@ -248,7 +248,7 @@ const DocumentDownloader = () => {
 
         <section aria-label="Usage policy" className="text-sm opacity-70 space-y-2">
           <p>
-            TeraPlay only fetches files that a browser can already open without a
+            LinkCastle only fetches files that a browser can already open without a
             login or subscription. We never bypass paywalls, and we do not support
             Scribd, Z-Library, or any DRM-protected source.
           </p>
