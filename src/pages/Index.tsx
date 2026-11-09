@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
@@ -42,6 +42,7 @@ import {
   Coffee
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { BuyMeACoffeeIcon } from '@/components/icons/BuyMeACoffeeIcon';
 import {
   Dialog,
   DialogContent,
@@ -3546,34 +3547,24 @@ export default function Index() {
           SUPPORT / DONATE MODAL
           ========================================================================= */}
       <Dialog open={showSupportModal} onOpenChange={setShowSupportModal}>
-        <DialogContent
-          className={`sm:max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl border transition-all duration-200 ${
-            theme === 'light'
-              ? 'bg-white/98 text-slate-900 border-slate-200/90 shadow-[0_25px_60px_-15px_rgba(12,16,28,0.2)] backdrop-blur-2xl'
-              : 'bg-[#0c152e]/98 text-slate-100 border-[#2659d9]/35 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] backdrop-blur-2xl'
-          }`}
-        >
+        <DialogContent className="sm:max-w-md tp-support-dialog">
           <DialogHeader className="text-center flex flex-col items-center gap-2">
             <div
               className={`w-14 h-14 rounded-2xl flex items-center justify-center border shadow-sm ${
                 theme === 'light'
-                  ? 'bg-[#C6F432]/25 border-[#b6c200]/40 text-[#4c5200]'
-                  : 'bg-[#C6F432]/15 border-[#C6F432]/35 text-[#C6F432]'
+                  ? 'bg-[#C6F432] border-[#a5d610] text-[#0c0e13]'
+                  : 'bg-[#C6F432]/20 border-[#C6F432]/50 text-[#C6F432]'
               }`}
             >
-              <Coffee className="w-7 h-7" />
+              <BuyMeACoffeeIcon className="w-8 h-8" />
             </div>
             <DialogTitle
-              className={`text-xl font-bold tracking-tight mt-1 ${
-                theme === 'light' ? 'text-slate-900' : 'text-white'
-              }`}
+              className="text-xl font-bold tracking-tight mt-1 tp-support-title"
             >
               Support LinkCastle
             </DialogTitle>
             <DialogDescription
-              className={`text-sm text-center max-w-sm leading-relaxed ${
-                theme === 'light' ? 'text-slate-600' : 'text-slate-300'
-              }`}
+              className="text-sm text-center max-w-sm leading-relaxed tp-support-desc"
             >
               LinkCastle is 100% free with zero paywalls and no mandatory accounts. If you find this tool helpful, consider supporting server costs or sharing it with friends.
             </DialogDescription>
@@ -3584,11 +3575,11 @@ export default function Index() {
               href="https://buymeacoffee.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="h-11 rounded-xl bg-[#ffdd00] hover:bg-[#ebd000] text-black font-semibold text-sm flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98]"
+              className="h-11 rounded-xl bg-[#C6F432] hover:bg-[#b5e61d] text-[#0c0e13] font-semibold text-sm flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98]"
             >
-              <Coffee className="w-4 h-4 text-black" />
+              <BuyMeACoffeeIcon className="w-4 h-4 text-[#0c0e13]" />
               <span>Buy Me a Coffee</span>
-              <ExternalLink className="w-3.5 h-3.5 text-black/70 ml-0.5" />
+              <ExternalLink className="w-3.5 h-3.5 text-[#0c0e13]/70 ml-0.5" />
             </a>
 
             <Button
@@ -3603,11 +3594,7 @@ export default function Index() {
                   toast.error('Could not copy link to clipboard');
                 }
               }}
-              className={`h-11 rounded-xl font-medium text-sm gap-2 border transition-colors ${
-                theme === 'light'
-                  ? 'border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-800'
-                  : 'border-white/12 bg-white/6 hover:bg-white/12 text-white'
-              }`}
+              className="h-11 rounded-xl font-medium text-sm gap-2 transition-colors tp-support-share-btn cursor-pointer"
             >
               <Share2 className="w-4 h-4 text-[#2659d9] dark:text-[#a9c3f3]" />
               <span>Share with Friends</span>

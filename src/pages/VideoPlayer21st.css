@@ -2679,3 +2679,70 @@ html.dark .tp-foot-brand-arrow,
   border-color: var(--tp-mid);
   color: var(--tp-mid);
 }
+
+/* =========================================================================
+   SUPPORT DIALOG THEME ENFORCEMENT (LIGHT & DARK ACCORDING TO ROOT THEME)
+   ========================================================================= */
+.tp-support-dialog {
+  border-radius: 24px !important;
+  padding: 24px 28px !important;
+  transition: all 0.2s ease !important;
+}
+
+html.light .tp-support-dialog,
+:root:not(.dark) .tp-support-dialog {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.25) !important;
+}
+
+html.light .tp-support-dialog .tp-support-title,
+:root:not(.dark) .tp-support-dialog .tp-support-title {
+  color: #0f172a !important;
+}
+
+html.light .tp-support-dialog .tp-support-desc,
+:root:not(.dark) .tp-support-dialog .tp-support-desc {
+  color: #334155 !important;
+}
+
+html.light .tp-support-dialog .tp-support-share-btn,
+:root:not(.dark) .tp-support-dialog .tp-support-share-btn {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.light .tp-support-dialog .tp-support-share-btn:hover,
+:root:not(.dark) .tp-support-dialog .tp-support-share-btn:hover {
+  background: #e2e8f0 !important;
+  color: #000000 !important;
+}
+
+/* Dark mode dialog */
+html.dark .tp-support-dialog {
+  background: #0c152e !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(38, 89, 217, 0.4) !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9) !important;
+}
+
+html.dark .tp-support-dialog .tp-support-title {
+  color: #ffffff !important;
+}
+
+html.dark .tp-support-dialog .tp-support-desc {
+  color: #cbd5e1 !important;
+}
+
+html.dark .tp-support-dialog .tp-support-share-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+}
+
+html.dark .tp-support-dialog .tp-support-share-btn:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
