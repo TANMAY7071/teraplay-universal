@@ -119,6 +119,18 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
             <span>UNIVERSAL CLIENT TERMS</span>
           </div>
 
+          {/* Page Heading & Intro */}
+          <header className="mb-8">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[var(--tp-ink)] mb-4">
+              {title}
+            </h1>
+            {intro && (
+              <p className="text-sm sm:text-base leading-relaxed text-[var(--tp-muted)] max-w-3xl">
+                {intro}
+              </p>
+            )}
+          </header>
+
           {/* Underlined Tab Navigation Bar */}
           <nav
             aria-label="Legal pages directory"
@@ -147,13 +159,6 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
               );
             })}
           </nav>
-
-          {/* Page Intro if applicable */}
-          {intro && (
-            <p className="text-sm sm:text-base leading-relaxed text-[var(--tp-muted)] mb-12 max-w-3xl">
-              {intro}
-            </p>
-          )}
 
           {/* Numbered Sections with Anton Display Headings */}
           <div className="space-y-12">
