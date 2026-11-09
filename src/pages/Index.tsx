@@ -1353,7 +1353,7 @@ export default function Index() {
   const jsonLdWebApp = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
-    name: 'linkplay4u Universal Video & Creator Dock',
+    name: 'LinkCastle Universal Video & Creator Dock',
     url: canonicalPath,
     applicationCategory: 'MultimediaApplication',
     operatingSystem: 'Any',
@@ -1399,8 +1399,8 @@ export default function Index() {
 
       {/* MINIMAL FLOATING NAVIGATION BAR */}
       <header className="tp-nav">
-        <Link to="/" className="tp-brand" aria-label="linkplay4u home">
-          <span className="tp-brand-word">linkplay4u</span>
+        <Link to="/" className="tp-brand" aria-label="LinkCastle home">
+          <span className="tp-brand-word">LinkCastle</span>
           <svg className="tp-svg" width="17" height="14" viewBox="0 0 17 14" aria-hidden="true">
             <path
               d="M1 13.2c4.6-.4 8.4-2.6 11-6.4L15.6 1M9.6 1.4h6v6"
@@ -1413,7 +1413,7 @@ export default function Index() {
           </svg>
         </Link>
 
-        <div className="tp-center-info" title="linkplay4u Network Status">
+        <div className="tp-center-info" title="LinkCastle Network Status">
           <span>Edge CDN Online</span>
           <span className="tp-center-bar" aria-hidden="true" />
           <span>YouTube Studio & TeraBox</span>
@@ -1426,8 +1426,8 @@ export default function Index() {
             type="button"
             onClick={() => setShowSupportModal(true)}
             className="tp-btn-nav-accent"
-            title="Support linkplay4u"
-            aria-label="Support linkplay4u"
+            title="Support LinkCastle"
+            aria-label="Support LinkCastle"
           >
             <Coffee className="w-3.5 h-3.5 mr-1 text-black/80" aria-hidden="true" />
             <span>Support</span>
@@ -3315,7 +3315,7 @@ export default function Index() {
               cloud-share player that demands its own app.
             </p>
             <p>
-              <strong>linkplay4u</strong> handles all of those jobs from a single input field. Paste a
+              <strong>LinkCastle</strong> handles all of those jobs from a single input field. Paste a
               link from YouTube, TikTok, Instagram, TeraBox, Twitch, Snapchat, LinkedIn, Facebook, Vimeo, Bilibili, Dailymotion, or X (Twitter), then
               stream it in the browser, download the original file in up to 4K, export timestamped SubRip .SRT or clean .TXT subtitles, pull studio MP3 audio, and
               grab uncompressed 1080p cover art. One universal tool for all of it, no app installs, no login walls.
@@ -3367,7 +3367,7 @@ export default function Index() {
           {/* Col 1: Brand & Status */}
           <div>
             <div className="tp-foot-brand">
-              <span>linkplay4u</span>
+              <span>LinkCastle</span>
               <svg width="17" height="14" viewBox="0 0 17 14" aria-hidden="true" className="text-[#C6F432]">
                 <path
                   d="M1 13.2c4.6-.4 8.4-2.6 11-6.4L15.6 1M9.6 1.4h6v6"
@@ -3545,12 +3545,12 @@ export default function Index() {
 
           {/* Bottom Bar */}
           <div className="tp-foot-bottom-bar">
-            <span>© {new Date().getFullYear()} linkplay4u Universal Media Hub.</span>
+            <span>© {new Date().getFullYear()} LinkCastle Universal Media Hub.</span>
           </div>
         </div>
 
         <div className="tp-foot-watermark" aria-hidden="true">
-          <span className="tp-foot-word">linkplay4u</span>
+          <span className="tp-foot-word">LinkCastle</span>
           <svg viewBox="0 0 17 14" className="tp-foot-word-arrow" aria-hidden="true">
             <path
               d="M1 13.2c4.6-.4 8.4-2.6 11-6.4L15.6 1M9.6 1.4h6v6"
@@ -3590,14 +3590,14 @@ export default function Index() {
                 theme === 'light' ? 'text-slate-900' : 'text-white'
               }`}
             >
-              Support linkplay4u
+              Support LinkCastle
             </DialogTitle>
             <DialogDescription
               className={`text-sm text-center max-w-sm leading-relaxed ${
                 theme === 'light' ? 'text-slate-600' : 'text-slate-300'
               }`}
             >
-              linkplay4u is 100% free with zero paywalls and no mandatory accounts. If you find this tool helpful, consider supporting server costs or sharing it with friends.
+              LinkCastle is 100% free with zero paywalls and no mandatory accounts. If you find this tool helpful, consider supporting server costs or sharing it with friends.
             </DialogDescription>
           </DialogHeader>
 
