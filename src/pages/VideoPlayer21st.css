@@ -1870,6 +1870,16 @@ body::-webkit-scrollbar,
   align-items: flex-start;
 }
 
+.tp-foot-brand-arrow {
+  color: #2563eb;
+  transition: color 0.2s ease;
+}
+
+html.dark .tp-foot-brand-arrow,
+.tp-root[data-theme='dark'] .tp-foot-brand-arrow {
+  color: #C6F432;
+}
+
 .tp-foot-brand {
   font-size: 22px;
   font-weight: 800;

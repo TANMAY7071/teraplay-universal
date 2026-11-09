@@ -1436,14 +1436,14 @@ export default function Index() {
       <section className="tp-hero">
         <div className="tp-hero-sky-container" aria-hidden="true">
           <img
-            src="/assets/bg-day.png"
+            src="/assets/bg-day.webp"
             alt=""
             fetchpriority="high"
             decoding="async"
             className="tp-hero-sky-img tp-hero-sky-day"
           />
           <img
-            src="/assets/bg-night.png"
+            src="/assets/bg-night.webp"
             alt=""
             fetchpriority="high"
             decoding="async"
@@ -3346,7 +3346,7 @@ export default function Index() {
           <div>
             <div className="tp-foot-brand">
               <span>LinkCastle</span>
-              <svg width="17" height="14" viewBox="0 0 17 14" aria-hidden="true" className="text-[#C6F432]">
+              <svg width="17" height="14" viewBox="0 0 17 14" aria-hidden="true" className="tp-foot-brand-arrow">
                 <path
                   d="M1 13.2c4.6-.4 8.4-2.6 11-6.4L15.6 1M9.6 1.4h6v6"
                   fill="none"
