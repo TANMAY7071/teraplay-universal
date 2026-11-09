@@ -257,7 +257,8 @@ body::-webkit-scrollbar,
   top: 0;
   z-index: 40;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   height: 56px;
   width: 100%;
@@ -283,6 +284,23 @@ body::-webkit-scrollbar,
   z-index: 2;
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* In light mode on pages without the blue sky hero (e.g. legal, contact, doc downloader), render nav brand and buttons in crisp ink */
+.tp-root[data-theme="light"]:not(:has(.tp-hero)) .tp-brand,
+.tp-root[data-theme="light"]:not(:has(.tp-hero)) .tp-nav {
+  color: #0c101c;
+}
+
+.tp-root[data-theme="light"]:not(:has(.tp-hero)) .tp-theme-icon-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #0c101c;
+}
+
+.tp-root[data-theme="light"]:not(:has(.tp-hero)) .tp-theme-icon-btn:hover {
+  background: rgba(0, 0, 0, 0.09);
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 .tp-brand-word {

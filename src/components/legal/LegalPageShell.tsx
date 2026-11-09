@@ -87,12 +87,7 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
           </svg>
         </Link>
 
-        <div className="tp-center-info" title="LinkCastle Network Status">
-          <span>Edge CDN Online</span>
-          <span className="tp-center-bar" aria-hidden="true" />
-          <span>YouTube Studio & TeraBox</span>
-        </div>
-
+        
         <div className="tp-nav-actions">
           <ThemeChanger theme={theme} onToggle={toggleTheme} variant="icon" />
 
@@ -141,7 +136,7 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
           {/* Underlined Tab Navigation Bar */}
           <nav
             aria-label="Legal pages directory"
-            className="flex flex-wrap items-center gap-x-8 gap-y-3 pt-2 pb-1 border-b border-white/10 dark:border-white/10 mb-14"
+            className="flex flex-wrap items-center gap-x-8 gap-y-3 pt-2 pb-1 border-b border-black/10 dark:border-white/10 mb-14"
           >
             {LEGAL_PAGES.map((page) => {
               const isActive = location.pathname === page.path;
@@ -151,17 +146,17 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
                   to={page.path}
                   className={`group relative pb-3 text-xs sm:text-[13px] font-medium tracking-[0.18em] uppercase transition-colors whitespace-nowrap ${
                     isActive
-                      ? "text-[#C6F432]"
+                      ? "text-[#2659d9] dark:text-[#C6F432]"
                       : "text-[var(--tp-muted)] hover:text-[var(--tp-ink)]"
                   }`}
                 >
                   {page.label}
-                  {/* Active lime bar OR subtle hover slide bar */}
+                  {/* Active bar OR subtle hover slide bar: blue in light mode, lime in dark mode */}
                   <span
                     className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full transition-all duration-300 ease-out ${
                       isActive
-                        ? "bg-[#C6F432] opacity-100 scale-x-100"
-                        : "bg-[#C6F432]/60 opacity-0 scale-x-0 group-hover:opacity-100 group-hover:scale-x-100"
+                        ? "bg-[#2659d9] dark:bg-[#C6F432] opacity-100 scale-x-100"
+                        : "bg-[#2659d9]/60 dark:bg-[#C6F432]/60 opacity-0 scale-x-0 group-hover:opacity-100 group-hover:scale-x-100"
                     }`}
                     aria-hidden="true"
                   />
@@ -176,7 +171,7 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
               <section key={section.heading} className="group">
                 <div className="flex items-baseline gap-4 sm:gap-6 mb-4">
                   <span
-                    className="font-mono text-base sm:text-lg font-bold tracking-wider text-[#C6F432] select-none flex-shrink-0"
+                    className="font-mono text-base sm:text-lg font-bold tracking-wider text-[#2659d9] dark:text-[#C6F432] select-none flex-shrink-0"
                     aria-hidden="true"
                   >
                     {String(index + 1).padStart(2, "0")}
@@ -192,7 +187,7 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
                     {section.heading}
                   </h2>
                 </div>
-                <div className="pl-9 sm:pl-12 text-sm sm:text-[15px] leading-relaxed text-[var(--tp-muted)] space-y-3.5 [&_a]:text-[#C6F432] [&_a:hover]:underline [&_strong]:text-[var(--tp-ink)] [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_li]:leading-relaxed">
+                <div className="pl-9 sm:pl-12 text-sm sm:text-[15px] leading-relaxed text-[var(--tp-muted)] space-y-3.5 [&_a]:text-[#2659d9] dark:[&_a]:text-[#C6F432] [&_a:hover]:underline [&_strong]:text-[var(--tp-ink)] [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_li]:leading-relaxed">
                   {section.body}
                 </div>
               </section>

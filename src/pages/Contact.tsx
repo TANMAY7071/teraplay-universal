@@ -26,7 +26,7 @@ const ContactPage = () => (
               </div>
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
-                className="group inline-flex items-center gap-1.5 text-base sm:text-lg font-mono font-bold text-[#C6F432] hover:underline whitespace-nowrap mt-2 sm:mt-0"
+                className="group inline-flex items-center gap-1.5 text-base sm:text-lg font-mono font-bold text-[#2659d9] dark:text-[#C6F432] hover:underline whitespace-nowrap mt-2 sm:mt-0"
               >
                 <span>{CONTACT_EMAIL}</span>
                 <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -34,7 +34,7 @@ const ContactPage = () => (
             </div>
 
             {/* Copyright & DMCA */}
-            <div className="border-b border-white/10 pb-6 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+            <div className="border-b border-black/10 dark:border-white/10 pb-6 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
               <div>
                 <h3 className="text-base sm:text-lg font-bold text-[var(--tp-ink)]">
                   Copyright & Takedown Desk
@@ -45,7 +45,7 @@ const ContactPage = () => (
               </div>
               <a
                 href={`mailto:${DMCA_EMAIL}`}
-                className="group inline-flex items-center gap-1.5 text-base sm:text-lg font-mono font-bold text-[#C6F432] hover:underline whitespace-nowrap mt-2 sm:mt-0"
+                className="group inline-flex items-center gap-1.5 text-base sm:text-lg font-mono font-bold text-[#2659d9] dark:text-[#C6F432] hover:underline whitespace-nowrap mt-2 sm:mt-0"
               >
                 <span>{DMCA_EMAIL}</span>
                 <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -64,7 +64,7 @@ const ContactPage = () => (
               </div>
               <a
                 href={`mailto:${PRIVACY_EMAIL}`}
-                className="group inline-flex items-center gap-1.5 text-base sm:text-lg font-mono font-bold text-[#C6F432] hover:underline whitespace-nowrap mt-2 sm:mt-0"
+                className="group inline-flex items-center gap-1.5 text-base sm:text-lg font-mono font-bold text-[#2659d9] dark:text-[#C6F432] hover:underline whitespace-nowrap mt-2 sm:mt-0"
               >
                 <span>{PRIVACY_EMAIL}</span>
                 <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />

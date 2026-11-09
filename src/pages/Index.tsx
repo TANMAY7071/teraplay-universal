@@ -1750,10 +1750,7 @@ export default function Index() {
             <span>Timestamped .SRT Subtitles</span>
             <span className="tp-trust-dot" aria-hidden="true">•</span>
             <span>1080p Cover Art</span>
-            <span className="tp-trust-dot" aria-hidden="true">•</span>
-            <a href="/document-downloader" style={{ color: 'inherit', textDecoration: 'underline' }}>
-              Document & Book Downloader
-            </a>
+            {/* DEV_HIDDEN: Document & Book Downloader link */}
           </div>
         </div>
       </section>
@@ -3245,21 +3242,7 @@ export default function Index() {
           <HowItWorks />
         </Reveal>
 
-        {/* LAUNCH FILM — 19s teaser (films/teraplay-film) */}
-        <section className="mx-auto w-full max-w-5xl px-4 py-16" aria-label="TeraPlay launch teaser">
-          <video
-            className="w-full rounded-2xl border border-white/10 shadow-2xl"
-            src="/film/teraplay-teaser.mp4"
-            poster="/film/teraplay-poster.png"
-            autoPlay
-            muted
-            loop
-            playsInline
-            controls
-            preload="metadata"
-          />
-        </section>
-
+        
       {/* TOOL ROWS — TRANSCRIPT / THUMBNAIL / TERABOX PLAYER */}
       <ToolsGrid />
 
