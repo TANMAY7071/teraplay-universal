@@ -5,16 +5,16 @@ import { PRIVACY_EMAIL } from "@/config/site";
 const PrivacyPage = () => (
   <LegalPageShell
     title="Privacy Policy"
-    description="Privacy policy and data protection practices for TeraPlay Universal Media & Creator Dock."
+    description="Privacy policy and data protection practices for LinkCastle Universal Media & Creator Dock."
     lastUpdated="October 2026"
-    intro="TeraPlay respects your privacy. This policy explains how our universal media tools operate, what transient technical data is processed, and how your privacy is protected."
+    intro="LinkCastle respects your privacy. This policy explains how our universal media tools operate, what transient technical data is processed, and how your privacy is protected."
     sections={[
       {
         heading: "Zero-Account Architecture & No Personal Data Collection",
         body: (
           <>
             <p>
-              TeraPlay operates on a client-first, zero-registration model. You do not need to create an account, register an email address, or provide personal credentials to use any feature of the site.
+              LinkCastle operates on a client-first, zero-registration model. You do not need to create an account, register an email address, or provide personal credentials to use any feature of the site.
             </p>
             <p>
               We do not collect or store names, physical addresses, telephone numbers, or financial details. All stream extraction, SubRip caption formatting, and thumbnail conversions happen without user registration.
@@ -48,7 +48,7 @@ const PrivacyPage = () => (
         body: (
           <>
             <p>
-              To maintain TeraPlay as a 100% free utility without paywalls, we display advertising slots managed by certified third-party ad networks (including Monetag, Adsterra, or Google AdSense).
+              To maintain LinkCastle as a 100% free utility without paywalls, we display advertising slots managed by certified third-party ad networks (including Monetag, Adsterra, or Google AdSense).
             </p>
             <p>
               These advertising partners may deploy standard HTTP cookies, device identifiers, or web beacons to collect non-personal diagnostic metrics and serve relevant advertisements based on general geographic region or prior browsing patterns.
@@ -71,7 +71,7 @@ const PrivacyPage = () => (
         heading: "Children's Online Privacy Protection",
         body: (
           <p>
-            TeraPlay complies with the Children's Online Privacy Protection Act (COPPA). We do not knowingly target or collect personal information from individuals under 13 years of age.
+            LinkCastle complies with the Children's Online Privacy Protection Act (COPPA). We do not knowingly target or collect personal information from individuals under 13 years of age.
           </p>
         ),
       },

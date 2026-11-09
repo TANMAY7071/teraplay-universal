@@ -5,22 +5,22 @@ import { DMCA_EMAIL } from "@/config/site";
 const DmcaPage = () => (
   <LegalPageShell
     title="DMCA Notice & Takedown Policy"
-    description="Digital Millennium Copyright Act notice, non-hosting declaration, and takedown procedures for TeraPlay Universal."
+    description="Digital Millennium Copyright Act notice, non-hosting declaration, and takedown procedures for LinkCastle Universal."
     lastUpdated="October 2026"
-    intro="TeraPlay respects the intellectual property rights of creators and copyright owners. We respond promptly to verified notices of claimed infringement under the Digital Millennium Copyright Act (17 U.S.C. § 512)."
+    intro="LinkCastle respects the intellectual property rights of creators and copyright owners. We respond promptly to verified notices of claimed infringement under the Digital Millennium Copyright Act (17 U.S.C. § 512)."
     sections={[
       {
         heading: "Transient Link Processing & Non-Hosting Declaration",
         body: (
           <>
             <p>
-              TeraPlay operates strictly as a client-side URL resolver, media inspector, and progressive streaming proxy. We do not host, upload, replicate, encode, or store any video files, audio tracks, or subtitle archives on our servers.
+              LinkCastle operates strictly as a client-side URL resolver, media inspector, and progressive streaming proxy. We do not host, upload, replicate, encode, or store any video files, audio tracks, or subtitle archives on our servers.
             </p>
             <p>
               When a user submits a public link from YouTube, TeraBox, TikTok, Instagram, Facebook, Twitch, or other supported platforms, our infrastructure resolves public stream addresses and routes the data directly to the user's browser. We maintain zero media files on our storage volumes.
             </p>
             <p>
-              Because TeraPlay does not host source files, removing content from our interface does not delete the original file from the third-party platform hosting it.
+              Because LinkCastle does not host source files, removing content from our interface does not delete the original file from the third-party platform hosting it.
             </p>
           </>
         ),
@@ -30,7 +30,7 @@ const DmcaPage = () => (
         body: (
           <>
             <p>
-              If you are a copyright owner or an authorized agent and believe a link processed through TeraPlay infringes your rights, submit a written notice to our designated agent at <strong className="text-[var(--tp-ink)]">{DMCA_EMAIL}</strong>.
+              If you are a copyright owner or an authorized agent and believe a link processed through LinkCastle infringes your rights, submit a written notice to our designated agent at <strong className="text-[var(--tp-ink)]">{DMCA_EMAIL}</strong>.
             </p>
             <p>To ensure prompt review, your notice must include each of the following elements:</p>
             <ul className="list-disc pl-5 space-y-1.5">
@@ -41,7 +41,7 @@ const DmcaPage = () => (
                 <strong>Copyrighted Work Identification:</strong> A description of the copyrighted work claimed to have been infringed, including registration details if applicable.
               </li>
               <li>
-                <strong>Infringing Reference URL:</strong> The exact source link or URL string submitted to TeraPlay that you request us to block from resolution.
+                <strong>Infringing Reference URL:</strong> The exact source link or URL string submitted to LinkCastle that you request us to block from resolution.
               </li>
               <li>
                 <strong>Good-Faith Statement:</strong> A statement declaring you have a good-faith belief that the disputed use is not authorized by the copyright owner, its agent, or the law.

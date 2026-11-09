@@ -142,19 +142,22 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
                 <Link
                   key={page.path}
                   to={page.path}
-                  className={`relative pb-3 text-xs sm:text-[13px] font-bold tracking-[0.16em] uppercase transition-colors whitespace-nowrap ${
+                  className={`group relative pb-3 text-xs sm:text-[13px] font-bold tracking-[0.16em] uppercase transition-colors whitespace-nowrap ${
                     isActive
                       ? "text-[#C6F432]"
                       : "text-[var(--tp-muted)] hover:text-[var(--tp-ink)]"
                   }`}
                 >
                   {page.label}
-                  {isActive && (
-                    <span
-                      className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#C6F432] rounded-full"
-                      aria-hidden="true"
-                    />
-                  )}
+                  {/* Underline: solid active, smooth expand on hover */}
+                  <span
+                    className={`absolute bottom-0 left-0 h-[2px] bg-[#C6F432] rounded-full transition-all duration-300 ease-out ${
+                      isActive
+                        ? "w-full opacity-100"
+                        : "w-0 opacity-0 group-hover:w-full group-hover:opacity-100"
+                    }`}
+                    aria-hidden="true"
+                  />
                 </Link>
               );
             })}

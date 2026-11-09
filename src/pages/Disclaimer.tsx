@@ -4,15 +4,15 @@ import LegalPageShell from "@/components/legal/LegalPageShell";
 const DisclaimerPage = () => (
   <LegalPageShell
     title="Disclaimer"
-    description="Non-affiliation notice, trademark statements, and user responsibility disclaimers for TeraPlay Universal."
+    description="Non-affiliation notice, trademark statements, and user responsibility disclaimers for LinkCastle Universal."
     lastUpdated="October 2026"
-    intro="Please read this disclaimer carefully before using TeraPlay Universal Media & Creator Dock. It clarifies our technical role, non-affiliation with third-party brands, and user obligations."
+    intro="Please read this disclaimer carefully before using LinkCastle Universal Media & Creator Dock. It clarifies our technical role, non-affiliation with third-party brands, and user obligations."
     sections={[
       {
         heading: "Non-Affiliation Declaration",
         body: (
           <p>
-            TeraPlay is an independent web-based utility. TeraPlay is not affiliated with, endorsed by, authorized by, sponsored by, or in any way officially connected with Google LLC (YouTube), ByteDance Ltd. (TikTok), Meta Platforms, Inc. (Instagram, Facebook), Flextech Inc. or Baidu, Inc. (TeraBox, 1024Tera, NephoBox), Amazon.com, Inc. (Twitch), Vimeo, Inc., Bilibili Inc., Dailymotion, Snap Inc. (Snapchat), or Microsoft Corporation (LinkedIn), or any of their subsidiaries or affiliates.
+            LinkCastle is an independent web-based utility. LinkCastle is not affiliated with, endorsed by, authorized by, sponsored by, or in any way officially connected with Google LLC (YouTube), ByteDance Ltd. (TikTok), Meta Platforms, Inc. (Instagram, Facebook), Flextech Inc. or Baidu, Inc. (TeraBox, 1024Tera, NephoBox), Amazon.com, Inc. (Twitch), Vimeo, Inc., Bilibili Inc., Dailymotion, Snap Inc. (Snapchat), or Microsoft Corporation (LinkedIn), or any of their subsidiaries or affiliates.
           </p>
         ),
       },
@@ -28,7 +28,7 @@ const DisclaimerPage = () => (
         heading: "Zero Media Hosting & Third-Party Content",
         body: (
           <p>
-            All media playable, viewable, or downloadable through TeraPlay originates from, and is hosted on, external third-party servers. TeraPlay does not host, store, replicate, or encode video or audio files. We have no control over external media content, server uptime, or stream stability.
+            All media playable, viewable, or downloadable through LinkCastle originates from, and is hosted on, external third-party servers. LinkCastle does not host, store, replicate, or encode video or audio files. We have no control over external media content, server uptime, or stream stability.
           </p>
         ),
       },
@@ -37,10 +37,10 @@ const DisclaimerPage = () => (
         body: (
           <>
             <p>
-              TeraPlay is built strictly for personal research, educational inspection, transcript extraction, and fair-use archiving.
+              LinkCastle is built strictly for personal research, educational inspection, transcript extraction, and fair-use archiving.
             </p>
             <p>
-              Users assume full legal responsibility for determining whether their media access complies with the source platform terms of service and applicable copyright regulations in their jurisdiction. TeraPlay does not promote, condone, or encourage copyright infringement.
+              Users assume full legal responsibility for determining whether their media access complies with the source platform terms of service and applicable copyright regulations in their jurisdiction. LinkCastle does not promote, condone, or encourage copyright infringement.
             </p>
           </>
         ),

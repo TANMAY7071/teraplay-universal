@@ -6,7 +6,7 @@ import { CONTACT_EMAIL, DMCA_EMAIL, PRIVACY_EMAIL } from "@/config/site";
 const ContactPage = () => (
   <LegalPageShell
     title="Contact Support"
-    description="Get in touch with the TeraPlay Universal support team for copyright inquiries, bug reports, and general assistance."
+    description="Get in touch with the LinkCastle Universal support team for copyright inquiries, bug reports, and general assistance."
     lastUpdated="October 2026"
     intro="Need help with media resolution, have a copyright question, or discovered a platform bug? Choose the appropriate department below for the fastest response."
     sections={[
@@ -109,10 +109,10 @@ const ContactPage = () => (
                 <strong>Download Did Not Start:</strong> Some mobile browsers block automatic downloads. Long-press the download button and choose "Download Linked File" or try desktop Chrome, Safari, or Firefox.
               </li>
               <li>
-                <strong>Missing Subtitles:</strong> TeraPlay never injects mock captions. If the SubRip export returns empty, the original author did not provide closed captions for that specific upload.
+                <strong>Missing Subtitles:</strong> LinkCastle never injects mock captions. If the SubRip export returns empty, the original author did not provide closed captions for that specific upload.
               </li>
               <li>
-                <strong>Slow Transfer Rates:</strong> Download speeds reflect the bandwidth allocated by third-party hosting servers (such as YouTube or TeraBox CDN). TeraPlay does not artificially throttle downloads.
+                <strong>Slow Transfer Rates:</strong> Download speeds reflect the bandwidth allocated by third-party hosting servers (such as YouTube or TeraBox CDN). LinkCastle does not artificially throttle downloads.
               </li>
             </ul>
           </div>
