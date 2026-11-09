@@ -77,3 +77,12 @@ scripts/resolved_formats.json
 scripts/speed_experiment.json
 tmp_media/
 *.tsbuildinfo
+
+# Agent & Planning Bloat
+.planning/
+.agents/
+.codex/
+.impeccable/
+seo.plugin
+install.ps1
+
