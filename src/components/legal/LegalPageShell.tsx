@@ -16,8 +16,6 @@ import {
   Coffee,
   ExternalLink,
   Share2,
-  ArrowLeft,
-  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,18 +33,17 @@ export interface LegalPageShellProps {
 }
 
 const LEGAL_PAGES = [
-  { label: "DMCA Notice", path: "/dmca" },
-  { label: "Privacy Policy", path: "/privacy" },
-  { label: "Terms of Service", path: "/terms" },
-  { label: "Disclaimer", path: "/disclaimer" },
-  { label: "Contact Support", path: "/contact" },
+  { label: "DMCA NOTICE", path: "/dmca" },
+  { label: "PRIVACY POLICY", path: "/privacy" },
+  { label: "TERMS OF SERVICE", path: "/terms" },
+  { label: "DISCLAIMER", path: "/disclaimer" },
+  { label: "CONTACT SUPPORT", path: "/contact" },
 ];
 
 /**
- * Shared layout for TeraPlay Universal legal and compliance pages.
- * Fully theme-responsive (Apple HIG dark midnight glass & clean light mode).
- * Includes universal navigation header, legal directory pill-deck,
- * readable typography, and the unified 4-column TeraPlay footer.
+ * Shared layout for LinkCastle Universal legal and compliance pages.
+ * Rendered with editorial typography (Anton display headings, Onest/Inter body,
+ * uppercase subheads, and underline-active navigation tabs).
  */
 const LegalPageShell: React.FC<LegalPageShellProps> = ({
   title,
@@ -63,21 +60,21 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
   return (
     <div className="tp-root min-h-screen flex flex-col justify-between" data-theme={theme}>
       <Helmet>
-        <title>{title} | TeraPlay Universal</title>
+        <title>{title} | LinkCastle Universal</title>
         <meta name="description" content={description} />
         <link rel="canonical" href={canonical} />
-        <meta property="og:title" content={`${title} | TeraPlay Universal`} />
+        <meta property="og:title" content={`${title} | LinkCastle Universal`} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={canonical} />
         <meta property="og:type" content="website" />
-        <meta name="twitter:title" content={`${title} | TeraPlay Universal`} />
+        <meta name="twitter:title" content={`${title} | LinkCastle Universal`} />
         <meta name="twitter:description" content={description} />
       </Helmet>
 
-      {/* FLOATING TOP NAVIGATION BAR */}
+      {/* MINIMAL FLOATING NAVIGATION BAR */}
       <header className="tp-nav">
-        <Link to="/" className="tp-brand" aria-label="TeraPlay home">
-          <span className="tp-brand-word">TeraPlay</span>
+        <Link to="/" className="tp-brand" aria-label="LinkCastle home">
+          <span className="tp-brand-word">LinkCastle</span>
           <svg className="tp-svg" width="17" height="14" viewBox="0 0 17 14" aria-hidden="true">
             <path
               d="M1 13.2c4.6-.4 8.4-2.6 11-6.4L15.6 1M9.6 1.4h6v6"
@@ -90,31 +87,21 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
           </svg>
         </Link>
 
-        <div className="tp-center-info" title="TeraPlay Legal & Trust Compliance">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Legal & Trust</span>
+        <div className="tp-center-info" title="LinkCastle Network Status">
+          <span>Edge CDN Online</span>
           <span className="tp-center-bar" aria-hidden="true" />
-          <span>Compliance</span>
+          <span>YouTube Studio & TeraBox</span>
         </div>
 
         <div className="tp-nav-actions">
-          <Link
-            to="/"
-            className="tp-btn-theme hidden sm:inline-flex items-center gap-1.5"
-            title="Return to Universal Dock"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to Dock</span>
-          </Link>
-
           <ThemeChanger theme={theme} onToggle={toggleTheme} variant="icon" />
 
           <button
             type="button"
             onClick={() => setShowSupportModal(true)}
             className="tp-btn-nav-accent"
-            title="Support TeraPlay"
-            aria-label="Support TeraPlay"
+            title="Support LinkCastle"
+            aria-label="Support LinkCastle"
           >
             <Coffee className="w-3.5 h-3.5 mr-1 text-black/80" aria-hidden="true" />
             <span>Support</span>
@@ -123,47 +110,19 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
       </header>
 
       {/* MAIN LEGAL CONTENT CONTAINER */}
-      <main className="w-full flex-1 pt-20 pb-16 px-4 sm:px-6 lg:px-8">
-        <article className="mx-auto w-full max-w-3xl">
-          {/* Breadcrumb & Navigation */}
-          <div className="flex items-center justify-between mb-6">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--tp-muted)] hover:text-[var(--tp-mid)] dark:hover:text-[#e4f222] transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Universal Dock</span>
-            </Link>
-
-            <span
-              className={`text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-wider px-3 py-1 rounded-full border ${
-                theme === "light"
-                  ? "bg-[#2659d9]/10 text-[#2659d9] border-[#2659d9]/25"
-                  : "bg-[#e4f222]/15 text-[#e4f222] border-[#e4f222]/35"
-              }`}
-            >
-              Updated {lastUpdated}
-            </span>
+      <main className="w-full flex-1 pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+        <article className="mx-auto w-full max-w-4xl">
+          {/* Eyebrow: Revision + Category */}
+          <div className="mb-4 text-[12px] sm:text-[13px] font-mono tracking-[0.2em] uppercase text-[var(--tp-muted)]">
+            <span>LAST REVISION: {lastUpdated.toUpperCase()}</span>
+            <span className="mx-2.5 opacity-50">·</span>
+            <span>UNIVERSAL CLIENT TERMS</span>
           </div>
 
-          {/* Page Heading */}
-          <header className="mb-8">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[var(--tp-ink)] mb-4">
-              {title}
-            </h1>
-            <p className="text-sm sm:text-base leading-relaxed text-[var(--tp-muted)]">
-              {intro}
-            </p>
-          </header>
-
-          {/* Quick Legal Directory Switcher */}
+          {/* Underlined Tab Navigation Bar */}
           <nav
             aria-label="Legal pages directory"
-            className={`mb-8 p-1.5 rounded-2xl border flex flex-wrap gap-1.5 ${
-              theme === "light"
-                ? "bg-slate-100/80 border-slate-200/90"
-                : "bg-[rgba(8,14,34,0.85)] border-[rgba(169,195,243,0.12)] backdrop-blur-md"
-            }`}
+            className="flex flex-wrap items-center gap-x-8 gap-y-3 pt-2 pb-1 border-b border-white/10 dark:border-white/10 mb-14"
           >
             {LEGAL_PAGES.map((page) => {
               const isActive = location.pathname === page.path;
@@ -171,47 +130,54 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
                 <Link
                   key={page.path}
                   to={page.path}
-                  className={`text-xs font-bold px-3.5 py-2 rounded-xl transition-all ${
+                  className={`relative pb-3 text-xs sm:text-[13px] font-bold tracking-[0.16em] uppercase transition-colors whitespace-nowrap ${
                     isActive
-                      ? theme === "light"
-                        ? "bg-[#2659d9] text-white shadow-sm"
-                        : "bg-[#e4f222] text-[#0c0e13] font-black shadow-sm"
-                      : theme === "light"
-                      ? "text-slate-600 hover:text-slate-900 hover:bg-white"
-                      : "text-slate-300 hover:text-white hover:bg-white/10"
+                      ? "text-[#C6F432]"
+                      : "text-[var(--tp-muted)] hover:text-[var(--tp-ink)]"
                   }`}
                 >
                   {page.label}
+                  {isActive && (
+                    <span
+                      className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#C6F432] rounded-full"
+                      aria-hidden="true"
+                    />
+                  )}
                 </Link>
               );
             })}
           </nav>
 
-          {/* Numbered Sections */}
-          <div className="space-y-5">
+          {/* Page Intro if applicable */}
+          {intro && (
+            <p className="text-sm sm:text-base leading-relaxed text-[var(--tp-muted)] mb-12 max-w-3xl">
+              {intro}
+            </p>
+          )}
+
+          {/* Numbered Sections with Anton Display Headings */}
+          <div className="space-y-12">
             {sections.map((section, index) => (
-              <section
-                key={section.heading}
-                className={`rounded-2xl border p-5 sm:p-7 transition-all duration-200 ${
-                  theme === "light"
-                    ? "bg-white border-slate-200/90 shadow-[0_12px_36px_-10px_rgba(12,16,28,0.06)] hover:border-slate-300"
-                    : "bg-[rgba(14,25,56,0.65)] border-[rgba(169,195,243,0.14)] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.5)] backdrop-blur-xl hover:border-[#2659d9]/45"
-                }`}
-              >
-                <h2 className="flex items-center gap-3 text-base sm:text-lg lg:text-xl font-bold text-[var(--tp-ink)] mb-3.5">
+              <section key={section.heading} className="group">
+                <div className="flex items-baseline gap-4 sm:gap-6 mb-4">
                   <span
-                    className={`text-xs font-mono font-bold tracking-wider px-2 py-0.5 rounded-md ${
-                      theme === "light"
-                        ? "bg-[#2659d9]/10 text-[#2659d9] border border-[#2659d9]/25"
-                        : "bg-[#e4f222]/15 text-[#e4f222] border border-[#e4f222]/30"
-                    }`}
+                    className="font-mono text-base sm:text-lg font-bold tracking-wider text-[#C6F432] select-none flex-shrink-0"
                     aria-hidden="true"
                   >
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  <span>{section.heading}</span>
-                </h2>
-                <div className="text-sm sm:text-[15px] leading-relaxed text-[var(--tp-muted)] space-y-3 [&_a]:text-[#2659d9] dark:[&_a]:text-[#a9c3f3] [&_a:hover]:underline [&_strong]:text-[var(--tp-ink)] [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_li]:leading-relaxed">
+                  <h2
+                    style={{
+                      fontFamily: "var(--tp-font-display, 'Anton', 'Plus Jakarta Sans', sans-serif)",
+                      letterSpacing: "0.01em",
+                      lineHeight: "1.1",
+                    }}
+                    className="text-2xl sm:text-3xl lg:text-4xl uppercase text-[var(--tp-ink)] font-normal tracking-wide"
+                  >
+                    {section.heading}
+                  </h2>
+                </div>
+                <div className="pl-9 sm:pl-12 text-sm sm:text-[15px] leading-relaxed text-[var(--tp-muted)] space-y-3.5 [&_a]:text-[#C6F432] [&_a:hover]:underline [&_strong]:text-[var(--tp-ink)] [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_li]:leading-relaxed">
                   {section.body}
                 </div>
               </section>
@@ -226,8 +192,8 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
           {/* Col 1: Brand & Status */}
           <div>
             <div className="tp-foot-brand">
-              <span>TeraPlay</span>
-              <svg width="17" height="14" viewBox="0 0 17 14" aria-hidden="true" className="text-[#e4f222]">
+              <span>LinkCastle</span>
+              <svg width="17" height="14" viewBox="0 0 17 14" aria-hidden="true" className="text-[#C6F432]">
                 <path
                   d="M1 13.2c4.6-.4 8.4-2.6 11-6.4L15.6 1M9.6 1.4h6v6"
                   fill="none"
@@ -284,12 +250,12 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
 
           {/* Bottom Bar */}
           <div className="tp-foot-bottom-bar">
-            <span>© {new Date().getFullYear()} TeraPlay Universal Media Hub.</span>
+            <span>© {new Date().getFullYear()} LinkCastle Universal Media Hub.</span>
           </div>
         </div>
 
         <div className="tp-foot-watermark" aria-hidden="true">
-          <span className="tp-foot-word">TeraPlay</span>
+          <span className="tp-foot-word">LinkCastle</span>
           <svg viewBox="0 0 17 14" className="tp-foot-word-arrow" aria-hidden="true">
             <path
               d="M1 13.2c4.6-.4 8.4-2.6 11-6.4L15.6 1M9.6 1.4h6v6"
@@ -316,8 +282,8 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
             <div
               className={`w-14 h-14 rounded-2xl flex items-center justify-center border shadow-sm ${
                 theme === "light"
-                  ? "bg-[#e4f222]/25 border-[#b6c200]/40 text-[#4c5200]"
-                  : "bg-[#e4f222]/15 border-[#e4f222]/35 text-[#e4f222]"
+                  ? "bg-[#C6F432]/25 border-[#b6c200]/40 text-[#4c5200]"
+                  : "bg-[#C6F432]/15 border-[#C6F432]/35 text-[#C6F432]"
               }`}
             >
               <Coffee className="w-7 h-7" />
@@ -327,14 +293,14 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
                 theme === "light" ? "text-slate-900" : "text-white"
               }`}
             >
-              Support TeraPlay
+              Support LinkCastle
             </DialogTitle>
             <DialogDescription
               className={`text-sm text-center max-w-sm leading-relaxed ${
                 theme === "light" ? "text-slate-600" : "text-slate-300"
               }`}
             >
-              TeraPlay is 100% free with zero paywalls and no mandatory accounts. If you find this tool helpful, consider supporting server costs or sharing it with friends.
+              LinkCastle is 100% free with zero paywalls and no mandatory accounts. If you find this tool helpful, consider supporting server costs or sharing it with friends.
             </DialogDescription>
           </DialogHeader>
 
@@ -368,7 +334,7 @@ const LegalPageShell: React.FC<LegalPageShellProps> = ({
                   : "border-white/12 bg-white/6 hover:bg-white/12 text-white"
               }`}
             >
-              <Share2 className="w-4 h-4 text-[#2659d9] dark:text-[#a9c3f3]" />
+              <Share2 className="w-4 h-4 text-[#C6F432]" />
               <span>Share with Friends</span>
             </Button>
           </div>
