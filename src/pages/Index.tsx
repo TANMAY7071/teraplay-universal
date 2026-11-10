@@ -2108,15 +2108,16 @@ export default function Index() {
                       <div className={`relative ${isQuickDropdownOpen ? 'z-40' : ''}`} ref={quickDropdownRef}>
                         <div className="tp-editorial-split-cta">
                           <a
-                            href={isImageMedia ? (carouselSlides[activeSlideIndex]?.url || resolvedVideo.m3u8_url) : (bestVideo?.download_url || bestVideo?.url)}
-                            download={isImageMedia ? `instagram_slide_${activeSlideIndex + 1}.jpg` : undefined}
-                            target={isImageMedia ? "_blank" : undefined}
-                            rel={isImageMedia ? "noreferrer" : undefined}
+                            href={isImageMedia ? (carouselSlides[activeSlideIndex]?.url || resolvedVideo.m3u8_url) : (bestVideo ? getFormatDownloadHref(bestVideo) : '#')}
+                            download={isImageMedia ? `instagram_slide_${activeSlideIndex + 1}.jpg` : (bestVideo ? getFormatDownloadFilename(bestVideo) : undefined)}
                             onClick={(e) => {
-                              if (!isImageMedia && !bestVideo) {
-                                e.preventDefault();
+                              if (isImageMedia) return;
+                              e.preventDefault();
+                              if (!bestVideo) {
                                 toast.info('Analyzing streams... Please wait a moment.');
+                                return;
                               }
+                              triggerFormatDownload(bestVideo);
                             }}
                             className={`tp-editorial-cta-main ${
                               !isImageMedia && !bestVideo ? 'opacity-60 cursor-not-allowed' : ''
@@ -2189,11 +2190,13 @@ export default function Index() {
                                 return (
                                   <a
                                     key={vf.format_id}
-                                    href={vf.download_url || vf.url}
-                                    download
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    onClick={() => setIsQuickDropdownOpen(false)}
+                                    href={getFormatDownloadHref(vf)}
+                                    download={getFormatDownloadFilename(vf)}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setIsQuickDropdownOpen(false);
+                                      triggerFormatDownload(vf);
+                                    }}
                                     className="tp-editorial-popover-item"
                                   >
                                     <span className="flex items-center gap-2">
