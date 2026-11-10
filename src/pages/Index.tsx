@@ -611,8 +611,20 @@ export default function Index() {
             .catch(() => null);
 
           const resolvePromise = fetch(`/api/resolve?url=${encodeURIComponent(normalized.normalizedUrl)}`)
-            .then((r) => (r.ok ? r.json() : null))
-            .catch(() => null);
+            .then(async (r) => {
+              if (r.ok) return r.json();
+              // Direct fallback to Render backend if Vercel function errors or rate-limited
+              const directRes = await fetch(`https://linkcastle.onrender.com/resolve?url=${encodeURIComponent(normalized.normalizedUrl)}`);
+              return directRes.ok ? directRes.json() : null;
+            })
+            .catch(async () => {
+              try {
+                const directRes = await fetch(`https://linkcastle.onrender.com/resolve?url=${encodeURIComponent(normalized.normalizedUrl)}`);
+                return directRes.ok ? directRes.json() : null;
+              } catch {
+                return null;
+              }
+            });
 
           const [transData, resolveData] = await Promise.all([transPromise, resolvePromise]);
 
@@ -663,7 +675,11 @@ export default function Index() {
     // Default flow for TeraBox, direct MP4, Facebook, Instagram
     setResolvedVideo(null);
     try {
-      const res = await fetch(`/api/resolve?url=${encodeURIComponent(normalized.normalizedUrl)}`);
+      let res = await fetch(`/api/resolve?url=${encodeURIComponent(normalized.normalizedUrl)}`);
+      if (!res.ok) {
+        // Fallback directly to Render backend if Vercel function fails
+        res = await fetch(`https://linkcastle.onrender.com/resolve?url=${encodeURIComponent(normalized.normalizedUrl)}`);
+      }
       if (!res.ok) {
         throw new Error(`Server returned HTTP ${res.status}`);
       }
