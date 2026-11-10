@@ -62,6 +62,7 @@ import { IconFolder, PLATFORM_ICONS } from '@/components/ui/icon-folder';
 import { MarqueeBand, ToolsGrid, HowItWorks, Reveal } from '@/components/home/HomeBelowHero';
 import './home-below-hero.css';
 import { PlatformBrandIcon } from '@/components/media/PlatformBrandIcon';
+import { downloadMediaClientSide } from '@/lib/wasmRemux';
 import './VideoPlayer21st.css';
 
 import {
@@ -185,6 +186,10 @@ function isCinemaWidescreen(height?: number): boolean {
 
 function getFormatDisplayTier(fmt: MediaFormatOption): string {
   if (fmt.is_audio_only) return fmt.quality || 'Audio MP3';
+  const ext = (fmt.ext || '').toLowerCase();
+  if (ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'webp') {
+    return 'Original Photo (Lossless)';
+  }
   const qLower = (fmt.quality || '').toLowerCase();
   const isWm = fmt.format_id === 'watermark' || qLower.includes('with watermark');
   const isNoWm = fmt.format_id?.includes('no_watermark') || qLower.includes('no watermark');
@@ -197,6 +202,10 @@ function getFormatDisplayTier(fmt: MediaFormatOption): string {
 function getFormatDisplayDescription(fmt: MediaFormatOption): string {
   if (fmt.is_audio_only) {
     return fmt.format_id.startsWith('mp3') ? 'LAME High-Fi MP3 Track' : 'Original Master AAC Track';
+  }
+  const ext = (fmt.ext || '').toLowerCase();
+  if (ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'webp') {
+    return fmt.height ? `High-resolution ${fmt.height}p uncompressed image` : 'Original high-definition image file';
   }
   const qLower = (fmt.quality || '').toLowerCase();
   if (fmt.format_id === 'watermark' || qLower.includes('with watermark')) {
@@ -875,19 +884,53 @@ export default function Index() {
     [resolvedVideo, inputUrl]
   );
 
+  const triggerFormatDownload = useCallback(
+    async (fmt: MediaFormatOption | null | undefined) => {
+      if (!resolvedVideo || !fmt) return;
+      const fileName = getFormatDownloadFilename(fmt);
+      const audioUrl = fmt.audio_url || bestAudio?.url;
+      const isMuxNeeded = Boolean(audioUrl && audioUrl !== fmt.url && !fmt.has_audio);
+
+      if (!isMuxNeeded && !fmt.is_audio_only) {
+        const link = document.createElement('a');
+        link.href = fmt.url || getFormatDownloadHref(fmt);
+        link.setAttribute('download', fileName);
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success(`Downloading ${fileName}...`);
+        return;
+      }
+
+      const toastId = 'wasm-remux-toast';
+      toast.loading('Starting high-speed browser engine...', { id: toastId });
+
+      try {
+        await downloadMediaClientSide({
+          videoUrl: fmt.is_audio_only ? undefined : fmt.url,
+          audioUrl: fmt.is_audio_only ? fmt.url : audioUrl,
+          thumbnailUrl: resolvedVideo.thumbnails?.[0]?.url,
+          filename: fileName,
+          ext: fmt.is_audio_only ? 'mp3' : 'mp4',
+          title: resolvedVideo.title,
+          onProgress: (percent, statusText) => {
+            toast.loading(`${statusText} (${percent}%)`, { id: toastId });
+          }
+        });
+        toast.success(`Saved ${fileName} to Downloads!`, { id: toastId });
+      } catch (err: any) {
+        toast.error(`Download failed: ${err?.message || 'Unknown error'}`, { id: toastId });
+      }
+    },
+    [resolvedVideo, bestAudio, getFormatDownloadFilename, getFormatDownloadHref]
+  );
+
   const handleDownloadMp4 = () => {
     if (!resolvedVideo) return;
     const target = bestVideo || videoFormats[0];
-    const proxyTarget = getFormatDownloadHref(target);
-    const fileName = getFormatDownloadFilename(target);
-
-    const link = document.createElement('a');
-    link.href = proxyTarget;
-    link.setAttribute('download', fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Starting high-speed MP4 download...');
+    triggerFormatDownload(target);
   };
 
 
@@ -915,11 +958,18 @@ export default function Index() {
     if (firstThumb?.width && firstThumb?.height) {
       return firstThumb.height > firstThumb.width;
     }
-    if (resolvedVideo.platform === 'instagram' && resolvedVideo.media_type === 'carousel') {
+    if (resolvedVideo.platform === 'tiktok' || resolvedVideo.platform === 'snapchat') {
+      return true;
+    }
+    if (resolvedVideo.platform === 'instagram') {
+      return true;
+    }
+    const targetUrl = (inputUrl || resolvedVideo.m3u8_url || '').toLowerCase();
+    if (targetUrl.includes('/reel/') || targetUrl.includes('/reels/') || targetUrl.includes('/shorts/')) {
       return true;
     }
     return false;
-  }, [resolvedVideo]);
+  }, [resolvedVideo, inputUrl]);
 
   const isTrueCarousel = useMemo(() => {
     return Boolean(
@@ -2036,18 +2086,7 @@ export default function Index() {
                     </div>
 
                     <div className="space-y-2.5 pt-1">
-                      {isImageMedia && (
-                        <a
-                          href={carouselSlides[activeSlideIndex]?.url || resolvedVideo.m3u8_url}
-                          download={`instagram_slide_${activeSlideIndex + 1}.jpg`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 font-bold text-xs sm:text-sm hover:bg-cyan-500/25 transition-colors"
-                        >
-                          <Download className="w-4 h-4 fill-current" />
-                          <span>Download Slide {activeSlideIndex + 1} (1080p JPG)</span>
-                        </a>
-                      )}
+                      
 
                       {/* Action 2: Split Download Dropdown */}
                       <div className={`relative ${isQuickDropdownOpen ? 'z-40' : ''}`} ref={quickDropdownRef}>
@@ -2165,10 +2204,13 @@ export default function Index() {
                         <div className="relative" ref={audioDropdownRef}>
                           <div className="tp-editorial-split-cta-secondary">
                             <a
-                              href={bestAudio.download_url || bestAudio.url}
-                              download
-                              target="_blank"
-                              rel="noreferrer"
+                            <a
+                              href={getFormatDownloadHref(bestAudio)}
+                              download={getFormatDownloadFilename(bestAudio)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                triggerFormatDownload(bestAudio);
+                              }}
                               className="tp-editorial-cta-main-secondary"
                             >
                               <Music className="w-4 h-4 text-[var(--tp-accent)]" />
@@ -2223,7 +2265,41 @@ export default function Index() {
                   </div>
                 </div>
 
-                {/* BOTTOM SECTION: SEGMENTED SWITCHER & QUALITY TABLE (IMAGE 4 & 5) */}
+                {isImageMedia ? (
+                  <div className="pt-4 border-t border-[var(--tp-border-subtle)]">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-[var(--tp-paper-input)]/70 border border-[var(--tp-border-card)]">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            Lossless Photo Slides
+                          </span>
+                          <span className="text-xs font-mono text-[var(--tp-muted)]">
+                            {carouselSlides.length} Image{carouselSlides.length > 1 ? 's' : ''} Ready
+                          </span>
+                        </div>
+                        <h4 className="text-sm sm:text-base font-bold text-[var(--tp-ink)]">
+                          View & Download Full Slides Gallery
+                        </h4>
+                        <p className="text-xs text-[var(--tp-muted)] max-w-lg">
+                          Every carousel slide is extracted in original uncompressed JPEG resolution. Download individual slides or grab the complete set in one click.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <button
+                          type="button"
+                          onClick={() => setYoutubeTab('thumbnails')}
+                          className="tp-btn tp-btn-download w-full sm:w-auto justify-center px-4"
+                          style={{ height: '40px', fontSize: '13px' }}
+                        >
+                          <Images className="w-4 h-4" />
+                          <span>Open All Slides ({carouselSlides.length})</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                /* BOTTOM SECTION: SEGMENTED SWITCHER & QUALITY TABLE (IMAGE 4 & 5) */
                 <div id="downloads-directory" className="space-y-4 pt-4 border-t border-[var(--tp-border-subtle)]">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
@@ -2336,6 +2412,10 @@ export default function Index() {
                                 <a
                                   href={getFormatDownloadHref(fmt)}
                                   download={getFormatDownloadFilename(fmt)}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    triggerFormatDownload(fmt);
+                                  }}
                                   className="tp-btn tp-btn-download flex-1 justify-center active:opacity-90"
                                   style={{ height: '36px', fontSize: '12px' }}
                                 >
@@ -2417,6 +2497,10 @@ export default function Index() {
                                     <a
                                       href={getFormatDownloadHref(fmt)}
                                       download={getFormatDownloadFilename(fmt)}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        triggerFormatDownload(fmt);
+                                      }}
                                       className="tp-btn tp-btn-download active:opacity-90"
                                       style={{ height: '34px', fontSize: '11px', padding: '0 14px' }}
                                     >
@@ -2461,6 +2545,7 @@ export default function Index() {
                     </div>
                   )}
                 </div>
+                )}
               </div>
             )}
 
@@ -3067,7 +3152,7 @@ export default function Index() {
 
             {/* TAB 3: VIDEO PLAYER (YOUTUBE EMBED OR CUSTOM VIDEO PLAYER OR IMAGE VIEWER) */}
             {youtubeTab === 'player' && (
-              <div className={`w-full ${isVerticalMedia ? 'aspect-[3/4] max-h-[720px] max-w-[540px] mx-auto' : 'aspect-video'} bg-black relative flex items-center justify-center`}>
+              <div className={`w-full ${isVerticalMedia ? 'aspect-[9/16] max-h-[620px] max-w-[360px] sm:max-w-[380px] mx-auto' : 'aspect-video'} bg-black relative flex items-center justify-center`}>
                 {isYouTubeMode && resolvedVideo.youtube_id ? (
                   <iframe
                     className="w-full h-full"

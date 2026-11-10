@@ -267,7 +267,7 @@ async function runRemoteResolver(targetUrl: string): Promise<ResolveResponse | n
     const base = remoteEndpoint.replace(/\/$/, '');
     const res = await fetch(`${base}/resolve?url=${encodeURIComponent(targetUrl)}`, {
       headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(35000), // 35s to comfortably accommodate Render cold starts
     });
 
     if (!res.ok) {
