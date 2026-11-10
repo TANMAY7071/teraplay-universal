@@ -519,28 +519,46 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
 
   const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
+    const video = videoRef.current;
     if (!container) return;
 
-    if (!document.fullscreenElement) {
-      container.requestFullscreen().then(() => {
+    if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
+      if (container.requestFullscreen) {
+        container.requestFullscreen().then(() => {
+          setIsFullscreen(true);
+        }).catch(() => {
+          if (video && (video as any).webkitEnterFullscreen) {
+            (video as any).webkitEnterFullscreen();
+            setIsFullscreen(true);
+          }
+        });
+      } else if (video && (video as any).webkitEnterFullscreen) {
+        (video as any).webkitEnterFullscreen();
         setIsFullscreen(true);
-      }).catch((err) => {
-        console.error("Fullscreen request failed:", err);
-      });
+      }
     } else {
-      document.exitFullscreen().then(() => {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().then(() => {
+          setIsFullscreen(false);
+        });
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
         setIsFullscreen(false);
-      });
+      }
     }
   }, []);
 
   // Sync fullscreen change with ESC key
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      setIsFullscreen(Boolean(document.fullscreenElement || (document as any).webkitFullscreenElement));
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+    };
   }, []);
 
   // Keyboard shortcuts (native player only): space/k play, arrows seek/volume, m mute, f fullscreen
@@ -680,7 +698,19 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         />
       )}
 
-      {/* FLOATING GLASS CONTROL BAR */}
+      {/* Center Play/Pause button on pause */}
+      {!isIframeEmbed && !isPlaying && (
+        <button
+          type="button"
+          onClick={handlePlayPause}
+          className="absolute inset-0 m-auto w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all z-10"
+          aria-label="Play video"
+        >
+          <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current ml-0.5" />
+        </button>
+      )}
+
+      {/* SLEEK GRADIENT BOTTOM CONTROL BAR (APPLE / YOUTUBE GRADE) */}
       {!isIframeEmbed && (
         <div
           onMouseEnter={() => {
@@ -693,11 +723,11 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
           onMouseLeave={() => {
             overControlsRef.current = false;
             if (isPlaying) {
-              controlsTimeoutRef.current = window.setTimeout(() => setShowControls(false), 3000);
+              controlsTimeoutRef.current = window.setTimeout(() => setShowControls(false), 2500);
             }
           }}
           className={cn(
-            "absolute bottom-0 left-0 right-0 mx-auto max-w-xl p-4 bg-[#11111198] backdrop-blur-md rounded-2xl transition-opacity duration-300 z-20",
+            "absolute inset-x-0 bottom-0 z-20 w-full bg-gradient-to-t from-black/95 via-black/60 to-transparent pt-8 pb-2 px-3 sm:px-4 sm:pb-3 transition-opacity duration-300",
             showControls ? "opacity-100" : "opacity-0 pointer-events-none"
           )}
         >
@@ -708,47 +738,53 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
             </p>
           )}
 
-          {/* Row 1: time labels flanking thin seekbar */}
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-white text-sm tabular-nums">{formatTime(currentTime)}</span>
-            <div className="flex-1">
-              <ThinBar
-                value={duration ? (currentTime / duration) * 100 : 0}
-                onChange={(pct) => {
-                  const video = videoRef.current;
-                  if (!video || !duration) return;
-                  const newTime = (pct / 100) * duration;
-                  video.currentTime = newTime;
-                  setCurrentTime(newTime);
-                }}
-              />
-            </div>
-            <span className="text-white text-sm tabular-nums">{formatTime(duration)}</span>
+          {/* Row 1: Seekbar (slim, full-width) */}
+          <div className="mb-2">
+            <ThinBar
+              value={duration ? (currentTime / duration) * 100 : 0}
+              onChange={(pct) => {
+                const video = videoRef.current;
+                if (!video || !duration) return;
+                const newTime = (pct / 100) * duration;
+                video.currentTime = newTime;
+                setCurrentTime(newTime);
+              }}
+            />
           </div>
 
-          {/* Row 2: play + volume left, speeds + fullscreen right */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div tabIndex={0}>
-                <button
-                  onClick={handlePlayPause}
-                  className="inline-flex items-center justify-center rounded-md h-10 w-10 text-white hover:bg-[#111111d1] hover:text-white transition-colors"
-                  title={isPlaying ? "Pause (space)" : "Play (space)"}
-                >
-                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                </button>
+          {/* Row 2: Controls row */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Play/Pause */}
+              <button
+                type="button"
+                onClick={handlePlayPause}
+                className="inline-flex items-center justify-center rounded-lg h-7 w-7 sm:h-8 sm:w-8 text-white hover:bg-white/15 active:scale-95 transition-all shrink-0"
+                title={isPlaying ? "Pause (space)" : "Play (space)"}
+                aria-label={isPlaying ? "Pause" : "Play"}
+              >
+                {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+              </button>
+
+              {/* Time display: 0:09 / 0:42 */}
+              <div className="text-[11px] sm:text-xs font-mono tabular-nums text-white/90 select-none whitespace-nowrap">
+                <span>{formatTime(currentTime)}</span>
+                <span className="text-white/40 mx-1">/</span>
+                <span>{formatTime(duration)}</span>
               </div>
-              <div className="flex items-center gap-x-1">
-                <div tabIndex={0}>
-                  <button
-                    onClick={toggleMute}
-                    className="inline-flex items-center justify-center rounded-md h-10 w-10 text-white hover:bg-[#111111d1] hover:text-white transition-colors"
-                    title="Mute (m)"
-                  >
-                    {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                  </button>
-                </div>
-                <div className="w-24 max-sm:w-16">
+
+              {/* Volume & Mute */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={toggleMute}
+                  className="inline-flex items-center justify-center rounded-lg h-7 w-7 sm:h-8 sm:w-8 text-white hover:bg-white/15 active:scale-95 transition-all shrink-0"
+                  title={isMuted || volume === 0 ? "Unmute (m)" : "Mute (m)"}
+                  aria-label={isMuted || volume === 0 ? "Unmute" : "Mute"}
+                >
+                  {isMuted || volume === 0 ? <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                </button>
+                <div className="w-16 hidden md:block">
                   <ThinBar
                     value={(isMuted ? 0 : volume) * 100}
                     onChange={(pct) => handleVolumeChange([pct / 100])}
@@ -757,7 +793,8 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
+              {/* Speed Menu */}
               <PlayerMenu
                 items={SPEED_OPTIONS.map((s) => ({ value: String(s), label: `${s}x` }))}
                 value={String(playbackSpeed)}
@@ -767,6 +804,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 isModified={playbackSpeed !== 1}
               />
 
+              {/* Quality Menu (when multiple renditions provided) */}
               {distinctQualities.length > 1 && (
                 <PlayerMenu
                   items={distinctQualities.map((q, i) => ({ value: String(i), label: q.label }))}
@@ -778,15 +816,16 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 />
               )}
 
-              <div tabIndex={0} className="hidden sm:block">
-                <button
-                  onClick={toggleFullscreen}
-                  className="inline-flex items-center justify-center rounded-md h-10 w-10 text-white hover:bg-[#111111d1] hover:text-white transition-colors"
-                  title="Fullscreen (f)"
-                >
-                  <Maximize className="w-5 h-5" />
-                </button>
-              </div>
+              {/* Fullscreen Button — NOW ACCESSIBLE ON ALL DEVICES */}
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="inline-flex items-center justify-center rounded-lg h-7 w-7 sm:h-8 sm:w-8 text-white hover:bg-white/15 active:scale-95 transition-all shrink-0"
+                title={isFullscreen ? "Exit Fullscreen (f)" : "Fullscreen (f)"}
+                aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+              >
+                <Maximize className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
             </div>
           </div>
         </div>

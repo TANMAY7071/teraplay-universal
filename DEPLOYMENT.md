@@ -59,7 +59,30 @@ Deploy TeraPlay Universal Media Dock to production for **$0 / month**: Vercel fo
 
 ---
 
-## Step 3: Monetization setup
+## Step 3: Custom Domain & Cloudflare DNS Shield (playlinks4u.com)
+
+Put Cloudflare in front of Vercel for free DDoS protection, origin IP shielding, and global caching:
+
+1. **Buy Domain**:
+   - Register `playlinks4u.com` via **[Cloudflare Registrar](https://www.cloudflare.com/products/registrar/)** (at wholesale price, no renewal markups) or **[Porkbun](https://porkbun.com/)**.
+2. **Add Domain to Cloudflare DNS**:
+   - In Cloudflare Dashboard, add site `playlinks4u.com` (select Free Plan).
+   - If bought outside Cloudflare, set your registrar's nameservers to the assigned Cloudflare nameservers.
+3. **Configure DNS Records in Cloudflare**:
+   - **CNAME Record**:
+     - **Name**: `@` (root) or `www`
+     - **Target**: `cname.vercel-dns.com`
+     - **Proxy status**: **Proxied** (Orange cloud icon enabled)
+4. **Attach Domain in Vercel**:
+   - In Vercel Project Settings -> **Domains**, add `playlinks4u.com` (and `www.playlinks4u.com`).
+   - Vercel detects Cloudflare proxy and verifies SSL certificate automatically.
+5. **Set Cloudflare SSL/TLS Encryption Mode**:
+   - In Cloudflare Dashboard -> **SSL/TLS**, set mode to **Full (strict)**.
+   - Prevents SSL redirect loops between Cloudflare and Vercel.
+
+---
+
+## Step 4: Monetization setup
 
 1. Register as a publisher on **[Monetag](https://monetag.com/)** or **[Adsterra](https://adsterra.com/)**.
 2. Add your Vercel domain and obtain ad script tags:
