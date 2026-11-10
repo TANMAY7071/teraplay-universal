@@ -2204,7 +2204,6 @@ export default function Index() {
                         <div className="relative" ref={audioDropdownRef}>
                           <div className="tp-editorial-split-cta-secondary">
                             <a
-                            <a
                               href={getFormatDownloadHref(bestAudio)}
                               download={getFormatDownloadFilename(bestAudio)}
                               onClick={(e) => {

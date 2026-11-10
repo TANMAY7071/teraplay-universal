@@ -260,8 +260,10 @@ function runLocalExtractor(targetUrl: string): Promise<ResolveResponse | null> {
 }
 
 async function runRemoteResolver(targetUrl: string): Promise<ResolveResponse | null> {
-  const remoteEndpoint = process.env.PYTHON_RESOLVER_URL || process.env.RESOLVER_SERVICE_URL;
-  if (!remoteEndpoint) return null;
+  const remoteEndpoint =
+    process.env.PYTHON_RESOLVER_URL ||
+    process.env.RESOLVER_SERVICE_URL ||
+    'https://linkcastle.onrender.com';
 
   try {
     const base = remoteEndpoint.replace(/\/$/, '');
