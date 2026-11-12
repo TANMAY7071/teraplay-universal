@@ -107,15 +107,23 @@ export async function downloadMediaClientSide({
     document.body.removeChild(a);
   };
 
-  // HLS (.m3u8) playlists cannot be written as raw video.mp4 into WASM
-  if ((videoUrl && videoUrl.includes('.m3u8')) || (audioUrl && audioUrl.includes('.m3u8'))) {
-    onProgress?.(50, 'Streaming HLS via server tunnel...');
+  const isHls = (u?: string) => Boolean(
+    u && (u.includes('.m3u8') || u.includes('/manifest/hls/') || u.includes('manifest.googlevideo.com'))
+  );
+
+  // HLS (.m3u8 or manifest) cannot be written as raw video.mp4 into WASM
+  if (isHls(videoUrl) || isHls(audioUrl)) {
+    onProgress?.(50, 'Converting stream to MP4 via server engine...');
     triggerTunnelFallback();
     return;
   }
 
-  // 1. Direct Progressive download if no remuxing needed (no separate audio, subtitles, or cover art)
-  if (videoUrl && !audioUrl && !subtitleUrl) {
+  // 1. Direct Progressive download if no remuxing needed AND safe CDN (not google/hls/ip-locked)
+  const isCdnRestricted = (u?: string) => Boolean(
+    u && (u.includes('googlevideo.com') || u.includes('youtube.com'))
+  );
+
+  if (videoUrl && !audioUrl && !subtitleUrl && !isCdnRestricted(videoUrl)) {
     onProgress?.(100, 'Starting direct CDN download...');
     const a = document.createElement('a');
     a.href = videoUrl;

@@ -907,7 +907,15 @@ export default function Index() {
       const audioUrl = fmt.audio_url || bestAudio?.url;
       const isMuxNeeded = Boolean(audioUrl && audioUrl !== fmt.url && !fmt.has_audio);
 
-      if (!isMuxNeeded && !fmt.is_audio_only) {
+      const isGoogleOrHls = Boolean(
+        fmt.url && (
+          fmt.url.includes('googlevideo.com') ||
+          fmt.url.includes('/manifest/hls/') ||
+          fmt.url.includes('.m3u8')
+        )
+      );
+
+      if (!isMuxNeeded && !fmt.is_audio_only && !isGoogleOrHls) {
         const link = document.createElement('a');
         link.href = fmt.url || getFormatDownloadHref(fmt);
         link.setAttribute('download', fileName);
@@ -2114,7 +2122,11 @@ export default function Index() {
                               if (isImageMedia) return;
                               e.preventDefault();
                               if (!bestVideo) {
-                                toast.info('Analyzing streams... Please wait a moment.');
+                                if (isLoading) {
+                                  toast.info('Analyzing streams... Please wait a moment.');
+                                } else {
+                                  toast.error('No downloadable stream available for this video.');
+                                }
                                 return;
                               }
                               triggerFormatDownload(bestVideo);
@@ -2129,7 +2141,9 @@ export default function Index() {
                                 ? `Download Slide ${activeSlideIndex + 1} (JPG)`
                                 : bestVideo
                                 ? `Download Video (${getShortResTag(bestVideo.height)})`
-                                : 'Analyzing Streams...'}
+                                : isLoading
+                                ? 'Analyzing Streams...'
+                                : 'Stream Unavailable'}
                             </span>
                           </a>
 

@@ -369,8 +369,9 @@ async def stream_download_endpoint(
         return Response(content=b"", media_type=content_type, headers=headers)
 
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+    is_hls = '.m3u8' in url.lower() or '/manifest/hls/' in url.lower() or 'manifest.googlevideo.com' in url.lower()
 
-    if audio_url and FFMPEG_BIN:
+    if (audio_url or is_hls) and FFMPEG_BIN:
         try:
             await asyncio.wait_for(MUX_SEMAPHORE.acquire(), timeout=15.0)
         except asyncio.TimeoutError:
@@ -383,16 +384,23 @@ async def stream_download_endpoint(
             FFMPEG_BIN,
             "-hide_banner",
             "-loglevel", "error",
+            "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
             "-user_agent", user_agent,
             "-i", url,
-            "-user_agent", user_agent,
-            "-i", audio_url,
+        ]
+        if audio_url:
+            cmd.extend([
+                "-protocol_whitelist", "file,http,https,tcp,tls,crypto",
+                "-user_agent", user_agent,
+                "-i", audio_url
+            ])
+        cmd.extend([
             "-c:v", "copy",
             "-c:a", "aac",
             "-movflags", "frag_keyframe+empty_moov+default_base_moof",
             "-f", "mp4",
             "pipe:1"
-        ]
+        ])
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         first_chunk = proc.stdout.read(65536)
 
