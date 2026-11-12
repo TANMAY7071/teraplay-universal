@@ -222,6 +222,9 @@ function getFormatDisplayDescription(fmt: MediaFormatOption): string {
       ? `${getShortResTag(fmt.height)} MP4 with combined audio`
       : 'Single file direct MP4 video';
   }
+  if (fmt.can_mux || fmt.audio_url) {
+    return `${getShortResTag(fmt.height)} MP4 · Audio track auto-merged`;
+  }
   return 'High-res video stream (no audio track attached by host)';
 }
 
@@ -2081,6 +2084,7 @@ export default function Index() {
                       ) : (
                         <CustomVideoPlayer
                           videoUrl={resolvedVideo.m3u8_url || resolvedVideo.fast_download_url}
+                          audioUrl={bestAudio?.url || resolvedVideo.audio_formats?.[0]?.url}
                           poster={resolvedVideo.thumbnail}
                           fallbackUrls={playerFallbackUrls}
                           qualities={playerQualities}
@@ -2375,7 +2379,7 @@ export default function Index() {
                     </div>
                   </div>
 
-                  {downloadFormatTab === 'video' && videoFormats.some((f) => !f.has_audio && !f.can_mux) && (
+                  {downloadFormatTab === 'video' && videoFormats.some((f) => !f.has_audio && !f.can_mux && !f.audio_url && !bestAudio) && (
                     <div className="flex items-start gap-2.5 pl-3.5 border-l-2 border-amber-500/50 text-xs text-amber-700 dark:text-amber-300">
                       <Info className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
                       <div className="space-y-0.5">
@@ -2424,7 +2428,12 @@ export default function Index() {
                                       <span className="text-[10px] uppercase font-mono font-bold text-[var(--tp-muted)]">
                                         {fmt.ext}
                                       </span>
-                                      {!fmt.is_audio_only && !fmt.has_audio && (
+                                      {!fmt.is_audio_only && !fmt.has_audio && (fmt.can_mux || fmt.audio_url || bestAudio) && (
+                                         <span className="text-[10px] text-emerald-500 dark:text-emerald-400 font-mono font-medium inline-flex items-center gap-1">
+                                           <Volume2 className="w-3 h-3" /> Audio Merged
+                                         </span>
+                                       )}
+                                      {!fmt.is_audio_only && !fmt.has_audio && !fmt.can_mux && !fmt.audio_url && !bestAudio && (
                                          <span className="text-[10px] text-amber-500 dark:text-amber-400 font-mono font-medium inline-flex items-center gap-1">
                                            <VolumeX className="w-3 h-3" /> Video Only
                                          </span>
@@ -2502,7 +2511,12 @@ export default function Index() {
                                     <div>
                                       <div className="font-bold text-[var(--tp-ink)] text-xs sm:text-sm flex items-center gap-1.5">
                                         <span>{getFormatDisplayTier(fmt)}</span>
-                                        {!fmt.is_audio_only && !fmt.has_audio && (
+                                        {!fmt.is_audio_only && !fmt.has_audio && (fmt.can_mux || fmt.audio_url || bestAudio) && (
+                                           <span className="text-[10px] text-emerald-500 dark:text-emerald-400 font-mono font-medium inline-flex items-center gap-1">
+                                             <Volume2 className="w-3 h-3" /> Audio Merged
+                                           </span>
+                                         )}
+                                        {!fmt.is_audio_only && !fmt.has_audio && !fmt.can_mux && !fmt.audio_url && !bestAudio && (
                                            <span className="text-[10px] text-amber-500 dark:text-amber-400 font-mono font-medium inline-flex items-center gap-1">
                                              <VolumeX className="w-3 h-3" /> Video Only (Mute)
                                            </span>
@@ -3256,6 +3270,7 @@ export default function Index() {
                 ) : (
                   <CustomVideoPlayer
                     videoUrl={resolvedVideo.m3u8_url || resolvedVideo.fast_download_url}
+                    audioUrl={bestAudio?.url || resolvedVideo.audio_formats?.[0]?.url}
                     poster={resolvedVideo.thumbnail}
                     fallbackUrls={playerFallbackUrls}
                     qualities={playerQualities}

@@ -169,6 +169,7 @@ const getYoutubeEmbedUrl = (url: string) => {
 
 interface CustomVideoPlayerProps {
   videoUrl: string;
+  audioUrl?: string;
   isYoutubeEmbed?: boolean;
   fallbackUrls?: string[];
   /** Alternative renditions of the same video, highest first. Rendered as a quality menu when 2+ are supplied. */
@@ -185,6 +186,7 @@ interface CustomVideoPlayerProps {
 
 export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   videoUrl,
+  audioUrl,
   isYoutubeEmbed: isYoutubeEmbedProp,
   fallbackUrls = [],
   qualities = [],
@@ -198,6 +200,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   initialTime = 0,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
   const [currentSrc, setCurrentSrc] = useState(videoUrl);
@@ -290,6 +293,43 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
       video.muted = isMuted;
     }
   }, [currentSrc, volume, playbackSpeed, isMuted]);
+
+  // Synchronize secondary audio stream with video for split-stream platforms (Facebook, Reddit, DASH)
+  useEffect(() => {
+    const video = videoRef.current;
+    const audio = audioRef.current;
+    if (!video || !audio || !audioUrl) return;
+
+    audio.volume = isMuted ? 0 : volume;
+    audio.muted = isMuted;
+    audio.playbackRate = playbackSpeed;
+
+    const onPlay = () => audio.play().catch(() => {});
+    const onPause = () => audio.pause();
+    const onSeeking = () => { audio.currentTime = video.currentTime; };
+    const onSeeked = () => { audio.currentTime = video.currentTime; };
+    const onRateChange = () => { audio.playbackRate = video.playbackRate; };
+    const onVolumeChange = () => {
+      audio.volume = video.muted ? 0 : video.volume;
+      audio.muted = video.muted;
+    };
+
+    video.addEventListener('play', onPlay);
+    video.addEventListener('pause', onPause);
+    video.addEventListener('seeking', onSeeking);
+    video.addEventListener('seeked', onSeeked);
+    video.addEventListener('ratechange', onRateChange);
+    video.addEventListener('volumechange', onVolumeChange);
+
+    return () => {
+      video.removeEventListener('play', onPlay);
+      video.removeEventListener('pause', onPause);
+      video.removeEventListener('seeking', onSeeking);
+      video.removeEventListener('seeked', onSeeked);
+      video.removeEventListener('ratechange', onRateChange);
+      video.removeEventListener('volumechange', onVolumeChange);
+    };
+  }, [audioUrl, isMuted, volume, playbackSpeed]);
 
   const triggerFailover = useCallback(() => {
     // A single error reaches this twice: once through the React error prop and
@@ -695,6 +735,16 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
           playsInline
           tabIndex={0}
           aria-label={animeTitle}
+        />
+      )}
+
+      {/* Synchronized secondary audio track for split-stream platforms */}
+      {audioUrl && !isIframeEmbed && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          preload="auto"
+          className="hidden"
         />
       )}
 
