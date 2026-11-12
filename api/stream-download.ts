@@ -4,7 +4,7 @@ import { spawn, execFileSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { assertPublicHttpUrl, isCookieAllowedHost, sanitizeExtension, setCorsHeaders, checkRateLimit } from './_guard.ts';
+import { assertPublicHttpUrl, isCookieAllowedHost, sanitizeExtension, setCorsHeaders, checkRateLimit } from './_guard.mjs';
 
 let cachedSystemFfmpeg: string | null | undefined = undefined;
 

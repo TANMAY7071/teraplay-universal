@@ -2,7 +2,7 @@ import { execFile } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { mapGroqResponseToTranscript, FALLBACK_DEMO_TRANSCRIPT, type TranscriptData } from '../src/lib/transcription.ts';
-import { assertPublicHttpUrl, setCorsHeaders, checkRateLimit } from './_guard.ts';
+import { assertPublicHttpUrl, setCorsHeaders, checkRateLimit } from './_guard.mjs';
 
 /** Largest media file the endpoint will pull into memory. */
 const MAX_MEDIA_BYTES = 24 * 1024 * 1024;

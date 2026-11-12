@@ -1,4 +1,4 @@
-import { setCorsHeaders, checkRateLimit } from './_guard.ts';
+import { setCorsHeaders, checkRateLimit } from './_guard.mjs';
 import { execFile } from 'child_process';
 import path from 'path';
 import fs from 'fs';

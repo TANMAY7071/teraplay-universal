@@ -2,9 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install ffmpeg, curl, and essential certificates
+# Install ffmpeg, nodejs (for yt-dlp YouTube JS n-challenge solving), curl, and certificates
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    nodejs \
     curl \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*

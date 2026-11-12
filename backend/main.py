@@ -11,6 +11,7 @@ Cobalt-matched feature set:
 """
 
 import os
+import base64
 import sys
 import re
 import ssl
@@ -114,37 +115,67 @@ def is_terabox_url(url: str) -> bool:
     host = domain_match.group(1)
     return any(k in host for k in ('terabox', '1024tera', 'teraboxapp', 'teraboxlink', 'mirrobox', 'nephobox', 'momerybox'))
 
+def _get_cookie_file() -> Optional[str]:
+    """Materialize YouTube Netscape cookies from env var if configured."""
+    cookie_path = "/tmp/yt_cookies.txt"
+    raw = os.environ.get("YOUTUBE_COOKIES", "").strip()
+    b64 = os.environ.get("YOUTUBE_COOKIES_B64", "").strip()
+    if b64 and not raw:
+        try:
+            raw = base64.b64decode(b64).decode("utf-8", errors="ignore").strip()
+        except Exception:
+            raw = ""
+    if raw:
+        with open(cookie_path, "w", encoding="utf-8") as fh:
+            fh.write(raw)
+        return cookie_path
+    return None
+
+
 def resolve_social_fast(url: str) -> Dict[str, Any]:
-    """Cobalt-matched metadata extractor with subtitles, album art, and proxy support."""
+    """Cobalt-matched metadata extractor with client rotation, cookies, subtitles, and proxy support."""
     if not yt_dlp:
         raise RuntimeError("yt-dlp is not installed")
 
-    ydl_opts: Dict[str, Any] = {
-        'quiet': True,
-        'no_warnings': True,
-        'skip_download': True,
-        'extract_flat': False,
-        'nocheckcertificate': True,
-        'writesubtitles': True,
-        'writeautomaticsub': True,
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['tv', 'web_embedded', 'default', 'android']
-            }
+    cookie_file = _get_cookie_file()
+    client_groups = [
+        ['default', 'android', 'web_embedded', 'tv'],
+        ['android_vr', 'ios'],
+    ]
+
+    info = None
+    last_err: Optional[Exception] = None
+    for clients in client_groups:
+        ydl_opts: Dict[str, Any] = {
+            'quiet': True,
+            'no_warnings': True,
+            'skip_download': True,
+            'extract_flat': False,
+            'nocheckcertificate': True,
+            'writesubtitles': True,
+            'writeautomaticsub': True,
+            'extractor_args': {'youtube': {'player_client': clients}},
         }
-    }
+        if PROXY_URL:
+            ydl_opts['proxy'] = PROXY_URL
+        if cookie_file:
+            ydl_opts['cookiefile'] = cookie_file
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                if info and info.get('formats'):
+                    break
+        except Exception as exc:
+            last_err = exc
 
-    if PROXY_URL:
-        ydl_opts['proxy'] = PROXY_URL
+    if not info:
+        raise last_err or ValueError("No video information found")
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        if not info:
-            raise ValueError("No video information found")
-
+    if True:
         formats = info.get('formats', [])
         progressive = []
         video_only = []
+        hls_fallback = []
         audio_only = []
 
         for f in formats:
@@ -153,8 +184,7 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
                 continue
 
             protocol = (f.get('protocol') or '').lower()
-            if 'm3u8' in protocol or '.m3u8' in url_stream.lower():
-                continue
+            is_hls = 'm3u8' in protocol or '.m3u8' in url_stream.lower()
 
             vcodec = f.get('vcodec') or 'none'
             acodec = f.get('acodec') or 'none'
@@ -173,6 +203,11 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
                 'has_audio': acodec != 'none'
             }
 
+            if is_hls:
+                if vcodec != 'none':
+                    hls_fallback.append(fmt_entry)
+                continue
+
             if vcodec != 'none' and acodec != 'none':
                 progressive.append(fmt_entry)
             elif vcodec != 'none' and acodec == 'none':
@@ -180,6 +215,9 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
             elif vcodec == 'none' and acodec != 'none':
                 fmt_entry['bitrate'] = f.get('abr') or 0
                 audio_only.append(fmt_entry)
+
+        if not progressive and not video_only and hls_fallback:
+            video_only = hls_fallback
 
         audio_only.sort(key=lambda a: (a.get('ext') == 'm4a', a.get('bitrate') or 0), reverse=True)
         best_audio_url = audio_only[0]['url'] if audio_only else None

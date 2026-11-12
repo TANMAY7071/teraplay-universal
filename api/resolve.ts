@@ -1,7 +1,7 @@
 import { execFile } from 'child_process';
 import path from 'path';
 import fs from 'fs';
-import { setCorsHeaders, checkRateLimit, assertPublicHttpUrl } from './_guard.ts';
+import { setCorsHeaders, checkRateLimit, assertPublicHttpUrl } from './_guard.mjs';
 
 interface TranscriptItem {
   start: number;
