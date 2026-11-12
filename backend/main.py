@@ -138,10 +138,11 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
         raise RuntimeError("yt-dlp is not installed")
 
     cookie_file = _get_cookie_file()
+    is_yt = any(h in url.lower() for h in ('youtube.com', 'youtu.be'))
     client_groups = [
         ['default', 'android', 'web_embedded', 'tv'],
         ['android_vr', 'ios'],
-    ]
+    ] if is_yt else [None]
 
     info = None
     last_err: Optional[Exception] = None
@@ -154,8 +155,10 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
             'nocheckcertificate': True,
             'writesubtitles': True,
             'writeautomaticsub': True,
-            'extractor_args': {'youtube': {'player_client': clients}},
+            'socket_timeout': 12,
         }
+        if clients:
+            ydl_opts['extractor_args'] = {'youtube': {'player_client': clients}}
         if PROXY_URL:
             ydl_opts['proxy'] = PROXY_URL
         if cookie_file:
@@ -266,6 +269,8 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
         album_name = info.get('album') or 'Single'
         thumbnail_url = info.get('thumbnail')
 
+        main_url = progressive[0]['url'] if progressive else (video_only[0]['url'] if video_only else (audio_only[0]['url'] if audio_only else None))
+
         return {
             'success': True,
             'title': info.get('title') or 'Video Stream',
@@ -276,7 +281,10 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
             'artist': artist,
             'track': track_name,
             'album': album_name,
-            'fast_download_url': progressive[0]['url'] if progressive else (video_only[0]['url'] if video_only else None),
+            'stream_url': main_url,
+            'download_url': main_url,
+            'fast_download_url': main_url,
+            'm3u8_url': main_url,
             'formats': standard_formats,
             'video_formats': standard_formats,
             'audio_formats': audio_only,

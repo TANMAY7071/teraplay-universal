@@ -287,8 +287,15 @@ async function runRemoteResolver(targetUrl: string): Promise<ResolveResponse | n
       };
     }
 
-    if (parsed.success && (parsed.stream_url || parsed.download_url)) {
-      const directMedia = parsed.stream_url || parsed.download_url;
+    const directMedia =
+      parsed.stream_url ||
+      parsed.download_url ||
+      parsed.fast_download_url ||
+      parsed.m3u8_url ||
+      parsed.formats?.[0]?.url ||
+      parsed.audio_formats?.[0]?.url;
+
+    if (parsed.success && directMedia) {
       const cleanTitle = (parsed.title || 'video').replace(/[^a-zA-Z0-9_-]/g, '_');
       const downloadProxy = directMedia.startsWith('/api/')
         ? directMedia
