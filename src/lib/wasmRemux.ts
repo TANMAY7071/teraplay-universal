@@ -1,13 +1,13 @@
 /**
  * Client-Side Media Remuxer & Downloader (Cobalt-Matched v2.1)
  * Offloads 100% of video/audio multiplexing to the user's browser WebAssembly.
- * 
+ *
  * Features:
  * 1. Adaptive 1080p/4K/8K Video + Audio Remuxing (-c copy in ~2s)
- * 2. Embedded Album Art & Cover Artwork for MP3 / Audio
- * 3. Subtitle (.vtt / .srt) Packaging into MP4 Containers
- * 4. Rich ID3 Metadata Tags (Artist, Track Title, Album)
- * 5. Automatic Fallback to Stream Proxy if Browser Incompatible
+ * 2. Dumb Byte-Tunnel fallback when CDN blocks browser CORS / IP-locks stream
+ * 3. Embedded Album Art & Cover Artwork for MP3 / Audio
+ * 4. Subtitle (.vtt / .srt) Packaging into MP4 Containers
+ * 5. Rich ID3 Metadata Tags (Artist, Track Title, Album)
  */
 
 export interface RemuxOptions {
@@ -22,6 +22,8 @@ export interface RemuxOptions {
   album?: string;
   onProgress?: (percent: number, statusText: string) => void;
 }
+
+const RENDER_TUNNEL_BASE = 'https://linkcastle.onrender.com/stream-download';
 
 let ffmpegInstance: any = null;
 
@@ -57,6 +59,25 @@ async function loadFFmpegCore(): Promise<any> {
 }
 
 /**
+ * Fetch raw media bytes directly from CDN, or via Render byte-tunnel if CORS/IP-locked.
+ */
+async function fetchMediaBytes(url: string): Promise<ArrayBuffer> {
+  try {
+    const directRes = await fetch(url);
+    if (directRes.ok) {
+      return await directRes.arrayBuffer();
+    }
+  } catch {
+    // CORS or IP-lock on googlevideo.com; fall through to dumb byte-tunnel
+  }
+  const tunnelRes = await fetch(`${RENDER_TUNNEL_BASE}?url=${encodeURIComponent(url)}`);
+  if (!tunnelRes.ok) {
+    throw new Error(`Tunnel fetch failed with HTTP ${tunnelRes.status}`);
+  }
+  return await tunnelRes.arrayBuffer();
+}
+
+/**
  * Downloads media on user device with WASM remuxing, subtitles & cover art.
  */
 export async function downloadMediaClientSide({
@@ -71,8 +92,27 @@ export async function downloadMediaClientSide({
   album = '',
   onProgress
 }: RemuxOptions): Promise<void> {
-  const cleanName = filename.replace(/[^a-zA-Z0-9_\-\. ]/g, '').trim() || 'video';
+  const cleanName = filename.replace(/[^a-zA-Z0-9_.\- ]/g, '').trim() || 'video';
   const finalFilename = cleanName.toLowerCase().endsWith(`.${ext}`) ? cleanName : `${cleanName}.${ext}`;
+
+  const triggerTunnelFallback = () => {
+    const fallbackUrl = `${RENDER_TUNNEL_BASE}?url=${encodeURIComponent(videoUrl || audioUrl || '')}${
+      audioUrl && videoUrl ? `&audio_url=${encodeURIComponent(audioUrl)}` : ''
+    }&filename=${encodeURIComponent(cleanName)}&ext=${ext}`;
+    const a = document.createElement('a');
+    a.href = fallbackUrl;
+    a.download = finalFilename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // HLS (.m3u8) playlists cannot be written as raw video.mp4 into WASM
+  if ((videoUrl && videoUrl.includes('.m3u8')) || (audioUrl && audioUrl.includes('.m3u8'))) {
+    onProgress?.(50, 'Streaming HLS via server tunnel...');
+    triggerTunnelFallback();
+    return;
+  }
 
   // 1. Direct Progressive download if no remuxing needed (no separate audio, subtitles, or cover art)
   if (videoUrl && !audioUrl && !subtitleUrl) {
@@ -103,19 +143,22 @@ export async function downloadMediaClientSide({
 
     if (videoUrl) {
       videoIndex = fetchTasks.length;
-      fetchTasks.push(fetch(videoUrl).then((r) => r.arrayBuffer()));
+      fetchTasks.push(fetchMediaBytes(videoUrl));
     }
     if (audioUrl) {
       audioIndex = fetchTasks.length;
-      fetchTasks.push(fetch(audioUrl).then((r) => r.arrayBuffer()));
+      fetchTasks.push(fetchMediaBytes(audioUrl));
     }
     if (subtitleUrl) {
       subIndex = fetchTasks.length;
-      fetchTasks.push(fetch(subtitleUrl).then((r) => r.arrayBuffer()));
+      fetchTasks.push(fetchMediaBytes(subtitleUrl));
     }
     if (thumbnailUrl && ext === 'mp3') {
       thumbIndex = fetchTasks.length;
-      fetchTasks.push(fetch(thumbnailUrl).then((r) => r.arrayBuffer()));
+      fetchTasks.push(fetch(thumbnailUrl).then((r) => {
+        if (!r.ok) throw new Error('Thumbnail fetch failed');
+        return r.arrayBuffer();
+      }));
     }
 
     const buffers = await Promise.all(fetchTasks);
@@ -155,7 +198,7 @@ export async function downloadMediaClientSide({
           '-metadata:s:v', 'comment="Cover (front)"'
         );
       } else {
-        args.push('-c:a', 'copy');
+        args.push('-c:a', ext === 'mp3' ? 'libmp3lame' : 'copy');
       }
     }
     // Case B: Video + Audio (+ optional Subtitles)
@@ -194,13 +237,6 @@ export async function downloadMediaClientSide({
   } catch (err) {
     console.warn('[WasmRemux] Client remuxing fell back to stream proxy:', err);
     onProgress?.(50, 'Routing through fallback stream proxy...');
-
-    const fallbackUrl = `/api/stream-download?url=${encodeURIComponent(videoUrl || audioUrl || '')}&audio_url=${encodeURIComponent(audioUrl || '')}&filename=${encodeURIComponent(cleanName)}&ext=${ext}`;
-    const a = document.createElement('a');
-    a.href = fallbackUrl;
-    a.download = finalFilename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    triggerTunnelFallback();
   }
 }

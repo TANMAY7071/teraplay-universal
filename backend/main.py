@@ -152,15 +152,20 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
             if not url_stream or not url_stream.startswith('http'):
                 continue
 
+            protocol = (f.get('protocol') or '').lower()
+            if 'm3u8' in protocol or '.m3u8' in url_stream.lower():
+                continue
+
             vcodec = f.get('vcodec') or 'none'
             acodec = f.get('acodec') or 'none'
-            height = f.get('height')
+            height = f.get('height') or 0
             quality_label = f"{height}p" if height else f.get('format_note') or 'video'
             ext = f.get('ext') or 'mp4'
 
             fmt_entry = {
                 'format_id': f.get('format_id'),
                 'quality': quality_label,
+                'height': height,
                 'resolution': f.get('resolution') or quality_label,
                 'ext': ext,
                 'url': url_stream,
@@ -173,10 +178,13 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
             elif vcodec != 'none' and acodec == 'none':
                 video_only.append(fmt_entry)
             elif vcodec == 'none' and acodec != 'none':
-                fmt_entry['bitrate'] = f.get('abr')
+                fmt_entry['bitrate'] = f.get('abr') or 0
                 audio_only.append(fmt_entry)
 
-        best_audio_url = audio_only[-1]['url'] if audio_only else None
+        audio_only.sort(key=lambda a: (a.get('ext') == 'm4a', a.get('bitrate') or 0), reverse=True)
+        best_audio_url = audio_only[0]['url'] if audio_only else None
+        progressive.sort(key=lambda v: (v.get('height') or 0, v.get('ext') == 'mp4'), reverse=True)
+        video_only.sort(key=lambda v: (v.get('height') or 0, v.get('ext') == 'mp4'), reverse=True)
 
         standard_formats = []
         for p in progressive:

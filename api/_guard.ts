@@ -47,10 +47,11 @@ export function setCorsHeaders(req: any, res: any, allowedMethods = 'GET, OPTION
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 export function checkRateLimit(req: any, maxRequests = 60, windowMs = 60_000): boolean {
+  const headers = req?.headers || {};
   const ip =
-    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-    req.headers['x-real-ip'] ||
-    req.socket?.remoteAddress ||
+    (headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+    headers['x-real-ip'] ||
+    req?.socket?.remoteAddress ||
     'unknown';
 
   const now = Date.now();
