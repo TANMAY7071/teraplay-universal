@@ -907,8 +907,8 @@ export default function Index() {
     async (fmt: MediaFormatOption | null | undefined) => {
       if (!resolvedVideo || !fmt) return;
       const fileName = getFormatDownloadFilename(fmt);
-      const audioUrl = fmt.audio_url || bestAudio?.url;
-      const isMuxNeeded = Boolean(audioUrl && audioUrl !== fmt.url && !fmt.has_audio);
+      const audioUrl = fmt.audio_url || bestAudio?.url || resolvedVideo.audio_formats?.[0]?.url;
+      const isMuxNeeded = Boolean(!fmt.has_audio && (audioUrl || fmt.can_mux));
 
       const isGoogleOrHls = Boolean(
         fmt.url && (

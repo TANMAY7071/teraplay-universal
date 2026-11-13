@@ -30,28 +30,36 @@ let ffmpegInstance: any = null;
 async function loadFFmpegCore(): Promise<any> {
   if (ffmpegInstance) return ffmpegInstance;
 
+  const CORE_BASE = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+
   return new Promise((resolve, reject) => {
+    const initFFmpeg = async () => {
+      try {
+        const { FFmpeg } = (window as any).FFmpegWASM || {};
+        if (!FFmpeg) {
+          throw new Error('FFmpeg failed to initialize from window object');
+        }
+        ffmpegInstance = new FFmpeg();
+        await ffmpegInstance.load({
+          coreURL: `${CORE_BASE}/ffmpeg-core.js`,
+          wasmURL: `${CORE_BASE}/ffmpeg-core.wasm`,
+        });
+        resolve(ffmpegInstance);
+      } catch (err) {
+        reject(err);
+      }
+    };
+
     if ((window as any).FFmpegWASM) {
-      ffmpegInstance = new (window as any).FFmpegWASM.FFmpeg();
-      resolve(ffmpegInstance);
+      initFFmpeg();
       return;
     }
 
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
     script.async = true;
-    script.onload = async () => {
-      try {
-        const { FFmpeg } = (window as any).FFmpegWASM || {};
-        if (!FFmpeg) {
-          throw new Error('FFmpeg failed to initialize from CDN');
-        }
-        ffmpegInstance = new FFmpeg();
-        await ffmpegInstance.load();
-        resolve(ffmpegInstance);
-      } catch (err) {
-        reject(err);
-      }
+    script.onload = () => {
+      initFFmpeg();
     };
     script.onerror = () => reject(new Error('Failed to load WebAssembly FFmpeg library'));
     document.head.appendChild(script);
@@ -211,7 +219,7 @@ export async function downloadMediaClientSide({
     }
     // Case B: Video + Audio (+ optional Subtitles)
     else if (videoUrl && audioUrl) {
-      args.push('-c:v', 'copy', '-c:a', 'aac');
+      args.push('-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac');
       if (subIndex >= 0) {
         args.push('-c:s', 'mov_text');
       }
