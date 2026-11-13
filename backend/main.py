@@ -194,8 +194,22 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
             vcodec = f.get('vcodec') or 'none'
             acodec = f.get('acodec') or 'none'
             height = f.get('height') or 0
-            quality_label = f"{height}p" if height else f.get('format_note') or 'video'
+            fmt_id = str(f.get('format_id') or '').lower()
             ext = f.get('ext') or 'mp4'
+
+            # Fix for Facebook, Twitter/X, and social direct MP4s where yt-dlp doesn't probe vcodec/acodec:
+            if vcodec == 'none' and acodec == 'none':
+                if ext in ('mp4', 'webm', 'mov', 'mkv') or fmt_id in ('sd', 'hd', 'progressive') or f.get('video_ext') != 'none':
+                    vcodec = 'auto'
+                    acodec = 'auto'
+
+            if not height:
+                if 'hd' in fmt_id or '1080' in fmt_id or '720' in fmt_id:
+                    height = 720
+                elif 'sd' in fmt_id or '360' in fmt_id:
+                    height = 360
+
+            quality_label = f"{height}p" if height else f.get('format_note') or 'video'
 
             fmt_entry = {
                 'format_id': f.get('format_id'),
@@ -224,6 +238,21 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
         if not progressive and not video_only and hls_fallback:
             video_only = hls_fallback
 
+        if not progressive and not video_only and formats:
+            for f in formats:
+                u = f.get('url')
+                if u and u.startswith('http'):
+                    progressive.append({
+                        'format_id': f.get('format_id') or 'direct',
+                        'quality': 'Standard Quality',
+                        'height': 720,
+                        'resolution': '720p',
+                        'ext': f.get('ext') or 'mp4',
+                        'url': u,
+                        'filesize': f.get('filesize'),
+                        'has_audio': True
+                    })
+
         audio_only.sort(key=lambda a: (a.get('ext') == 'm4a', a.get('bitrate') or 0), reverse=True)
         best_audio_url = audio_only[0]['url'] if audio_only else None
         progressive.sort(key=lambda v: (v.get('height') or 0, v.get('ext') == 'mp4'), reverse=True)
@@ -232,6 +261,7 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
         standard_formats = []
         for p in progressive:
             standard_formats.append({
+                'format_id': p.get('format_id') or 'progressive',
                 'quality': p['quality'],
                 'resolution': p['resolution'],
                 'ext': p['ext'],
@@ -242,6 +272,7 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
 
         for v in video_only:
             standard_formats.append({
+                'format_id': v.get('format_id') or 'video',
                 'quality': v['quality'],
                 'resolution': v['resolution'],
                 'ext': v['ext'],
