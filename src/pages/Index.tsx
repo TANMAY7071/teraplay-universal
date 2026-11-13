@@ -843,8 +843,28 @@ export default function Index() {
 
   const audioFormats = useMemo(() => {
     const list = resolvedVideo?.audio_formats?.length
-      ? resolvedVideo.audio_formats
+      ? [...resolvedVideo.audio_formats]
       : resolvedVideo?.formats?.filter((f) => f.is_audio_only) || [];
+
+    if (list.length === 0 && resolvedVideo) {
+      const videoWithSound =
+        resolvedVideo.formats?.find((f) => f.has_audio && f.url) ||
+        (resolvedVideo.m3u8_url ? { url: resolvedVideo.m3u8_url } : null);
+      if (videoWithSound?.url) {
+        list.push({
+          format_id: 'extracted_audio_mp3',
+          quality: 'Original Audio (MP3)',
+          height: 0,
+          ext: 'mp3',
+          url: videoWithSound.url,
+          filesize: 'Direct Audio',
+          has_audio: true,
+          has_video: false,
+          is_audio_only: true,
+          is_progressive: true,
+        });
+      }
+    }
     return list;
   }, [resolvedVideo]);
 

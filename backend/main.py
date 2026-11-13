@@ -253,6 +253,19 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
                         'has_audio': True
                     })
 
+        if not audio_only and progressive:
+            best_v = progressive[0]
+            audio_only.append({
+                'format_id': 'audio_extracted_mp3',
+                'quality': 'Original Audio (MP3)',
+                'resolution': '128 kbps',
+                'ext': 'mp3',
+                'url': best_v['url'],
+                'bitrate': 128,
+                'has_audio': True,
+                'is_audio_only': True
+            })
+
         audio_only.sort(key=lambda a: (a.get('ext') == 'm4a', a.get('bitrate') or 0), reverse=True)
         best_audio_url = audio_only[0]['url'] if audio_only else None
         progressive.sort(key=lambda v: (v.get('height') or 0, v.get('ext') == 'mp4'), reverse=True)

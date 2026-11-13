@@ -205,8 +205,8 @@ export async function downloadMediaClientSide({
     if (!videoUrl && audioUrl) {
       if (thumbIndex >= 0) {
         args.push(
-          '-map', '0:a',
-          '-map', '1:v',
+          '-map', '0:a:0',
+          '-map', '1:v:0',
           '-c:a', ext === 'mp3' ? 'libmp3lame' : 'copy',
           '-c:v', 'copy',
           '-id3v2_version', '3',
@@ -214,7 +214,7 @@ export async function downloadMediaClientSide({
           '-metadata:s:v', 'comment="Cover (front)"'
         );
       } else {
-        args.push('-c:a', ext === 'mp3' ? 'libmp3lame' : 'copy');
+        args.push('-vn', '-c:a', ext === 'mp3' ? 'libmp3lame' : 'copy');
       }
     }
     // Case B: Video + Audio (+ optional Subtitles)

@@ -315,6 +315,26 @@ async function runRemoteResolver(targetUrl: string): Promise<ResolveResponse | n
       const mappedVideoFormats = Array.isArray(parsed.video_formats) ? parsed.video_formats.map(mapFormat) : [];
       const mappedAudioFormats = Array.isArray(parsed.audio_formats) ? parsed.audio_formats.map(mapFormat) : [];
 
+      if (mappedAudioFormats.length === 0 && (directMedia || mappedFormats.length > 0)) {
+        const sourceUrl = mappedFormats.find((f: any) => f.has_audio)?.url || directMedia;
+        if (sourceUrl) {
+          mappedAudioFormats.push({
+            format_id: 'extracted_audio_mp3',
+            quality: 'Original Audio (MP3)',
+            height: 0,
+            resolution: '128 kbps',
+            ext: 'mp3',
+            filesize: 'Direct Audio',
+            url: sourceUrl,
+            download_url: `/api/stream-download?url=${encodeURIComponent(sourceUrl)}&filename=${encodeURIComponent(`${cleanTitle}_audio`)}&ext=mp3&source=${encodeURIComponent(parsed.source || '')}`,
+            has_audio: true,
+            has_video: false,
+            is_audio_only: true,
+            is_progressive: true,
+          });
+        }
+      }
+
       return {
         success: true,
         title: parsed.title,
