@@ -105,6 +105,8 @@ app.add_middleware(
 
 MAX_SERVER_MUX_JOBS = int(os.environ.get("MAX_SERVER_MUX_JOBS", 2))
 MUX_SEMAPHORE = asyncio.Semaphore(MAX_SERVER_MUX_JOBS)
+MAX_RESOLVE_CONCURRENCY = int(os.environ.get("MAX_RESOLVE_CONCURRENCY", 8))
+RESOLVE_SEMAPHORE = asyncio.Semaphore(MAX_RESOLVE_CONCURRENCY)
 PROXY_URL = os.environ.get("PROXY_URL", "").strip()
 
 def is_terabox_url(url: str) -> bool:
@@ -306,7 +308,7 @@ def health_check():
 
 
 @app.get("/resolve")
-def resolve_endpoint(url: str = Query(..., description="Target media URL to resolve")):
+async def resolve_endpoint(url: str = Query(..., description="Target media URL to resolve")):
     target = url.strip()
     if not target:
         raise HTTPException(status_code=400, detail="Missing url query parameter")
@@ -315,32 +317,34 @@ def resolve_endpoint(url: str = Query(..., description="Target media URL to reso
     if cached:
         return JSONResponse(content=cached)
 
-    try:
-        if is_terabox_url(target):
-            if not extract_media_info:
-                raise RuntimeError("TeraBox extractor module not available")
-            result = extract_media_info(target, is_transcript_only=False)
-        else:
-            result = resolve_social_fast(target)
-
-        if result and result.get("success", True):
-            set_in_cache(target, result)
-
-        return JSONResponse(content=result)
-
-    except Exception as exc:
+    async with RESOLVE_SEMAPHORE:
+        loop = asyncio.get_running_loop()
         try:
-            if extract_media_info:
-                result = extract_media_info(target, is_transcript_only=False)
-                if result and result.get("success", True):
-                    set_in_cache(target, result)
-                    return JSONResponse(content=result)
-        except Exception:
-            pass
-        return JSONResponse(
-            status_code=400,
-            content={"success": False, "error": f"Resolution failed: {str(exc)}"}
-        )
+            if is_terabox_url(target):
+                if not extract_media_info:
+                    raise RuntimeError("TeraBox extractor module not available")
+                result = await loop.run_in_executor(None, extract_media_info, target, False)
+            else:
+                result = await loop.run_in_executor(None, resolve_social_fast, target)
+
+            if result and result.get("success", True):
+                set_in_cache(target, result)
+
+            return JSONResponse(content=result)
+
+        except Exception as exc:
+            try:
+                if extract_media_info:
+                    result = await loop.run_in_executor(None, extract_media_info, target, False)
+                    if result and result.get("success", True):
+                        set_in_cache(target, result)
+                        return JSONResponse(content=result)
+            except Exception:
+                pass
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "error": f"Resolution failed: {str(exc)}"}
+            )
 
 
 @app.get("/transcript")
