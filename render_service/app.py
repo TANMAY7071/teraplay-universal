@@ -38,7 +38,7 @@ def resolve():
     )
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return jsonify({"ok": True, "yt_dlp": extractor.yt_dlp is not None})
 
