@@ -142,8 +142,8 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
     cookie_file = _get_cookie_file()
     is_yt = any(h in url.lower() for h in ('youtube.com', 'youtu.be'))
     client_groups = [
-        ['default', 'android', 'web_embedded', 'tv'],
-        ['android_vr', 'ios'],
+        ['android', 'ios', 'tv'],
+        ['android_vr', 'mweb'],
     ] if is_yt else [None]
 
     info = None
@@ -155,9 +155,11 @@ def resolve_social_fast(url: str) -> Dict[str, Any]:
             'skip_download': True,
             'extract_flat': False,
             'nocheckcertificate': True,
-            'writesubtitles': True,
-            'writeautomaticsub': True,
-            'socket_timeout': 12,
+            'writesubtitles': False,
+            'writeautomaticsub': False,
+            'socket_timeout': 7,
+            'retries': 2,
+            'fragment_retries': 1,
         }
         if clients:
             ydl_opts['extractor_args'] = {'youtube': {'player_client': clients}}
