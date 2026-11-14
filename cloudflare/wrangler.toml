@@ -1,0 +1,7 @@
+name = "linkcastle-gateway"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+[vars]
+PRIMARY_RESOLVER_URL = "https://linkcastle-resolver-web.modal.run"
+FALLBACK_RESOLVER_URL = "https://linkcastle.onrender.com"
